@@ -645,6 +645,7 @@ export default function GamePage(): React.ReactElement {
       }
 
       const key = e.key.toUpperCase();
+      const lowerKey = e.key.toLowerCase();
 
       // Handle number keys (1-9) for road building or settlement placement
       const num = parseInt(e.key);
@@ -697,27 +698,64 @@ export default function GamePage(): React.ReactElement {
 
         // Then try city upgrades (reverse alphabet: Z=0, Y=1, X=2, etc.)
         const hasCityEntitlement = currentPlayer?.unspentEntitlements?.includes('City');
-        if (!hasCityEntitlement || !buildings || !currentPlayer) return;
+        if (hasCityEntitlement && buildings && currentPlayer) {
+          const upgradeableSettlements = buildings.filter(
+            (b) => b.buildingState === 'Settlement' && b.ownerId === currentPlayer.id
+          );
 
-        // Build list of upgradeable settlements (same logic as GameBoard)
-        const upgradeableSettlements = buildings.filter(
-          (b) => b.buildingState === 'Settlement' && b.ownerId === currentPlayer.id
-        );
+          // Reverse alphabet mapping: Z=0, Y=1, X=2, etc.
+          const cityIndex = 25 - letterIndex; // Z (25) -> 0, Y (24) -> 1, etc.
 
-        // Reverse alphabet mapping: Z=0, Y=1, X=2, etc.
-        const cityIndex = 25 - letterIndex; // Z (25) -> 0, Y (24) -> 1, etc.
-
-        if (cityIndex >= 0 && cityIndex < upgradeableSettlements.length) {
-          const settlement = upgradeableSettlements[cityIndex];
-          console.log('[GamePage] Keyboard shortcut: upgrading settlement', key);
-          proxy.upgradeBuilding(settlement.buildingKey);
+          if (cityIndex >= 0 && cityIndex < upgradeableSettlements.length) {
+            const settlement = upgradeableSettlements[cityIndex];
+            console.log('[GamePage] Keyboard shortcut: upgrading settlement', key);
+            proxy.upgradeBuilding(settlement.buildingKey);
+            return;
+          }
         }
+        // Letter didn't match any road or city — fall through to purchase shortcuts
+      }
+
+      // Purchase shortcuts — only fire AFTER placement logic above has had a chance.
+      // Priority: place already-purchased entitlements first, buy new ones second.
+      // No game-state gating here — the canPurchase* flags already encode whether
+      // the purchase is valid in the current state (server sets enabled:false when not).
+      // Works in WaitingForNext, WaitingForRoll (soldier), Supplemental, etc.
+      switch (lowerKey) {
+        case 's':
+          if (canPurchaseSettlement) { e.preventDefault(); handleAction('settlement'); }
+          return;
+        case 'c':
+          if (canPurchaseCity) { e.preventDefault(); handleAction('city'); }
+          return;
+        case 'k':
+          if (canPlaySoldier) { e.preventDefault(); handleAction('soldier'); }
+          return;
+        case 'r':
+          if (canPurchaseRoad) { e.preventDefault(); handleAction('road'); }
+          return;
+        case 'd':
+          if (canPurchaseDevCard) { e.preventDefault(); handleAction('devcard'); }
+          return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [roads, buildings, gameState, currentPlayer, proxy, handleRollClick]);
+  }, [
+    roads,
+    buildings,
+    gameState,
+    currentPlayer,
+    proxy,
+    handleRollClick,
+    handleAction,
+    canPurchaseSettlement,
+    canPurchaseCity,
+    canPlaySoldier,
+    canPurchaseRoad,
+    canPurchaseDevCard,
+  ]);
 
   // Star filter changed handler (stores in layoutStore for board filtering)
   const setStarFilter = useLayoutStore((state) => state.setStarFilter);
