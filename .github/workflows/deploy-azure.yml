@@ -114,7 +114,7 @@ jobs:
       - name: Verify database access
         shell: pwsh
         run: |
-          ./.scripts/catan-azure.ps1 database deploy -TraceLevel INFO
+          pwsh .scripts/database.ps1 deploy -Azure -TraceLevel INFO
 
   deploy-react:
     name: Deploy React + Swap

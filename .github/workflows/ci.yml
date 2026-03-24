@@ -58,5 +58,7 @@ jobs:
         shell: pwsh
         run: |
           dotnet test Tests/Shared -c Release --no-build
-          dotnet test Tests/GameService -c Release --no-build
+          # Skip CatanDb contract tests in CI (require Cosmos emulator or Azure)
+          # Run them locally via: ./catan.ps1 database test [-Azure]
+          dotnet test Tests/GameService -c Release --no-build --filter "FullyQualifiedName!~CatanDb"
           # Note: Tests/Desktop requires a GUI and can only run locally
