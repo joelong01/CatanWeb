@@ -23,21 +23,21 @@ public class CosmosCatanDbTests : CatanDbContractTests
     protected override async Task<ICatanDb> CreateDbAsync()
     {
         var endpoint = CosmosTestParams.Endpoint;
-        var key      = CosmosTestParams.Key;
+        var key = CosmosTestParams.Key;
 
         var stjOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
         _client = string.IsNullOrEmpty(key)
             ? new CosmosClient(endpoint, new DefaultAzureCredential(), new CosmosClientOptions
-              {
-                  UseSystemTextJsonSerializerWithOptions = stjOptions,
-                  ConnectionMode = ConnectionMode.Direct,
-              })
+            {
+                UseSystemTextJsonSerializerWithOptions = stjOptions,
+                ConnectionMode = ConnectionMode.Direct,
+            })
             : new CosmosClient(endpoint, key, new CosmosClientOptions
-              {
-                  UseSystemTextJsonSerializerWithOptions = stjOptions,
-                  ConnectionMode = ConnectionMode.Gateway,
-              });
+            {
+                UseSystemTextJsonSerializerWithOptions = stjOptions,
+                ConnectionMode = ConnectionMode.Gateway,
+            });
 
         var db = new CosmosCatanDb(_client, _dbName);
         await db.InitializeAsync();

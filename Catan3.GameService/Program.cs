@@ -4,7 +4,6 @@ using Catan3.GameService.Data;
 using Catan3.Shared.Interfaces;
 using Catan3.GameService.Hubs;
 using Catan3.Shared.Utility;
-using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;

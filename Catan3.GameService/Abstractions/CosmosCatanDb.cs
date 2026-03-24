@@ -46,11 +46,11 @@ public sealed class CosmosCatanDb : ICatanDb
         // Containers must already exist: created by 'catan.ps1 database install' or CI/CD.
         // If they don't exist, operations will fail with a clear CosmosException.
         var db = _client.GetDatabase(_databaseName);
-        _players        = db.GetContainer("players");
-        _games          = db.GetContainer("games");
+        _players = db.GetContainer("players");
+        _games = db.GetContainer("games");
         _completedGames = db.GetContainer("completed-games");
-        _templates      = db.GetContainer("templates");
-        _recordings     = db.GetContainer("recordings");
+        _templates = db.GetContainer("templates");
+        _recordings = db.GetContainer("recordings");
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -68,11 +68,11 @@ public sealed class CosmosCatanDb : ICatanDb
     public async Task InitializeAsync()
     {
         var db = (await _client.CreateDatabaseIfNotExistsAsync(_databaseName)).Database;
-        _players        = (await db.CreateContainerIfNotExistsAsync("players",         "/id")).Container;
-        _games          = (await db.CreateContainerIfNotExistsAsync("games",            "/id")).Container;
-        _completedGames = (await db.CreateContainerIfNotExistsAsync("completed-games",  "/id")).Container;
-        _templates      = (await db.CreateContainerIfNotExistsAsync("templates",        "/id")).Container;
-        _recordings     = (await db.CreateContainerIfNotExistsAsync("recordings",       "/id")).Container;
+        _players = (await db.CreateContainerIfNotExistsAsync("players", "/id")).Container;
+        _games = (await db.CreateContainerIfNotExistsAsync("games", "/id")).Container;
+        _completedGames = (await db.CreateContainerIfNotExistsAsync("completed-games", "/id")).Container;
+        _templates = (await db.CreateContainerIfNotExistsAsync("templates", "/id")).Container;
+        _recordings = (await db.CreateContainerIfNotExistsAsync("recordings", "/id")).Container;
     }
 
     // ── Players ───────────────────────────────────────────────────────────────
@@ -187,18 +187,18 @@ public sealed class CosmosCatanDb : ICatanDb
     {
         var doc = new CompletedGameDoc
         {
-            Id             = game.GameId,
-            GameId         = game.GameId,
-            GameName       = game.GameName,
-            WinnerId       = game.WinnerId,
-            WinnerName     = game.WinnerName,
-            CompletedAt    = game.CompletedAt,
-            StartedAt      = game.StartedAt,
-            PlayerCount    = game.PlayerCount,
-            TurnCount      = game.TurnCount,
-            PlayerNames    = game.PlayerNames,
+            Id = game.GameId,
+            GameId = game.GameId,
+            GameName = game.GameName,
+            WinnerId = game.WinnerId,
+            WinnerName = game.WinnerName,
+            CompletedAt = game.CompletedAt,
+            StartedAt = game.StartedAt,
+            PlayerCount = game.PlayerCount,
+            TurnCount = game.TurnCount,
+            PlayerNames = game.PlayerNames,
             CompressedData = game.CompressedData.Length > 0 ? Convert.ToBase64String(game.CompressedData) : null,
-            Size           = game.Size,
+            Size = game.Size,
         };
         await _completedGames.UpsertItemAsync(doc, new PartitionKey(game.GameId), _writeOptions);
     }
@@ -250,22 +250,22 @@ public sealed class CosmosCatanDb : ICatanDb
         // Normalize embedded payload so LoadTemplateAsync and ListTemplatesAsync
         // always agree: the scalar parameters are the authoritative source for
         // identity fields; update data before serializing.
-        data.Id       = id;
-        data.Name     = name;
+        data.Id = id;
+        data.Name = name;
         data.Category = category;
 
         var doc = new TemplateDoc
         {
-            Id               = id,
-            Name             = name,
-            Category         = category,
+            Id = id,
+            Name = name,
+            Category = category,
             IsSystemTemplate = isSystemTemplate,
-            Description      = data.Description,
-            MinPlayers       = data.ResourceRules.MinPlayers,
-            MaxPlayers       = data.ResourceRules.MaxPlayers,
-            UpdatedAt        = now,
-            CreatedAt        = existing?.CreatedAt ?? now,
-            DataJson         = JsonHelper.Serialize(data),
+            Description = data.Description,
+            MinPlayers = data.ResourceRules.MinPlayers,
+            MaxPlayers = data.ResourceRules.MaxPlayers,
+            UpdatedAt = now,
+            CreatedAt = existing?.CreatedAt ?? now,
+            DataJson = JsonHelper.Serialize(data),
         };
         await _templates.UpsertItemAsync(doc, new PartitionKey(id), _writeOptions);
     }
@@ -307,14 +307,14 @@ public sealed class CosmosCatanDb : ICatanDb
     {
         var doc = new RecordingDoc
         {
-            Id          = summary.Id,
-            Name        = summary.Name,
-            CreatedAt   = summary.CreatedAt,
-            GameType    = summary.GameType,
+            Id = summary.Id,
+            Name = summary.Name,
+            CreatedAt = summary.CreatedAt,
+            GameType = summary.GameType,
             PlayerCount = summary.PlayerCount,
             ActionCount = summary.ActionCount,
-            GameId      = summary.GameId,
-            Data        = data,
+            GameId = summary.GameId,
+            Data = data,
         };
         await _recordings.UpsertItemAsync(doc, new PartitionKey(summary.Id), _writeOptions);
     }
@@ -368,87 +368,87 @@ public sealed class CosmosCatanDb : ICatanDb
 
     private static GameSummary DocToSummary(GameDoc doc) => new()
     {
-        GameId      = doc.Id,
-        GameName    = doc.GameName,
-        GameState   = doc.GameState,
-        GameType    = doc.GameType,
-        StartedBy   = doc.StartedBy,
+        GameId = doc.Id,
+        GameName = doc.GameName,
+        GameState = doc.GameState,
+        GameType = doc.GameType,
+        StartedBy = doc.StartedBy,
         PlayerCount = doc.PlayerCount,
         PlayerNames = doc.PlayerNames,
-        TurnCount   = doc.TurnCount,
-        SavedAt     = doc.SavedAt,
-        CreatedAt   = doc.CreatedAt,
-        Size        = doc.Size,
+        TurnCount = doc.TurnCount,
+        SavedAt = doc.SavedAt,
+        CreatedAt = doc.CreatedAt,
+        Size = doc.Size,
     };
 
     private static GameSaveData DocToSaveData(GameDoc doc) => new()
     {
-        GameId         = doc.Id,
-        GameName       = doc.GameName,
-        GameState      = doc.GameState,
-        GameType       = doc.GameType,
-        StartedBy      = doc.StartedBy,
-        PlayerCount    = doc.PlayerCount,
-        PlayerNames    = doc.PlayerNames,
-        TurnCount      = doc.TurnCount,
-        SavedAt        = doc.SavedAt,
-        CreatedAt      = doc.CreatedAt,
-        Size           = doc.Size,
+        GameId = doc.Id,
+        GameName = doc.GameName,
+        GameState = doc.GameState,
+        GameType = doc.GameType,
+        StartedBy = doc.StartedBy,
+        PlayerCount = doc.PlayerCount,
+        PlayerNames = doc.PlayerNames,
+        TurnCount = doc.TurnCount,
+        SavedAt = doc.SavedAt,
+        CreatedAt = doc.CreatedAt,
+        Size = doc.Size,
         CompressedData = doc.CompressedData is null ? [] : Convert.FromBase64String(doc.CompressedData),
     };
 
     private static GameDoc SaveDataToDoc(GameSaveData g) => new()
     {
-        Id             = g.GameId,
-        GameName       = g.GameName,
-        GameState      = g.GameState,
-        GameType       = g.GameType,
-        StartedBy      = g.StartedBy,
-        PlayerCount    = g.PlayerCount,
-        PlayerNames    = g.PlayerNames,
-        TurnCount      = g.TurnCount,
-        SavedAt        = g.SavedAt,
-        CreatedAt      = g.CreatedAt,
-        Size           = g.Size,
+        Id = g.GameId,
+        GameName = g.GameName,
+        GameState = g.GameState,
+        GameType = g.GameType,
+        StartedBy = g.StartedBy,
+        PlayerCount = g.PlayerCount,
+        PlayerNames = g.PlayerNames,
+        TurnCount = g.TurnCount,
+        SavedAt = g.SavedAt,
+        CreatedAt = g.CreatedAt,
+        Size = g.Size,
         CompressedData = g.CompressedData.Length > 0 ? Convert.ToBase64String(g.CompressedData) : null,
     };
 
     private static CompletedGameRecord DocToCompletedRecord(CompletedGameDoc doc) => new()
     {
-        GameId         = doc.Id,
-        GameName       = doc.GameName,
-        WinnerId       = doc.WinnerId,
-        WinnerName     = doc.WinnerName,
-        CompletedAt    = doc.CompletedAt,
-        StartedAt      = doc.StartedAt,
-        PlayerCount    = doc.PlayerCount,
-        TurnCount      = doc.TurnCount,
-        PlayerNames    = doc.PlayerNames,
+        GameId = doc.Id,
+        GameName = doc.GameName,
+        WinnerId = doc.WinnerId,
+        WinnerName = doc.WinnerName,
+        CompletedAt = doc.CompletedAt,
+        StartedAt = doc.StartedAt,
+        PlayerCount = doc.PlayerCount,
+        TurnCount = doc.TurnCount,
+        PlayerNames = doc.PlayerNames,
         CompressedData = doc.CompressedData is null ? [] : Convert.FromBase64String(doc.CompressedData),
-        Size           = doc.Size,
+        Size = doc.Size,
     };
 
     private static GameTemplateSummary DocToTemplateSummary(TemplateDoc doc) => new()
     {
-        Id               = doc.Id,
-        Name             = doc.Name,
-        Category         = doc.Category,
+        Id = doc.Id,
+        Name = doc.Name,
+        Category = doc.Category,
         IsSystemTemplate = doc.IsSystemTemplate,
-        Description      = doc.Description,
-        MinPlayers       = doc.MinPlayers,
-        MaxPlayers       = doc.MaxPlayers,
-        UpdatedAt        = doc.UpdatedAt,
+        Description = doc.Description,
+        MinPlayers = doc.MinPlayers,
+        MaxPlayers = doc.MaxPlayers,
+        UpdatedAt = doc.UpdatedAt,
     };
 
     private static GameServiceProxy.RecordingSummary DocToRecordingSummary(RecordingDoc doc) => new()
     {
-        Id          = doc.Id,
-        Name        = doc.Name,
-        CreatedAt   = doc.CreatedAt,
-        GameType    = doc.GameType,
+        Id = doc.Id,
+        Name = doc.Name,
+        CreatedAt = doc.CreatedAt,
+        GameType = doc.GameType,
         PlayerCount = doc.PlayerCount,
         ActionCount = doc.ActionCount,
-        GameId      = doc.GameId,
+        GameId = doc.GameId,
     };
 
     // ── Cosmos document shapes ────────────────────────────────────────────────

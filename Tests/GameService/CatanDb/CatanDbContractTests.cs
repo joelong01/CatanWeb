@@ -18,7 +18,7 @@ public abstract class CatanDbContractTests : IAsyncLifetime
     protected abstract Task DeleteDatabaseAsync();
 
     public async Task InitializeAsync() => Db = await CreateDbAsync();
-    public async Task DisposeAsync()    => await DeleteDatabaseAsync();
+    public async Task DisposeAsync() => await DeleteDatabaseAsync();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -28,37 +28,37 @@ public abstract class CatanDbContractTests : IAsyncLifetime
 
     private static GameSaveData MakeGame(string gameId, string startedBy = "tester") => new()
     {
-        GameId         = gameId,
-        GameName       = $"Game {gameId}",
-        GameState      = "WaitingForRoll",
-        GameType       = "Regular",
-        StartedBy      = startedBy,
-        PlayerCount    = 3,
-        PlayerNames    = "Alice, Bob, Carol",
-        TurnCount      = 5,
-        SavedAt        = DateTime.UtcNow,
-        CreatedAt      = DateTime.UtcNow,
+        GameId = gameId,
+        GameName = $"Game {gameId}",
+        GameState = "WaitingForRoll",
+        GameType = "Regular",
+        StartedBy = startedBy,
+        PlayerCount = 3,
+        PlayerNames = "Alice, Bob, Carol",
+        TurnCount = 5,
+        SavedAt = DateTime.UtcNow,
+        CreatedAt = DateTime.UtcNow,
         CompressedData = [1, 2, 3, 4, 5],
-        Size           = 5,
+        Size = 5,
     };
 
     private static GameServiceProxy.RecordingSummary MakeRecordingSummary(
         string id, string gameId = "g1") => new()
-    {
-        Id          = id,
-        Name        = $"Recording {id}",
-        CreatedAt   = DateTime.UtcNow,
-        GameType    = "Regular",
-        PlayerCount = 3,
-        ActionCount = 42,
-        GameId      = gameId,
-    };
+        {
+            Id = id,
+            Name = $"Recording {id}",
+            CreatedAt = DateTime.UtcNow,
+            GameType = "Regular",
+            PlayerCount = 3,
+            ActionCount = 42,
+            GameId = gameId,
+        };
 
     private static GameTemplateData MakeTemplateData(string id) => new()
     {
-        Id          = id,
-        Name        = $"Template {id}",
-        Category    = "Base",
+        Id = id,
+        Name = $"Template {id}",
+        Category = "Base",
         Description = "Test template",
         ResourceRules = new ResourceRules { MinPlayers = 3, MaxPlayers = 4 },
     };
@@ -197,7 +197,7 @@ public abstract class CatanDbContractTests : IAsyncLifetime
         await Db.SaveGameAsync(game);
 
         game.TurnCount = 99;
-        game.GameName  = "Updated Name";
+        game.GameName = "Updated Name";
         await Db.SaveGameAsync(game);
 
         var loaded = await Db.LoadGameAsync("g-upd");
@@ -245,17 +245,17 @@ public abstract class CatanDbContractTests : IAsyncLifetime
     {
         var record = new CompletedGameRecord
         {
-            GameId         = "cg-001",
-            GameName       = "Finished Game",
-            WinnerId       = "p-001",
-            WinnerName     = "Alice",
-            CompletedAt    = DateTime.UtcNow,
-            StartedAt      = DateTime.UtcNow.AddHours(-1),
-            PlayerCount    = 3,
-            TurnCount      = 20,
-            PlayerNames    = "Alice, Bob, Carol",
+            GameId = "cg-001",
+            GameName = "Finished Game",
+            WinnerId = "p-001",
+            WinnerName = "Alice",
+            CompletedAt = DateTime.UtcNow,
+            StartedAt = DateTime.UtcNow.AddHours(-1),
+            PlayerCount = 3,
+            TurnCount = 20,
+            PlayerNames = "Alice, Bob, Carol",
             CompressedData = [9, 8, 7],
-            Size           = 3,
+            Size = 3,
         };
         await Db.SaveCompletedGameAsync(record);
 
@@ -285,7 +285,7 @@ public abstract class CatanDbContractTests : IAsyncLifetime
     [Fact]
     public async Task ListTemplatesAsync_NoFilter_ReturnsAll()
     {
-        await Db.SaveTemplateAsync("t1", "T1", "Base",      true,  MakeTemplateData("t1"));
+        await Db.SaveTemplateAsync("t1", "T1", "Base", true, MakeTemplateData("t1"));
         await Db.SaveTemplateAsync("t2", "T2", "Expansion", false, MakeTemplateData("t2"));
 
         var all = await Db.ListTemplatesAsync();
@@ -296,7 +296,7 @@ public abstract class CatanDbContractTests : IAsyncLifetime
     [Fact]
     public async Task ListTemplatesAsync_WithCategory_Filters()
     {
-        await Db.SaveTemplateAsync("t1", "T1", "Base",      true,  MakeTemplateData("t1"));
+        await Db.SaveTemplateAsync("t1", "T1", "Base", true, MakeTemplateData("t1"));
         await Db.SaveTemplateAsync("t2", "T2", "Expansion", false, MakeTemplateData("t2"));
 
         var base_ = await Db.ListTemplatesAsync("Base");
