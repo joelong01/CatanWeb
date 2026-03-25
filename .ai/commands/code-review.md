@@ -245,9 +245,10 @@ Code reviews ensure:
 **Document all findings in `.code-reviews/` directory:**
 
 1. **Create Review Files**
-   - One file per reviewed source: `.code-reviews/<file-name>-cr-<ai>.md`
+   - One file per reviewed source: `.code-reviews/<code review area>/<file-name>-cr-<ai>.md`
    - Use consistent format (see Findings Format below)
    - Include file path, review date, and reviewer
+   - Code review area is a placeholder for a logical name to place the code reviews.
 
 2. **Categorize Findings**
    - **Critical:** Must be fixed (security, correctness, breaking changes)
