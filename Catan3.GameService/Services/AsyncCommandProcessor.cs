@@ -16,15 +16,18 @@ namespace Catan3.GameService.Services
     {
         private readonly SignalRNotificationService _signalRNotification;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly RecordingService _recordingService;
         private readonly ILogger<AsyncCommandProcessor> _logger;
 
         public AsyncCommandProcessor(
             SignalRNotificationService signalRNotification,
             IServiceScopeFactory scopeFactory,
+            RecordingService recordingService,
             ILogger<AsyncCommandProcessor> logger)
         {
             _signalRNotification = signalRNotification;
             _scopeFactory = scopeFactory;
+            _recordingService = recordingService;
             _logger = logger;
         }
 
@@ -46,16 +49,17 @@ namespace Catan3.GameService.Services
                 _logger.LogEvent("Process Command", $"Processing command {commandId} for game {gameId}");
 
                 // Execute game logic using the provided GameStateMachine function
-                var (gameModel, stateMachine) = await ExecuteGameLogicAsync(request, getGameStateMachine);
+                var (gameModel, stateMachine, recordedMessage) = await ExecuteGameLogicAsync(request, getGameStateMachine);
                 gameStateMachine = stateMachine;
                 gameId = gameModel.GameId; // Ensure we have the correct gameId
 
-                // Parallel operations: Notify clients + command completion + persistence
+                // Parallel operations: Notify clients + command completion + persistence + recording
                 var tasks = new List<Task>
                 {
                     _signalRNotification.NotifyAsync(gameId, gameModel),
                     _signalRNotification.NotifyCommandCompletedAsync(gameId, commandId, true, "Command executed successfully"),
-                    SaveGameToDatabaseAsync(gameStateMachine, gameModel)
+                    SaveGameToDatabaseAsync(gameStateMachine, gameModel),
+                    TryRecordActionAsync(gameId, recordedMessage)
                 };
 
                 await Task.WhenAll(tasks);
@@ -123,7 +127,7 @@ namespace Catan3.GameService.Services
         /// <summary>
         /// Executes the game logic using the provided GameStateMachine function
         /// </summary>
-        private async Task<(GameModel gameModel, GameStateMachine stateMachine)> ExecuteGameLogicAsync(JsonElement request, Func<string, GameStateMachine> getGameStateMachine)
+        private async Task<(GameModel gameModel, GameStateMachine stateMachine, IRecordedMessage recordedMessage)> ExecuteGameLogicAsync(JsonElement request, Func<string, GameStateMachine> getGameStateMachine)
         {
             return await Task.Run(async () =>
             {
@@ -136,23 +140,34 @@ namespace Catan3.GameService.Services
 
                 var gameStateMachine = getGameStateMachine(gameId);
 
-                GameModel? updatedGameModel = messageType switch
+                // Process message and build recorded message for replay
+                (GameModel? model, IRecordedMessage record) = messageType switch
                 {
-                    "UndoMessage" => await ProcessUndoMessageAsync(messageData, gameStateMachine),
-                    "RedoMessage" => await ProcessRedoMessageAsync(messageData, gameStateMachine),
-                    "NextMessage" => await ProcessNextMessageAsync(messageData, gameStateMachine),
-                    "PurchaseMessage" => await ProcessPurchaseMessageAsync(messageData, gameStateMachine),
-                    "RoadPurchaseMessage" => await ProcessRoadPurchaseAsync(messageData, gameStateMachine),
-                    "BuildingUpgradeMessage" => await ProcessBuildingUpgradeAsync(messageData, gameStateMachine),
-                    "MoveRobberMessage" => await ProcessMoveRobberAsync(messageData, gameStateMachine),
-                    "RollMessage" => await ProcessRollAsync(messageData, gameStateMachine),
-                    "SetPlayerOrderMessage" => await ProcessSetPlayerOrderAsync(messageData, gameStateMachine),
-                    "BalanceBoardMessage" => await ProcessBalanceBoardAsync(messageData, gameStateMachine),
-                    "GoFirstMessage" => await ProcessGoFirstAsync(messageData, gameStateMachine),
-                    "ShuffleMessage" => await ProcessShuffleMessageAsync(messageData, gameStateMachine),
-                    "ParticipatingInSupplementalMessage" => await ProcessParticipatingInSupplementalAsync(messageData, gameStateMachine),
-                    "SwapTileResourcesMessage" => await ProcessSwapTileResourcesAsync(messageData, gameStateMachine),
-                    "DeclareWinnerMessage" => await ProcessDeclareWinnerAsync(messageData, gameStateMachine),
+                    "UndoMessage" => await ProcessAndRecordAsync<UndoMessage, UndoRecord>(
+                        messageData, gameStateMachine, new UndoMessage(),
+                        (gm, msg) => new UndoRecord(gm, msg), gs => gs.HandleUndoAsync),
+                    "RedoMessage" => await ProcessAndRecordAsync<RedoMessage, RedoRecord>(
+                        messageData, gameStateMachine, new RedoMessage(),
+                        (gm, msg) => new RedoRecord(gm, msg), gs => gs.HandleRedoAsync),
+                    "NextMessage" => await ProcessAndRecordAsync<NextMessage, NextRecord>(
+                        messageData, gameStateMachine, new NextMessage(),
+                        (gm, msg) => new NextRecord(gm, msg), gs => gs.HandleNextAsync),
+                    "PurchaseMessage" => await ProcessPurchaseWithRecordAsync(messageData, gameStateMachine),
+                    "RoadPurchaseMessage" => await ProcessRoadPurchaseWithRecordAsync(messageData, gameStateMachine),
+                    "BuildingUpgradeMessage" => await ProcessBuildingUpgradeWithRecordAsync(messageData, gameStateMachine),
+                    "MoveRobberMessage" => await ProcessMoveRobberWithRecordAsync(messageData, gameStateMachine),
+                    "RollMessage" => await ProcessRollWithRecordAsync(messageData, gameStateMachine),
+                    "SetPlayerOrderMessage" => await ProcessSetPlayerOrderWithRecordAsync(messageData, gameStateMachine),
+                    "BalanceBoardMessage" => await ProcessAndRecordAsync<BalanceBoardMessage, BalanceBoardRecord>(
+                        messageData, gameStateMachine, new BalanceBoardMessage(),
+                        (gm, msg) => new BalanceBoardRecord(gm, msg), gs => gs.HandleBalanceBoardAsync),
+                    "GoFirstMessage" => await ProcessGoFirstWithRecordAsync(messageData, gameStateMachine),
+                    "ShuffleMessage" => await ProcessAndRecordAsync<ShuffleMessage, ShuffleRecord>(
+                        messageData, gameStateMachine, new ShuffleMessage(),
+                        (gm, msg) => new ShuffleRecord(gm, msg), gs => gs.HandleShuffleAsync),
+                    "ParticipatingInSupplementalMessage" => await ProcessParticipatingInSupplementalWithRecordAsync(messageData, gameStateMachine),
+                    "SwapTileResourcesMessage" => await ProcessSwapTileResourcesWithRecordAsync(messageData, gameStateMachine),
+                    "DeclareWinnerMessage" => await ProcessDeclareWinnerWithRecordAsync(messageData, gameStateMachine),
                     _ => throw new JsonException($"Unknown message type: '{messageType}'. " +
                         $"Valid types: UndoMessage, RedoMessage, NextMessage, PurchaseMessage, " +
                         $"RoadPurchaseMessage, BuildingUpgradeMessage, MoveRobberMessage, RollMessage, " +
@@ -160,66 +175,75 @@ namespace Catan3.GameService.Services
                         $"ParticipatingInSupplementalMessage, SwapTileResourcesMessage, DeclareWinnerMessage")
                 };
 
-                var result = updatedGameModel ?? throw new InvalidOperationException("Game action failed to return updated model");
-                return (result, gameStateMachine);
+                var result = model ?? throw new InvalidOperationException("Game action failed to return updated model");
+                return (result, gameStateMachine, record);
             });
         }
 
+        private async Task TryRecordActionAsync(string gameId, IRecordedMessage message)
+        {
+            if (_recordingService.IsRecording(gameId))
+            {
+                await _recordingService.RecordActionAsync(gameId, message);
+            }
+        }
+
+        /// <summary>
+        /// Helper for simple message types that need no parsing from messageData.
+        /// </summary>
+        private async Task<(GameModel?, IRecordedMessage)> ProcessAndRecordAsync<TMsg, TRecord>(
+            JsonElement messageData, GameStateMachine gsm, TMsg message,
+            Func<GameModel, TMsg, TRecord> createRecord,
+            Func<GameStateMachine, Func<TMsg, Task<GameModel>>> getHandler)
+            where TRecord : IRecordedMessage
+        {
+            var model = await getHandler(gsm)(message);
+            return (model, createRecord(model, message));
+        }
+
         // ============================================================================
-        // Individual message processing methods
+        // Individual message processing methods — each returns (GameModel, IRecordedMessage)
         // All use RequireXxx extension methods for descriptive error messages
         // ============================================================================
 
-        private async Task<GameModel> ProcessUndoMessageAsync(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            return await gameStateMachine.HandleUndoAsync(new UndoMessage());
-        }
-
-        private async Task<GameModel> ProcessRedoMessageAsync(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            return await gameStateMachine.HandleRedoAsync(new RedoMessage());
-        }
-
-        private async Task<GameModel> ProcessNextMessageAsync(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            return await gameStateMachine.HandleNextAsync(new NextMessage());
-        }
-
-        private async Task<GameModel> ProcessPurchaseMessageAsync(JsonElement messageData, GameStateMachine gameStateMachine)
+        private async Task<(GameModel?, IRecordedMessage)> ProcessPurchaseWithRecordAsync(JsonElement messageData, GameStateMachine gsm)
         {
             var entitlement = messageData.RequireEnum<Entitlement>("entitlement", "PurchaseMessage");
-            return await gameStateMachine.HandlePurchaseAsync(new PurchaseMessage(entitlement));
+            var msg = new PurchaseMessage(entitlement);
+            var model = await gsm.HandlePurchaseAsync(msg);
+            return (model, new PurchaseRecord(model, msg));
         }
 
-        private async Task<GameModel> ProcessRoadPurchaseAsync(JsonElement messageData, GameStateMachine gameStateMachine)
+        private async Task<(GameModel?, IRecordedMessage)> ProcessRoadPurchaseWithRecordAsync(JsonElement messageData, GameStateMachine gsm)
         {
             var roadKeyData = messageData.RequireProperty("roadKey", "RoadPurchaseMessage");
             var tileKey = roadKeyData.RequireHexCoordinates("tileKey", "roadKey");
             var hexSide = roadKeyData.RequireEnum<HexSide>("hexSide", "roadKey");
-
-            var roadKey = new RoadKey(tileKey, hexSide);
-            return await gameStateMachine.HandleRoadPurchaseAsync(new RoadPurchaseMessage(roadKey));
+            var msg = new RoadPurchaseMessage(new RoadKey(tileKey, hexSide));
+            var model = await gsm.HandleRoadPurchaseAsync(msg);
+            return (model, new RoadPurchaseRecord(model, msg));
         }
 
-        private async Task<GameModel> ProcessBuildingUpgradeAsync(JsonElement messageData, GameStateMachine gameStateMachine)
+        private async Task<(GameModel?, IRecordedMessage)> ProcessBuildingUpgradeWithRecordAsync(JsonElement messageData, GameStateMachine gsm)
         {
             var buildingKeyData = messageData.RequireProperty("buildingKey", "BuildingUpgradeMessage");
             var hexCoordinates = buildingKeyData.RequireHexCoordinates("hexCoordinates", "buildingKey");
             var position = buildingKeyData.RequireEnum<HexPosition>("position", "buildingKey");
-
-            var buildingKey = new BuildingKey(hexCoordinates, position);
-            return await gameStateMachine.HandleBuildingUpgradeAsync(new BuildingUpgradeMessage(buildingKey));
+            var msg = new BuildingUpgradeMessage(new BuildingKey(hexCoordinates, position));
+            var model = await gsm.HandleBuildingUpgradeAsync(msg);
+            return (model, new BuildingUpgradeRecord(model, msg));
         }
 
-        private async Task<GameModel> ProcessMoveRobberAsync(JsonElement messageData, GameStateMachine gameStateMachine)
+        private async Task<(GameModel?, IRecordedMessage)> ProcessMoveRobberWithRecordAsync(JsonElement messageData, GameStateMachine gsm)
         {
             var coordinates = messageData.RequireHexCoordinates("coordinates", "MoveRobberMessage");
             var targetPlayerId = messageData.OptionalString("targetPlayerId");
-
-            return await gameStateMachine.HandleMoveRobberAsync(new MoveRobberMessage(coordinates, targetPlayerId));
+            var msg = new MoveRobberMessage(coordinates, targetPlayerId);
+            var model = await gsm.HandleMoveRobberAsync(msg);
+            return (model, new MoveRobberRecord(model, msg));
         }
 
-        private async Task<GameModel> ProcessRollAsync(JsonElement messageData, GameStateMachine gameStateMachine)
+        private async Task<(GameModel?, IRecordedMessage)> ProcessRollWithRecordAsync(JsonElement messageData, GameStateMachine gsm)
         {
             var rollData = messageData.RequireProperty("roll", "RollMessage");
             var normalRoll = rollData.RequireEnum<ValidCatanRoll>("normalRoll", "roll");
@@ -227,20 +251,18 @@ namespace Catan3.GameService.Services
             var specialDice = SpecialDice.None;
             var specialStr = rollData.OptionalString("specialDice");
             if (!string.IsNullOrEmpty(specialStr))
-            {
                 Enum.TryParse<SpecialDice>(specialStr, out specialDice);
-            }
 
-            // Calculate individual dice rolls that sum to the normal roll
             int totalRoll = (int)normalRoll;
             int redRoll = totalRoll / 2;
             int whiteRoll = totalRoll - redRoll;
 
-            var roll = new TurnRollModel(redRoll, whiteRoll) { SpecialDice = specialDice };
-            return await gameStateMachine.HandleRollAsync(new RollMessage(roll));
+            var msg = new RollMessage(new TurnRollModel(redRoll, whiteRoll) { SpecialDice = specialDice });
+            var model = await gsm.HandleRollAsync(msg);
+            return (model, new RollRecord(model, msg));
         }
 
-        private async Task<GameModel> ProcessSetPlayerOrderAsync(JsonElement messageData, GameStateMachine gameStateMachine)
+        private async Task<(GameModel?, IRecordedMessage)> ProcessSetPlayerOrderWithRecordAsync(JsonElement messageData, GameStateMachine gsm)
         {
             var playerIdsElement = messageData.RequireProperty("playerIds", "SetPlayerOrderMessage");
             var playerIds = playerIdsElement.EnumerateArray()
@@ -250,66 +272,55 @@ namespace Catan3.GameService.Services
                 .ToList();
 
             if (playerIds.Count == 0)
-            {
                 throw new JsonException("SetPlayerOrderMessage requires at least one player ID in 'playerIds' array");
-            }
 
-            return await gameStateMachine.HandleSetPlayerOrderAsync(new SetPlayerOrderMessage(playerIds));
+            var msg = new SetPlayerOrderMessage(playerIds);
+            var model = await gsm.HandleSetPlayerOrderAsync(msg);
+            return (model, new SetPlayerOrderRecord(model, msg));
         }
 
-        private async Task<GameModel> ProcessBalanceBoardAsync(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            return await gameStateMachine.HandleBalanceBoardAsync(new BalanceBoardMessage());
-        }
-
-        private async Task<GameModel> ProcessGoFirstAsync(JsonElement messageData, GameStateMachine gameStateMachine)
+        private async Task<(GameModel?, IRecordedMessage)> ProcessGoFirstWithRecordAsync(JsonElement messageData, GameStateMachine gsm)
         {
             var playerId = messageData.RequireString("playerId", "GoFirstMessage");
-            return await gameStateMachine.HandleGoFirstAsync(new GoFirstMessage(playerId));
+            var msg = new GoFirstMessage(playerId);
+            var model = await gsm.HandleGoFirstAsync(msg);
+            return (model, new GoFirstRecord(model, msg));
         }
 
-        private async Task<GameModel> ProcessShuffleMessageAsync(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            return await gameStateMachine.HandleShuffleAsync(new ShuffleMessage());
-        }
-
-        private async Task<GameModel> ProcessParticipatingInSupplementalAsync(JsonElement messageData, GameStateMachine gameStateMachine)
+        private async Task<(GameModel?, IRecordedMessage)> ProcessParticipatingInSupplementalWithRecordAsync(JsonElement messageData, GameStateMachine gsm)
         {
             var playerId = messageData.RequireString("playerId", "ParticipatingInSupplementalMessage");
             var participating = messageData.RequireBool("participating", "ParticipatingInSupplementalMessage");
-
-            return await gameStateMachine.HandleParticipatingInSupplementalAsync(
-                new ParticipatingInSupplementalMessage(playerId, participating));
+            var msg = new ParticipatingInSupplementalMessage(playerId, participating);
+            var model = await gsm.HandleParticipatingInSupplementalAsync(msg);
+            return (model, new ParticipatingInSupplementalRecord(model, msg));
         }
 
-        private async Task<GameModel> ProcessSwapTileResourcesAsync(JsonElement messageData, GameStateMachine gameStateMachine)
+        private async Task<(GameModel?, IRecordedMessage)> ProcessSwapTileResourcesWithRecordAsync(JsonElement messageData, GameStateMachine gsm)
         {
             var sourceCoords = messageData.RequireHexCoordinates("sourceTileCoordinates", "SwapTileResourcesMessage");
             var destCoords = messageData.RequireHexCoordinates("destinationTileCoordinates", "SwapTileResourcesMessage");
             var sourceResource = messageData.RequireEnum<ResourceType>("sourceCurrentResource", "SwapTileResourcesMessage");
             var destResource = messageData.RequireEnum<ResourceType>("destinationCurrentResource", "SwapTileResourcesMessage");
-
-            return await gameStateMachine.HandleSwapResourcesAsync(
-                new SwapTileResources(sourceCoords, destCoords, sourceResource, destResource));
+            var msg = new SwapTileResources(sourceCoords, destCoords, sourceResource, destResource);
+            var model = await gsm.HandleSwapResourcesAsync(msg);
+            return (model, new SwapTileResourcesRecord(model, msg));
         }
 
-        private async Task<GameModel> ProcessDeclareWinnerAsync(JsonElement messageData, GameStateMachine gameStateMachine)
+        private async Task<(GameModel?, IRecordedMessage)> ProcessDeclareWinnerWithRecordAsync(JsonElement messageData, GameStateMachine gsm)
         {
             var winnerId = messageData.RequireString("winnerId", "DeclareWinnerMessage");
-
             var message = new DeclareWinnerMessage { WinnerId = winnerId };
 
-            // Parse optional victory points dictionary
             if (messageData.TryGetProperty("victoryPoints", out var vpElement))
             {
                 message.VictoryPoints = new Dictionary<string, int>();
                 foreach (var prop in vpElement.EnumerateObject())
-                {
                     message.VictoryPoints[prop.Name] = prop.Value.GetInt32();
-                }
             }
 
-            return await gameStateMachine.HandleDeclareWinnerAsync(message);
+            var model = await gsm.HandleDeclareWinnerAsync(message);
+            return (model, new DeclareWinnerRecord(model, message));
         }
     }
 }
