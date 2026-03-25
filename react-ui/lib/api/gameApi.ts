@@ -220,7 +220,8 @@ export const gameApi = {
     playerIds: string[],
     gameName?: string,
     houseRules?: Partial<HouseRules>,
-    saveLifetimeStats: boolean = true
+    saveLifetimeStats: boolean = true,
+    recordGame: boolean = false
   ): Promise<ApiResponse<string>> {
     // Map gameType to templateId for the template engine
     const templateId = gameType === 'Regular' ? 'regular' : 'expansion';
@@ -232,6 +233,7 @@ export const gameApi = {
       houseRules: houseRules as HouseRules,
       saveLifetimeStats,
       templateId,
+      recordGame,
     };
 
     const result = await apiFetch<CreateGameResponse>('/api/game/new', {

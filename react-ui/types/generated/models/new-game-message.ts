@@ -13,4 +13,5 @@ export interface NewGameMessage {
     houseRules: HouseRules;
     saveLifetimeStats: boolean;
     templateId: string;
+    recordGame: boolean;
 }

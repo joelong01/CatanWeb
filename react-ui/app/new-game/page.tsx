@@ -158,7 +158,8 @@ export default function NewGame(): React.ReactElement {
       selectedPlayerIds,
       gameName || undefined,
       houseRules,
-      gameOptions.updateStats
+      gameOptions.updateStats,
+      gameOptions.recordGame
     );
 
     if (result.success && result.data) {
@@ -176,6 +177,7 @@ export default function NewGame(): React.ReactElement {
     gameName,
     gameOptions.useHouseRules,
     gameOptions.updateStats,
+    gameOptions.recordGame,
     router,
     settingsStore,
   ]);
