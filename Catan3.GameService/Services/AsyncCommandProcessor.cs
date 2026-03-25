@@ -79,7 +79,7 @@ namespace Catan3.GameService.Services
         /// </summary>
         private async Task SaveGameToDatabaseAsync(GameStateMachine gameStateMachine, GameModel gameModel)
         {
-            Console.WriteLine($"[SAVE-ASYNC] SaveGameToDatabaseAsync called for game {gameModel.GameId}");
+            _logger.LogDebug("SaveGameToDatabaseAsync called for game {GameId}", gameModel.GameId);
             var sw = System.Diagnostics.Stopwatch.StartNew();
             try
             {
