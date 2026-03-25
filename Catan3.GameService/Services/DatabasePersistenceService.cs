@@ -37,15 +37,9 @@ public class GamePersistenceService : IGamePersistence
                 PlayerNames = metadata.PlayerNames,
                 TurnCount = metadata.TurnCount,
                 SavedAt = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow,
                 CompressedData = data,
                 Size = data.Length,
             };
-
-            // Check if game already exists to preserve CreatedAt
-            var existing = await db.LoadGameAsync(gameId);
-            if (existing != null)
-                gameData.CreatedAt = existing.CreatedAt;
 
             await db.SaveGameAsync(gameData);
             _logger.LogEvent("DatabaseOperation", $"Saved game: {gameId}");
@@ -116,10 +110,12 @@ public class GamePersistenceService : IGamePersistence
 public class DatabaseBackedPersistenceService : IPersistenceService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<DatabaseBackedPersistenceService> _logger;
 
-    public DatabaseBackedPersistenceService(IServiceScopeFactory scopeFactory)
+    public DatabaseBackedPersistenceService(IServiceScopeFactory scopeFactory, ILogger<DatabaseBackedPersistenceService> logger)
     {
         _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     public string? Location => null;
@@ -131,11 +127,11 @@ public class DatabaseBackedPersistenceService : IPersistenceService
     {
         if (string.IsNullOrEmpty(gameId))
         {
-            Console.WriteLine("[PERSIST] SaveAsync called with empty gameId, skipping");
+            _logger.LogWarning("SaveAsync called with empty gameId, skipping");
             return false;
         }
 
-        Console.WriteLine($"[PERSIST] SaveAsync for gameId: {gameId}, data size: {data.Length}");
+        _logger.LogDebug("SaveAsync for game {GameId}, data size: {DataSize}", gameId, data.Length);
 
         try
         {
@@ -158,12 +154,12 @@ public class DatabaseBackedPersistenceService : IPersistenceService
             };
 
             var result = await gamePersistence.SaveAsync(gameId, data, metadata);
-            Console.WriteLine($"[PERSIST] SaveAsync result for {gameId}: {result}");
+            _logger.LogDebug("SaveAsync result for {GameId}: {Result}", gameId, result);
             return result;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[PERSIST ERROR] SaveAsync failed for {gameId}: {ex.Message}");
+            _logger.LogError(ex, "SaveAsync failed for game {GameId}", gameId);
             return false;
         }
     }

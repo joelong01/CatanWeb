@@ -118,13 +118,17 @@ namespace Catan3.GameService.Controllers
         /// </summary>
         private async Task SaveGameToDatabase(GameStateMachine gameStateMachine, GameModel gameModel)
         {
-            Console.WriteLine($"[SAVE] SaveGameToDatabase called for game {gameModel.GameId}");
+            _logger.LogDebug("SaveGameToDatabase called for game {GameId}", gameModel.GameId);
             try
             {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+
                 // Get the full serializable log (preserves undo/redo stacks)
                 var serializableLog = gameStateMachine.GetSerializableLog();
                 var json = JsonHelper.Serialize(serializableLog);
                 var compressed = JsonHelper.Compress(json);
+
+                var serializeMs = sw.ElapsedMilliseconds;
 
                 // Create metadata for queryability
                 var metadata = new GameMetadata
@@ -139,15 +143,15 @@ namespace Catan3.GameService.Controllers
                 };
 
                 // Save to database
-                Console.WriteLine($"[SAVE] Calling _gamePersistence.SaveAsync for {gameModel.GameId}");
                 var result = await _gamePersistence.SaveAsync(gameModel.GameId, compressed, metadata);
-                Console.WriteLine($"[SAVE] SaveAsync returned {result} for {gameModel.GameId}");
-                _logger.LogEvent("Database Save", $"Game saved to database: {gameModel.GameId}");
+                sw.Stop();
+                _logger.LogDebug(
+                    "Game {GameId} saved: serialize={SerializeMs}ms total={TotalMs}ms size={Size}bytes turns={Turns} result={Result}",
+                    gameModel.GameId, serializeMs, sw.ElapsedMilliseconds, compressed.Length, serializableLog.DoneCount, result);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SAVE ERROR] {ex.Message}");
-                _logger.LogEvent("Database Save Error", $"Failed to save game to database: {ex.Message}", LogLevel.Error);
+                _logger.LogError(ex, "Failed to save game {GameId} to database", gameModel.GameId);
                 // Don't throw - database save failure shouldn't break the game operation
             }
         }
@@ -1455,151 +1459,6 @@ namespace Catan3.GameService.Controllers
             // Return the GameModel directly - ASP.NET Core will serialize it properly
             // with the configured JsonSerializerOptions in Program.cs
             return gameModel;
-        }
-
-        private GameModel ProcessDoAction(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            var actionStr = messageData.GetProperty("action").GetString();
-            return actionStr switch
-            {
-                "Undo" => gameStateMachine.HandleUndoAsync(new UndoMessage()).Result,
-                "Redo" => gameStateMachine.HandleRedoAsync(new RedoMessage()).Result,
-                "Next" => gameStateMachine.HandleNextAsync(new NextMessage()).Result,
-                _ => throw new ArgumentException($"Invalid action: {actionStr}")
-            };
-        }
-
-        private GameModel ProcessPurchaseMessage(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            var entitlementStr = messageData.GetProperty("entitlement").GetString();
-            if (Enum.TryParse<Entitlement>(entitlementStr, out var entitlement))
-            {
-                var message = new PurchaseMessage(entitlement);
-                return gameStateMachine.HandlePurchaseAsync(message).Result;
-            }
-            throw new ArgumentException($"Invalid entitlement: {entitlementStr}");
-        }
-
-        private GameModel ProcessRoadPurchase(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            var roadKeyData = messageData.GetProperty("roadKey");
-            var tileKeyData = roadKeyData.GetProperty("tileKey");
-            var sideStr = roadKeyData.GetProperty("side").GetString();
-
-            var q = tileKeyData.GetProperty("q").GetInt32();
-            var r = tileKeyData.GetProperty("r").GetInt32();
-            var s = tileKeyData.GetProperty("s").GetInt32();
-
-            if (!Enum.TryParse<Catan3.Shared.Models.HexSide>(sideStr, out var side))
-            {
-                throw new ArgumentException($"Invalid side: {sideStr}");
-            }
-
-            var tileKey = new HexCoordinates(q, r, s);
-            var roadKey = new RoadKey { TileKey = tileKey, HexSide = side };
-            var message = new RoadPurchaseMessage(roadKey);
-            return gameStateMachine.HandleRoadPurchaseAsync(message).Result;
-        }
-
-        private GameModel ProcessBuildingUpgrade(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            var buildingKeyData = messageData.GetProperty("buildingKey");
-            var hexCoordinatesData = buildingKeyData.GetProperty("hexCoordinates");
-            var positionStr = buildingKeyData.GetProperty("position").GetString();
-
-            var q = hexCoordinatesData.GetProperty("q").GetInt32();
-            var r = hexCoordinatesData.GetProperty("r").GetInt32();
-            var s = hexCoordinatesData.GetProperty("s").GetInt32();
-
-            if (!Enum.TryParse<Catan3.Shared.Models.HexPosition>(positionStr, out var position))
-            {
-                throw new ArgumentException($"Invalid hex position: {positionStr}");
-            }
-
-            var hexCoordinates = new HexCoordinates(q, r, s);
-            var buildingKey = new BuildingKey(hexCoordinates, position);
-            var message = new BuildingUpgradeMessage(buildingKey);
-            return gameStateMachine.HandleBuildingUpgradeAsync(message).Result;
-        }
-
-        private GameModel ProcessMoveRobber(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            var coordinatesData = messageData.GetProperty("coordinates");
-            var q = coordinatesData.GetProperty("q").GetInt32();
-            var r = coordinatesData.GetProperty("r").GetInt32();
-            var s = coordinatesData.GetProperty("s").GetInt32();
-
-            string? targetPlayerId = null;
-            if (messageData.TryGetProperty("targetPlayerId", out var targetElement))
-            {
-                targetPlayerId = targetElement.GetString();
-            }
-
-            var coordinates = new HexCoordinates(q, r, s);
-            var message = new MoveRobberMessage(coordinates, targetPlayerId);
-            return gameStateMachine.HandleMoveRobberAsync(message).Result;
-        }
-
-        private GameModel ProcessRoll(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            var rollData = messageData.GetProperty("roll");
-            var normalRollStr = rollData.GetProperty("normalRoll").GetString();
-
-            if (!Enum.TryParse<ValidCatanRoll>(normalRollStr, out var normalRoll))
-            {
-                throw new ArgumentException($"Invalid roll: {normalRollStr}");
-            }
-
-            var specialDice = SpecialDice.None;
-            if (rollData.TryGetProperty("specialDice", out var specialElement))
-            {
-                var specialStr = specialElement.GetString();
-                if (!string.IsNullOrEmpty(specialStr))
-                {
-                    Enum.TryParse<SpecialDice>(specialStr, out specialDice);
-                }
-            }
-
-            // Calculate individual dice rolls that sum to the normal roll
-            int totalRoll = (int)normalRoll;
-            int redRoll = totalRoll / 2;
-            int whiteRoll = totalRoll - redRoll;
-
-            var roll = new TurnRollModel(redRoll, whiteRoll)
-            {
-                SpecialDice = specialDice
-            };
-
-            var message = new RollMessage(roll);
-            return gameStateMachine.HandleRollAsync(message).Result;
-        }
-
-        private GameModel ProcessSetPlayerOrder(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            var playerIds = messageData.GetProperty("playerIds").EnumerateArray()
-                .Select(element => element.GetString())
-                .Where(id => !string.IsNullOrEmpty(id))
-                .Cast<string>()
-                .ToList();
-
-            var message = new SetPlayerOrderMessage(playerIds);
-            return gameStateMachine.HandleSetPlayerOrderAsync(message).Result;
-        }
-
-
-        private GameModel ProcessBalanceBoard(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            var message = new BalanceBoardMessage();
-            return gameStateMachine.HandleBalanceBoardAsync(message).Result;
-        }
-
-        private GameModel ProcessGoFirst(JsonElement messageData, GameStateMachine gameStateMachine)
-        {
-            var playerId = messageData.GetProperty("playerId").GetString()
-                ?? throw new ArgumentException("Missing playerId");
-
-            var message = new GoFirstMessage(playerId);
-            return gameStateMachine.HandleGoFirstAsync(message).Result;
         }
 
         [HttpPost("game/end")]

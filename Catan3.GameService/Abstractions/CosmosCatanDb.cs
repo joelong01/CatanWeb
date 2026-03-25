@@ -122,7 +122,8 @@ public sealed class CosmosCatanDb : ICatanDb
 
     public async Task SaveImageAsync(string playerId, byte[] data, string contentType)
     {
-        var doc = await TryReadAsync<PlayerDoc>(_players, playerId) ?? new PlayerDoc { Id = playerId };
+        var doc = await TryReadAsync<PlayerDoc>(_players, playerId)
+            ?? throw new KeyNotFoundException($"Player '{playerId}' not found");
         doc.ImageData = Convert.ToBase64String(data);
         doc.ImageContentType = contentType;
         await _players.UpsertItemAsync(doc, new PartitionKey(playerId), _writeOptions);
@@ -165,6 +166,18 @@ public sealed class CosmosCatanDb : ICatanDb
 
     public async Task SaveGameAsync(GameSaveData game)
     {
+        // On first save, CreatedAt is set by the caller. On subsequent saves,
+        // preserve the original CreatedAt by reading the existing doc once.
+        // This is cheaper than having every caller do a read before save.
+        if (game.CreatedAt == default)
+        {
+            var existing = await TryReadAsync<GameDoc>(_games, game.GameId);
+            if (existing != null)
+                game.CreatedAt = existing.CreatedAt;
+            else
+                game.CreatedAt = DateTime.UtcNow;
+        }
+
         await _games.UpsertItemAsync(SaveDataToDoc(game), new PartitionKey(game.GameId), _writeOptions);
     }
 
@@ -247,12 +260,24 @@ public sealed class CosmosCatanDb : ICatanDb
         var existing = await TryReadAsync<TemplateDoc>(_templates, id);
         var now = DateTime.UtcNow;
 
-        // Normalize embedded payload so LoadTemplateAsync and ListTemplatesAsync
-        // always agree: the scalar parameters are the authoritative source for
-        // identity fields; update data before serializing.
-        data.Id = id;
-        data.Name = name;
-        data.Category = category;
+        // Normalize identity fields for serialization without mutating the caller's object.
+        // The scalar parameters (id, name, category) are authoritative.
+        var normalizedData = new GameTemplateData
+        {
+            Id = id,
+            Name = name,
+            Category = category,
+            Version = data.Version,
+            Description = data.Description,
+            Engine = data.Engine,
+            GameType = data.GameType,
+            ResourceRules = data.ResourceRules,
+            HouseRules = data.HouseRules,
+            HasSupplemental = data.HasSupplemental,
+            Tiles = data.Tiles,
+            Harbors = data.Harbors,
+            Entitlements = data.Entitlements,
+        };
 
         var doc = new TemplateDoc
         {
@@ -265,7 +290,7 @@ public sealed class CosmosCatanDb : ICatanDb
             MaxPlayers = data.ResourceRules.MaxPlayers,
             UpdatedAt = now,
             CreatedAt = existing?.CreatedAt ?? now,
-            DataJson = JsonHelper.Serialize(data),
+            DataJson = JsonHelper.Serialize(normalizedData),
         };
         await _templates.UpsertItemAsync(doc, new PartitionKey(id), _writeOptions);
     }

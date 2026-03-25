@@ -154,6 +154,14 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     });
 
     if (!response.ok) {
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('text/html')) {
+        // Server returned an HTML error page — show a friendly message instead of raw HTML
+        return {
+          success: false,
+          error: `Server error (HTTP ${response.status}) — the game service returned an unexpected response`,
+        };
+      }
       const errorText = await response.text();
       return {
         success: false,
@@ -164,6 +172,16 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     if (response.status === 204 || response.headers.get('content-length') === '0') {
       return { success: true, data: undefined as T };
     }
+
+    // Guard against non-JSON success responses (e.g., proxy/gateway returning HTML)
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+      return {
+        success: false,
+        error: `Unexpected response format from server (expected JSON, got ${contentType || 'unknown'})`,
+      };
+    }
+
     const data = await response.json();
     return { success: true, data };
   } catch (error) {
