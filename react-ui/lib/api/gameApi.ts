@@ -388,6 +388,13 @@ export const gameApi = {
     try {
       const response = await fetch(url, { method: 'POST', body: formData });
       if (!response.ok) {
+        const contentType = response.headers.get('content-type') ?? '';
+        if (contentType.includes('text/html')) {
+          return {
+            success: false,
+            error: `Server error (HTTP ${response.status}) — the game service returned an unexpected response`,
+          };
+        }
         const errorText = await response.text();
         return { success: false, error: errorText || `HTTP ${response.status}` };
       }
