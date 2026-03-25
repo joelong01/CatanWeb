@@ -304,8 +304,7 @@ After writing or modifying any markdown file:
 Catan/
 ├── .ai/                    # AI assistant rules and documentation
 ├── .claude/                # Claude-specific commands and configurations
-│   ├── commands/          # Reusable command scripts
-│   └── sessions/          # Session summaries
+│   └── commands/          # Reusable command scripts
 ├── .design/               # Verified design documentation (30 docs)
 │   ├── plans/            # Implementation plans awaiting approval
 │   └── old/              # Legacy/superseded docs for reference
@@ -616,11 +615,12 @@ Code reviews and design reviews go in `.design/reviews/`:
 1. Run `start-session.md` command to load context
 2. Check `git status` and recent commits
 3. Review `.ai/project-summary.md` for latest state
-4. **Discovery phase**: Consult `.design/` directory for current architecture
+4. Read the latest session summary in `.ai/sessions/` for recent work context
+5. **Discovery phase**: Consult `.design/` directory for current architecture
    - Start with `.design/README.md` for the document index
    - Reference relevant design documents as needed
    - Legacy docs are in `.design/old/` for historical reference
-5. Identify current task and next priorities
+6. Identify current task and next priorities
 
 ### During a Session
 
@@ -632,7 +632,7 @@ Code reviews and design reviews go in `.design/reviews/`:
 ### Ending a Session
 
 1. Run `handover.md` command
-2. Create/update `SESSION_SUMMARY-{date}.md`
+2. Create/update `.ai/sessions/SESSION_SUMMARY-{date}.md`
 3. Update `.ai/project-summary.md` with session highlights
 4. Commit all valuable work
 5. Document clear next steps
