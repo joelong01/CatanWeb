@@ -17,6 +17,11 @@ public interface ICatanDb
     Task<IReadOnlyList<PlayerProfile>> LoadPlayersAsync();
     Task<PlayerProfile?> LoadPlayerAsync(string id);
     Task SavePlayerAsync(PlayerProfile player);
+
+    /// <summary>
+    /// Deletes a player and all associated data including image data.
+    /// Implementations must cascade-delete any images stored for this player.
+    /// </summary>
     Task DeletePlayerAsync(string id);
 
     // ── Images ────────────────────────────────────────────────────────────────

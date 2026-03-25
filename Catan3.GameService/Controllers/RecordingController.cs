@@ -42,20 +42,6 @@ public class ImportRecordingRequest
 }
 
 /// <summary>
-/// Summary of a recording for list display.
-/// </summary>
-public class RecordingSummary
-{
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
-    public string GameType { get; set; } = string.Empty;
-    public int PlayerCount { get; set; }
-    public int ActionCount { get; set; }
-    public string GameId { get; set; } = string.Empty;
-}
-
-/// <summary>
 /// Response for recording status queries.
 /// </summary>
 public class RecordingStatusResponse
@@ -161,21 +147,10 @@ public class RecordingController : ControllerBase
     /// Gets all saved recordings.
     /// </summary>
     [HttpGet("recordings")]
-    public async Task<ActionResult<List<RecordingSummary>>> GetRecordings()
+    public async Task<ActionResult<IReadOnlyList<GameServiceProxy.RecordingSummary>>> GetRecordings()
     {
         var recordings = await _recordingService.GetRecordingsAsync();
-        var summaries = recordings.Select(r => new RecordingSummary
-        {
-            Id = r.Id,
-            Name = r.Name,
-            CreatedAt = r.CreatedAt,
-            GameType = r.GameType,
-            PlayerCount = r.PlayerCount,
-            ActionCount = r.ActionCount,
-            GameId = r.GameId
-        }).ToList();
-
-        return Ok(summaries);
+        return Ok(recordings);
     }
 
     /// <summary>

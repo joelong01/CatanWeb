@@ -115,16 +115,6 @@ export default function GamePage(): React.ReactElement {
   const gameResourcesModel = useGameStore((state) => state.gameModel?.gameResourcesModel);
   const gameName = useGameStore((state) => state.gameModel?.gameName);
 
-  // Debug: log when game state changes
-  console.log(
-    '[GamePage] render, gameState:',
-    gameState,
-    'tiles:',
-    tiles?.length,
-    'players:',
-    players?.length
-  );
-
   // Load player profiles on mount (like Blazor LoadPlayerProfilesAsync)
   useEffect(() => {
     async function loadProfiles() {
@@ -365,7 +355,6 @@ export default function GamePage(): React.ReactElement {
   // Building click handler - calls upgradeBuilding for placement
   const handleBuildingClick = useCallback(
     (buildingKey: BuildingKey) => {
-      console.log('[GamePage] Building clicked:', buildingKey);
       proxy.upgradeBuilding(buildingKey);
     },
     [proxy]
@@ -374,7 +363,6 @@ export default function GamePage(): React.ReactElement {
   // Road click handler - calls purchaseRoad for placement
   const handleRoadClick = useCallback(
     (roadKey: RoadKey) => {
-      console.log('[GamePage] Road clicked:', roadKey);
       proxy.purchaseRoad(roadKey);
     },
     [proxy]
@@ -533,7 +521,6 @@ export default function GamePage(): React.ReactElement {
         tile.tileKey.r === robberCoords.r &&
         tile.resourceTileType !== 'Desert'
       ) {
-        console.log('[GamePage] Cannot place robber on current position');
         return;
       }
 
@@ -543,17 +530,6 @@ export default function GamePage(): React.ReactElement {
         s: -tile.tileKey.q - tile.tileKey.r,
       };
       const targetPlayers = getPlayersWithBuildingsOnTile(coords);
-
-      console.log(
-        '[GamePage] Tile clicked for robber:',
-        coords,
-        'targets:',
-        targetPlayers.length,
-        targetPlayers.map((p) => p.name),
-        'currentPlayer:',
-        currentPlayer?.id,
-        currentPlayer?.name
-      );
 
       const clampedPosition = clampRobberMenuPosition(position);
 
@@ -653,7 +629,6 @@ export default function GamePage(): React.ReactElement {
         // First try roads (they have buildIndex from server)
         const road = roads?.find((r) => r.roadState === 'Buildable' && r.buildIndex === num);
         if (road) {
-          console.log('[GamePage] Keyboard shortcut: building road', num);
           proxy.purchaseRoad(road.roadKey);
           return;
         }
@@ -674,7 +649,6 @@ export default function GamePage(): React.ReactElement {
 
           if (settlementIndex >= 0 && settlementIndex < possibleSettlements.length) {
             const settlement = possibleSettlements[settlementIndex];
-            console.log('[GamePage] Keyboard shortcut: placing settlement', num);
             proxy.upgradeBuilding(settlement.buildingKey);
           }
         }
@@ -691,7 +665,6 @@ export default function GamePage(): React.ReactElement {
           (r) => r.roadState === 'Buildable' && r.buildIndex === buildIndexForLetter
         );
         if (road) {
-          console.log('[GamePage] Keyboard shortcut: building road', key);
           proxy.purchaseRoad(road.roadKey);
           return;
         }
@@ -708,7 +681,6 @@ export default function GamePage(): React.ReactElement {
 
           if (cityIndex >= 0 && cityIndex < upgradeableSettlements.length) {
             const settlement = upgradeableSettlements[cityIndex];
-            console.log('[GamePage] Keyboard shortcut: upgrading settlement', key);
             proxy.upgradeBuilding(settlement.buildingKey);
             return;
           }
@@ -857,7 +829,6 @@ export default function GamePage(): React.ReactElement {
 
   // Game-specific menu action handlers
   const handleBalance = useCallback(() => {
-    console.log('[GamePage] Balance board requested');
     proxy.balanceBoard();
   }, [proxy]);
 
