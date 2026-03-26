@@ -33,10 +33,10 @@
  */
 
 import { DefaultAzureCredential } from '@azure/identity';
-import { readFileSync } from 'fs';
 import { join } from 'path';
 import { runAzureDoctor } from './azureDoctor';
-import type { AzureConfig, CheckResult, CheckStatus } from './types';
+import { resolveAzureConfig, getDefaultSubscriptionId, readBaseNameFromConfig } from './resolveConfig';
+import type { CheckResult, CheckStatus } from './types';
 
 // ── Argument parsing ─────────────────────────────────────────────────────────
 
@@ -57,51 +57,25 @@ function getArg(name: string): string | undefined {
 // ── Configuration loading ────────────────────────────────────────────────────
 
 /**
- * Builds the {@link AzureConfig} from CLI args + `.azure/catan-azure.json`.
- *
- * `subscriptionId` is never in the config file — must come from
- * `--subscription` or `AZURE_SUBSCRIPTION_ID` environment variable.
+ * Resolves the Azure config from baseName (CLI arg or config file).
+ * Everything is derived from naming conventions — no hardcoded resource IDs.
+ * subscriptionId is discovered at runtime from the credential.
  */
-function loadConfig(): AzureConfig {
-  const subscriptionId = getArg('--subscription') ?? process.env.AZURE_SUBSCRIPTION_ID;
+function loadBaseName(): string {
+  // CLI arg takes precedence
+  const baseNameArg = getArg('--base-name');
+  if (baseNameArg) return baseNameArg;
 
-  // Load from .azure/catan-azure.json
+  // Fall back to .azure/catan-azure.json
   const projectRoot = join(__dirname, '..', '..', '..');
   const configPath = join(projectRoot, '.azure', 'catan-azure.json');
+  const cfg = readBaseNameFromConfig(configPath);
 
-  let cfg: Record<string, unknown>;
-  try {
-    cfg = JSON.parse(readFileSync(configPath, 'utf-8'));
-  } catch {
-    console.error(`Error: Could not read ${configPath}`);
-    console.error('Create .azure/catan-azure.json or provide all args explicitly.');
-    process.exit(1);
-  }
+  if (cfg?.baseName) return cfg.baseName;
 
-  if (!subscriptionId) {
-    console.error('Error: subscriptionId not found.');
-    console.error('Provide --subscription <id> or set AZURE_SUBSCRIPTION_ID.');
-    console.error('\nTo get your subscription ID:\n  az account show --query id -o tsv');
-    process.exit(1);
-  }
-
-  const baseName = (cfg.baseName as string) ?? '';
-  const gs = cfg.gameService as Record<string, string> | undefined;
-  const ui = cfg.ui as Record<string, string> | undefined;
-  const cosmos = cfg.cosmosDb as Record<string, string> | undefined;
-
-  return {
-    baseName,
-    subscriptionId,
-    resourceGroup: (cfg.resourceGroup as string) ?? `rg-${baseName}`,
-    cosmosAccountName: cosmos?.accountName ?? `cosmos-${baseName}`,
-    cosmosDatabaseName: cosmos?.databaseName ?? 'catan',
-    gameServiceAppName: gs?.appName ?? `${baseName}-api`,
-    uiAppName: ui?.appName ?? baseName,
-    gameServiceUrl: gs?.url ?? `https://${baseName}-api.azurewebsites.net`,
-    uiUrl: ui?.url ?? `https://${baseName}.azurewebsites.net`,
-    staging,
-  };
+  console.error('Error: baseName not found.');
+  console.error('Provide --base-name <name> or add "baseName" to .azure/catan-azure.json.');
+  process.exit(1);
 }
 
 // ── Console reporter ─────────────────────────────────────────────────────────
@@ -149,18 +123,39 @@ function consoleReporter(result: CheckResult): void {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const config = loadConfig();
+  const baseName = loadBaseName();
   const credential = new DefaultAzureCredential();
+  const config = resolveAzureConfig(baseName, staging);
 
+  // Discover subscription ID from credential
   if (!jsonOutput) {
-    const envLabel = config.staging ? 'staging' : 'production';
+    const envLabel = staging ? 'staging' : 'production';
     console.log(`\nAzure Doctor (${envLabel})`);
     console.log('='.repeat(40));
+    console.log(`  Base Name:       ${baseName}`);
     console.log(`  Resource Group:  ${config.resourceGroup}`);
+    console.log(`  Auto-fix:        ${noFix ? 'OFF' : 'ON'}`);
+    process.stdout.write('  Subscription:    discovering...');
+  }
+
+  try {
+    config.subscriptionId = await getDefaultSubscriptionId();
+  } catch (err) {
+    if (!jsonOutput) {
+      process.stdout.write('\r\x1b[K');
+      console.error('  Subscription:    FAILED');
+      console.error(`\n${err instanceof Error ? err.message : err}`);
+    } else {
+      console.log(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }));
+    }
+    process.exit(2);
+  }
+
+  if (!jsonOutput) {
+    process.stdout.write(`\r\x1b[K  Subscription:    ${config.subscriptionId}\n`);
     console.log(`  Cosmos Account:  ${config.cosmosAccountName}`);
     console.log(`  GameService:     ${config.gameServiceAppName}`);
     console.log(`  UI:              ${config.uiAppName}`);
-    console.log(`  Auto-fix:        ${noFix ? 'OFF' : 'ON'}`);
   }
 
   try {

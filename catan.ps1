@@ -2029,14 +2029,8 @@ switch ($Verb) {
             }
             "doctor" {
                 # Delegate to TypeScript Azure Doctor (single source of truth).
+                # Config comes from .azure/catan-azure.json — no env vars needed.
                 # Uses DefaultAzureCredential (picks up az login session).
-                $subId = az account show --query id -o tsv
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Host "Error: Not logged in to Azure. Run: az login" -ForegroundColor Red
-                    exit 1
-                }
-                $env:AZURE_SUBSCRIPTION_ID = $subId
-
                 $tsArgs = @()
                 if ($Staging)  { $tsArgs += "--staging" }
                 if ($Json)     { $tsArgs += "--json" }
