@@ -1,5 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
+
+/**
+ * Force all pages to be dynamically rendered (no static prerendering).
+ * Without this, Next.js caches pages with s-maxage=31536000 and serves
+ * stale HTML after deployments. The health check, build version, and
+ * splash screen all need fresh renders.
+ */
+export const dynamic = 'force-dynamic';
 import { FontReloader } from '@/components/dev/FontReloader';
 import { StartupLogger } from '@/components/StartupLogger';
 import { ThemeInitializer } from '@/components/providers/ThemeInitializer';
