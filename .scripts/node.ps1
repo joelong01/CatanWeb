@@ -74,6 +74,8 @@ param(
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "$scriptPath\utility-scripts.psm1" -Force
 
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 # Debug platform detection
 Write-Log -Level "DEBUG" -Message "Platform detection: IsWindows=$IsWindows, IsMacOS=$IsMacOS, IsLinux=$IsLinux" -TraceLevel $TraceLevel
 
@@ -2338,7 +2340,7 @@ Notes:
       * Environment variables and PATH entries
       * Configuration files for reproducible builds
 "@
-    Write-Host $help
+    Write-Log -Level INFO -Message $help -NoLabel
 }
 
 # Main execution block

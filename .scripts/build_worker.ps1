@@ -331,11 +331,14 @@ try {
         throw ".NET SDK installation failed or is not available"
     }
 
+    # Project root is one level above .scripts/
+    $repoRoot = Split-Path $PSScriptRoot -Parent
+
     # Clean if requested
     if ($Clean) {
         Write-Output "🧹 Cleaning project..."
         foreach ($proj in $CrossPlatformProjects) {
-            $projPath = Join-Path $PSScriptRoot $proj
+            $projPath = Join-Path $repoRoot $proj
             if (Test-Path $projPath) {
                 $cleanArgs = @($projPath, "-c", $Configuration, "--verbosity", $VerbosityLevel)
                 Write-Command "dotnet clean" $cleanArgs
@@ -349,7 +352,7 @@ try {
         Write-Output "🔨 Building project..."
 
         foreach ($proj in $CrossPlatformProjects) {
-            $projPath = Join-Path $PSScriptRoot $proj
+            $projPath = Join-Path $repoRoot $proj
             if (Test-Path $projPath) {
                 $buildArgs = @($projPath, "-c", $Configuration, "--verbosity", $VerbosityLevel)
                 Write-Command "dotnet build" $buildArgs

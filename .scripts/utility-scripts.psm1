@@ -74,7 +74,13 @@ function Write-Log {
         [switch]$Silent,
 
         [Parameter(Mandatory = $false)]
-        [switch]$NoLabel
+        [switch]$NoLabel,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$NoNewline,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ForegroundColor
     )
 
     # If Silent is set, only show DEBUG and STATUS messages
@@ -91,7 +97,7 @@ function Write-Log {
     }
 
     # Define colors for each level
-    $colors = @{
+    $defaultColors = @{
         "HEADER" = "Blue"
         "ERROR" = "Red"
         "WARN" = "Yellow"
@@ -105,6 +111,8 @@ function Write-Log {
 
     if ($Level -eq "HEADER" -or $Level -eq "STATUS" -or $messageLevelWeight -le $traceLevelWeight) {
         $indent = if ($Level -ne "HEADER") { "     " } else { "" }
+        # Use caller-specified color, or fall back to level default
+        $color = if ($ForegroundColor) { $ForegroundColor } else { $defaultColors[$Level] }
 
         # Add timestamp for all messages except STATUS
         if ($Level -eq "STATUS") {
@@ -126,11 +134,11 @@ function Write-Log {
             # For STATUS messages, clear the current line and rewrite
             try {
                 # Use carriage return approach for better compatibility
-                Write-Host "`r$(" " * 120)`r$logMessage" -ForegroundColor $colors[$Level] -NoNewline
+                Write-Host "`r$(" " * 120)`r$logMessage" -ForegroundColor $color -NoNewline
                 [Console]::Out.Flush()
             } catch {
                 # Fallback for environments where formatting fails
-                Write-Host "`r$logMessage" -ForegroundColor $colors[$Level] -NoNewline
+                Write-Host "`r$logMessage" -ForegroundColor $color -NoNewline
                 [Console]::Out.Flush()
             }
         } else {
@@ -147,7 +155,11 @@ function Write-Log {
             }
 
             # For all other message types, use regular output
-            Write-Host $logMessage -ForegroundColor $colors[$Level]
+            if ($NoNewline) {
+                Write-Host $logMessage -ForegroundColor $color -NoNewline
+            } else {
+                Write-Host $logMessage -ForegroundColor $color
+            }
         }
     }
 }
@@ -891,6 +903,56 @@ function Get-PowerShellVersion {
     return $PSVersionTable
 }
 
+<#
+.SYNOPSIS
+    Loads the Azure configuration from .azure/catan-azure.json.
+.DESCRIPTION
+    Reads and parses the Azure configuration file from the project root.
+    Exits with error if the file is not found.
+.PARAMETER ProjectRoot
+    The root directory of the project (where .azure/ lives).
+#>
+function Get-AzureConfig {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $configFile = Join-Path $ProjectRoot ".azure/catan-azure.json"
+    if (-not (Test-Path $configFile)) {
+        Write-Host "Azure configuration not found at $configFile" -ForegroundColor Red
+        Write-Host "Run './catan.ps1 azure install' first." -ForegroundColor Yellow
+        exit 1
+    }
+
+    return Get-Content $configFile -Raw | ConvertFrom-Json
+}
+
+<#
+.SYNOPSIS
+    Resolves the Azure GameService URL from config, deriving from baseName if needed.
+.DESCRIPTION
+    Returns gameService.url if present in the config. Otherwise derives the URL
+    from baseName using the convention: https://{baseName}-api.azurewebsites.net
+.PARAMETER AzureConfig
+    The parsed Azure configuration object from Get-AzureConfig.
+#>
+function Get-AzureGameServiceUrl {
+    param(
+        [Parameter(Mandatory = $true)]
+        $AzureConfig
+    )
+
+    $url = $AzureConfig.gameService.url
+    if (-not $url -and $AzureConfig.baseName) {
+        $url = "https://$($AzureConfig.baseName)-api.azurewebsites.net"
+    }
+    if (-not $url) {
+        Write-Host "Cannot determine Azure GameService URL. Set gameService.url in .azure/catan-azure.json or ensure baseName is set." -ForegroundColor Red
+        exit 1
+    }
+    return $url
+}
 
 
 # Export all functions
@@ -905,5 +967,7 @@ Export-ModuleMember -Function @(
     'WaitForUser',
     'Stop-RunningProcesses',
     'Get-PowerShellVersion',
-    'Invoke-BackgroundInstaller'
+    'Invoke-BackgroundInstaller',
+    'Get-AzureConfig',
+    'Get-AzureGameServiceUrl'
 )

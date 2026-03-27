@@ -3,7 +3,7 @@ namespace Catan3.Shared.Profiles;
 /// <summary>
 /// Player profile data for persistent storage.
 /// Separate from PlayerModel (game state) - this is for identity, colors, statistics.
-/// Stored as JSON document in database (SQLite → CosmosDB).
+/// Stored as JSON document in CosmosDB.
 /// Maintains hierarchical structure matching document model.
 /// </summary>
 public class PlayerProfile
