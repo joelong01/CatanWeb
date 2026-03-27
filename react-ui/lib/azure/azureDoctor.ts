@@ -23,7 +23,7 @@ import { WebSiteManagementClient } from '@azure/arm-appservice';
 import { ResourceManagementClient } from '@azure/arm-resources';
 import { AuthorizationManagementClient } from '@azure/arm-authorization';
 import type { TokenCredential } from '@azure/core-auth';
-import type { AzureConfig, CheckReporter, DoctorResult } from './types';
+import type { AzureConfig, CheckReporter, DoctorResult, DomainResult } from './types';
 import { runCosmosDoctor } from './checks/cosmosDoctor';
 import { runGameServiceDoctor } from './checks/gameServiceDoctor';
 import { runUIDoctor } from './checks/uiDoctor';
@@ -38,13 +38,16 @@ import { runGitHubDoctor } from './checks/githubDoctor';
  * @param report      Callback invoked as each check progresses
  * @param autoFix     When true, automatically repairs fixable issues
  *                    (Cosmos firewall, containers, RBAC). Default: true.
+ * @param skipDomains Domains to skip (e.g., ['github'] for web path where
+ *                    Graph API token isn't available). Default: none.
  * @returns           Aggregate result across all domains
  */
 export async function runAzureDoctor(
   credential: TokenCredential,
   config: AzureConfig,
   report: CheckReporter,
-  autoFix: boolean = true
+  autoFix: boolean = true,
+  skipDomains: string[] = []
 ): Promise<DoctorResult> {
   // Initialize ARM SDK clients (shared across domains)
   const cosmosClient = new CosmosDBManagementClient(credential, config.subscriptionId);
@@ -52,23 +55,31 @@ export async function runAzureDoctor(
   const resourceClient = new ResourceManagementClient(credential, config.subscriptionId);
   const authClient = new AuthorizationManagementClient(credential, config.subscriptionId);
 
+  const domains: DomainResult[] = [];
+
   // Run each domain in sequence (dependencies between domains mean
   // parallel execution isn't safe — e.g., Cosmos must be healthy
   // before GameService health check can succeed)
 
-  report({ check: '── game-service ──', status: 'running', detail: '' });
-  const gsResult = await runGameServiceDoctor(webClient, resourceClient, config, report);
+  if (!skipDomains.includes('game-service')) {
+    report({ check: '── game-service ──', status: 'running', detail: '' });
+    domains.push(await runGameServiceDoctor(webClient, resourceClient, config, report));
+  }
 
-  report({ check: '── database ──', status: 'running', detail: '' });
-  const dbResult = await runCosmosDoctor(cosmosClient, webClient, config, report, autoFix);
+  if (!skipDomains.includes('database')) {
+    report({ check: '── database ──', status: 'running', detail: '' });
+    domains.push(await runCosmosDoctor(cosmosClient, webClient, config, report, autoFix));
+  }
 
-  report({ check: '── ui ──', status: 'running', detail: '' });
-  const uiResult = await runUIDoctor(webClient, config, report);
+  if (!skipDomains.includes('ui')) {
+    report({ check: '── ui ──', status: 'running', detail: '' });
+    domains.push(await runUIDoctor(webClient, config, report));
+  }
 
-  report({ check: '── github ──', status: 'running', detail: '' });
-  const ghResult = await runGitHubDoctor(credential, authClient, config, report);
-
-  const domains = [gsResult, dbResult, uiResult, ghResult];
+  if (!skipDomains.includes('github')) {
+    report({ check: '── github ──', status: 'running', detail: '' });
+    domains.push(await runGitHubDoctor(credential, authClient, config, report));
+  }
 
   return {
     domains,

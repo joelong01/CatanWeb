@@ -77,7 +77,9 @@ export async function POST(req: NextRequest): Promise<Response> {
       };
 
       try {
-        const doctorResult = await runAzureDoctor(credential, config, report, autoFix);
+        // Skip GitHub domain in web path — the forwarded MSAL token is scoped
+        // to ARM only, not Graph API. GitHub OIDC checks don't break overnight anyway.
+        const doctorResult = await runAzureDoctor(credential, config, report, autoFix, ['github']);
 
         // Send final summary event
         controller.enqueue(

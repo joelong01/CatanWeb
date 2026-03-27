@@ -19,6 +19,9 @@ import type { AzureConfig, CheckReporter, CheckResult, DomainResult } from '../t
 import { formatError, timedCheck } from '../types';
 import { execSync } from 'child_process';
 
+/** Validates a string looks like a short or full git commit hash (hex only). */
+const COMMIT_HASH_RE = /^[0-9a-f]{7,40}$/i;
+
 /**
  * Runs all GameService doctor checks in sequence.
  */
@@ -264,6 +267,14 @@ async function checkDeployment(
 
     if (deployedCommit === 'unknown' || deployedCommit === 'local') {
       return t.warn(`deployed=local/unknown, current=${currentCommit}`);
+    }
+
+    // Validate commit hashes before passing to shell (prevent command injection)
+    if (!COMMIT_HASH_RE.test(deployedCommit)) {
+      return t.warn(`deployed commit has invalid format: ${deployedCommit}`);
+    }
+    if (!COMMIT_HASH_RE.test(currentCommit)) {
+      return t.warn(`current commit has invalid format: ${currentCommit}`);
     }
 
     if (deployedCommit === currentCommit) {

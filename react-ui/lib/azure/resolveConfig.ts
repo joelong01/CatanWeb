@@ -142,20 +142,24 @@ export async function discoverSubscriptionId(
   const data = await response.json() as { value: Array<{ subscriptionId: string; state: string }> };
   const enabled = data.value.filter((s) => s.state === 'Enabled');
 
-  // Find the subscription containing our resource group + Cosmos account
-  // (checking for the Cosmos account avoids false positives from empty RGs
-  // with the same name in other subscriptions)
+  // Find the subscription containing our resource group + Cosmos account.
+  // Check for the Cosmos account (not just the RG) to avoid false positives
+  // from empty RGs with the same name in other subscriptions.
   const cosmosAccountName = `cosmos-${resourceGroup.replace('rg-', '')}`;
-  for (const sub of enabled) {
-    try {
-      const { CosmosDBManagementClient } = await import('@azure/arm-cosmosdb');
+  const { CosmosDBManagementClient } = await import('@azure/arm-cosmosdb');
+
+  // Parallelize across all subscriptions (much faster for enterprise tenants)
+  const results = await Promise.allSettled(
+    enabled.map(async (sub) => {
       const cosmosClient = new CosmosDBManagementClient(credential, sub.subscriptionId);
       await cosmosClient.databaseAccounts.get(resourceGroup, cosmosAccountName);
-      // If we get here, both the RG and Cosmos account exist in this subscription
       return sub.subscriptionId;
-    } catch {
-      continue;
-    }
+    })
+  );
+
+  const found = results.find((r) => r.status === 'fulfilled');
+  if (found?.status === 'fulfilled') {
+    return found.value;
   }
 
   throw new Error(
