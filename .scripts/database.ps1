@@ -891,6 +891,33 @@ function Get-CosmosEndpointUrl {
 
 <#
 .SYNOPSIS
+    Ensures all Azure naming fields are populated on the config object.
+    Derives missing values from baseName using project naming conventions.
+#>
+function Resolve-AzureConfigNames {
+    param([psobject]$Config)
+
+    $base = $Config.baseName
+    if (-not $base) {
+        Write-Log -Level "ERROR" -Message "baseName not set in .azure/catan-azure.json"
+        exit 1
+    }
+
+    if (-not $Config.resourceGroup) { $Config | Add-Member -NotePropertyName resourceGroup -NotePropertyValue "rg-$base" -Force }
+    if (-not $Config.location) { $Config | Add-Member -NotePropertyName location -NotePropertyValue "westus2" -Force }
+    if (-not $Config.gameService) { $Config | Add-Member -NotePropertyName gameService -NotePropertyValue ([PSCustomObject]@{}) -Force }
+    if (-not $Config.gameService.appName) {
+        $Config.gameService | Add-Member -NotePropertyName appName -NotePropertyValue "$base-api" -Force
+    }
+    if (-not $Config.gameService.url) {
+        $Config.gameService | Add-Member -NotePropertyName url -NotePropertyValue "https://$base-api.azurewebsites.net" -Force
+    }
+
+    return $Config
+}
+
+<#
+.SYNOPSIS
     Verifies the az CLI is installed and the current session is logged in.
     Returns $true when ready.
 #>
@@ -1030,7 +1057,7 @@ function Deploy-AzureDatabase {
     param([psobject]$Config, [string]$AccountName, [string]$Endpoint)
 
     $rg      = $Config.resourceGroup
-    $appName = Get-AzureGameServiceAppName -AzureConfig $Config
+    $appName = $Config.gameService.appName
 
     # 1. Set COSMOS_ENDPOINT and COSMOS_DATABASE on production slot
     Write-Log -Level "INFO" -Message "Setting Cosmos app settings on '$appName' (production)..."
@@ -1240,7 +1267,7 @@ function Get-AzureDoctorResult {
     param([psobject]$Config, [string]$AccountName)
 
     $rg      = $Config.resourceGroup
-    $appName = Get-AzureGameServiceAppName -AzureConfig $Config
+    $appName = $Config.gameService.appName
 
     # Discover current public IP once — used for firewall check
     $currentIp = ""
@@ -1701,9 +1728,16 @@ try {
     if ($Azure) {
         if (-not (Assert-AzCli)) { exit 1 }
 
-        $config      = Get-LocalAzureConfig
-        $accountName = Get-CosmosAccountName -Config $config
-        $endpoint    = Get-CosmosEndpointUrl  -AccountName $accountName
+        $az          = Get-AzureResourceNames -ProjectRoot $ProjectRoot
+        $config      = $az.Config
+        # Ensure config object has all derived names for functions that read $Config directly
+        $config | Add-Member -NotePropertyName resourceGroup -NotePropertyValue $az.ResourceGroup -Force
+        $config | Add-Member -NotePropertyName location -NotePropertyValue $az.Location -Force
+        if (-not $config.gameService) { $config | Add-Member -NotePropertyName gameService -NotePropertyValue ([PSCustomObject]@{}) -Force }
+        $config.gameService | Add-Member -NotePropertyName appName -NotePropertyValue $az.GameServiceAppName -Force
+        $config.gameService | Add-Member -NotePropertyName url -NotePropertyValue $az.GameServiceUrl -Force
+        $accountName = $az.CosmosAccount
+        $endpoint    = $az.CosmosEndpoint
 
         switch ($Verb) {
 

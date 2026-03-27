@@ -646,8 +646,8 @@ switch ($Verb) {
         $targetName = "Local"
 
         if ($Azure) {
-            $azureConfig = Get-AzureConfig -ProjectRoot $PSScriptRoot
-            $targetUrl = Get-AzureGameServiceUrl -AzureConfig $azureConfig
+            $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+            $targetUrl = $az.GameServiceUrl
             $targetName = "Azure"
         }
 
@@ -863,8 +863,8 @@ switch ($Verb) {
         $targetName = "Local"
 
         if ($Azure) {
-            $azureConfig = Get-AzureConfig -ProjectRoot $PSScriptRoot
-            $targetUrl = Get-AzureGameServiceUrl -AzureConfig $azureConfig
+            $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+            $targetUrl = $az.GameServiceUrl
             $targetName = "Azure"
         }
 

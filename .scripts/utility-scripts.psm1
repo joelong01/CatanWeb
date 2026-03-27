@@ -930,72 +930,57 @@ function Get-AzureConfig {
 
 <#
 .SYNOPSIS
-    Resolves the Azure GameService URL from config, deriving from baseName if needed.
+    Returns a hashtable of all Azure resource names derived from the config file.
 .DESCRIPTION
-    Returns gameService.url if present in the config. Otherwise derives the URL
-    from baseName using the convention: https://{baseName}-api.azurewebsites.net
-.PARAMETER AzureConfig
-    The parsed Azure configuration object from Get-AzureConfig.
+    Loads the Azure config and resolves all resource names. For each name, uses
+    the explicit value from the config if present, otherwise derives it from baseName
+    using the project's naming conventions. This is the single source of truth for
+    Azure resource naming across all scripts.
+.PARAMETER ProjectRoot
+    The root directory of the project (where .azure/ lives).
+.OUTPUTS
+    Ordered hashtable with keys: BaseName, ResourceGroup, Location,
+    GameServiceAppName, GameServiceUrl, GameServicePlan,
+    UiAppName, UiUrl, StorageAccount, AppInsights,
+    CosmosAccount, CosmosEndpoint, CosmosDatabase
+.EXAMPLE
+    $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+    az cosmosdb show --name $az.CosmosAccount --resource-group $az.ResourceGroup
 #>
-function Get-AzureGameServiceUrl {
+function Get-AzureResourceNames {
     param(
         [Parameter(Mandatory = $true)]
-        $AzureConfig
+        [string]$ProjectRoot
     )
 
-    $url = $AzureConfig.gameService.url
-    if (-not $url -and $AzureConfig.baseName) {
-        $url = "https://$($AzureConfig.baseName)-api.azurewebsites.net"
-    }
-    if (-not $url) {
-        Write-Log -Level ERROR -Message "Cannot determine Azure GameService URL. Set gameService.url or baseName in .azure/catan-azure.json" -TraceLevel ERROR
+    $config = Get-AzureConfig -ProjectRoot $ProjectRoot
+    $base = $config.baseName
+    if (-not $base) {
+        Write-Log -Level ERROR -Message "baseName not set in .azure/catan-azure.json" -TraceLevel ERROR
         exit 1
     }
-    return $url
-}
 
-<#
-.SYNOPSIS
-    Resolves the Azure GameService App Service name from config, deriving from baseName if needed.
-.PARAMETER AzureConfig
-    The parsed Azure configuration object from Get-AzureConfig.
-#>
-function Get-AzureGameServiceAppName {
-    param(
-        [Parameter(Mandatory = $true)]
-        $AzureConfig
-    )
+    # Helper: return explicit config value if set, otherwise the derived default
+    function Resolve { param($obj, $prop, $default) if ($obj -and $obj.$prop) { $obj.$prop } else { $default } }
 
-    if ($AzureConfig.gameService -and $AzureConfig.gameService.appName) {
-        return $AzureConfig.gameService.appName
-    }
-    if ($AzureConfig.baseName) {
-        return "$($AzureConfig.baseName)-api"
-    }
-    Write-Log -Level ERROR -Message "Cannot determine GameService app name. Set gameService.appName or baseName in .azure/catan-azure.json" -TraceLevel ERROR
-    exit 1
-}
+    $cosmosAccount = Resolve $config.cosmosDb 'accountName' "cosmos-$base"
 
-<#
-.SYNOPSIS
-    Resolves the Azure resource group name from config, deriving from baseName if needed.
-.PARAMETER AzureConfig
-    The parsed Azure configuration object from Get-AzureConfig.
-#>
-function Get-AzureResourceGroup {
-    param(
-        [Parameter(Mandatory = $true)]
-        $AzureConfig
-    )
-
-    if ($AzureConfig.resourceGroup) {
-        return $AzureConfig.resourceGroup
+    return [ordered]@{
+        BaseName           = $base
+        ResourceGroup      = Resolve $config 'resourceGroup'      "rg-$base"
+        Location           = Resolve $config 'location'            "westus2"
+        GameServiceAppName = Resolve $config.gameService 'appName' "$base-api"
+        GameServiceUrl     = Resolve $config.gameService 'url'     "https://$base-api.azurewebsites.net"
+        GameServicePlan    = Resolve $config.gameService 'appServicePlan' "asp-$base"
+        UiAppName          = Resolve $config.ui 'appName'          $base
+        UiUrl              = Resolve $config.ui 'url'              "https://$base.azurewebsites.net"
+        StorageAccount     = Resolve $config 'storageAccount'      "st$($base -replace '-', '')"
+        AppInsights        = Resolve $config.appInsights 'name'    "ai-$base"
+        CosmosAccount      = $cosmosAccount
+        CosmosEndpoint     = "https://$cosmosAccount.documents.azure.com:443/"
+        CosmosDatabase     = "catan"
+        Config             = $config  # original config object for other fields (auth, etc.)
     }
-    if ($AzureConfig.baseName) {
-        return "$($AzureConfig.baseName)-rg"
-    }
-    Write-Log -Level ERROR -Message "Cannot determine resource group. Set resourceGroup or baseName in .azure/catan-azure.json" -TraceLevel ERROR
-    exit 1
 }
 
 
@@ -1013,7 +998,5 @@ Export-ModuleMember -Function @(
     'Get-PowerShellVersion',
     'Invoke-BackgroundInstaller',
     'Get-AzureConfig',
-    'Get-AzureGameServiceUrl',
-    'Get-AzureGameServiceAppName',
-    'Get-AzureResourceGroup'
+    'Get-AzureResourceNames'
 )
