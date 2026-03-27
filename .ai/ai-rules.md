@@ -443,6 +443,15 @@ Tests/
 
 ## Git and Version Control
 
+### Issue Tracking
+
+- **File an issue before fixing**: Before starting work on a bug fix or feature, create a
+  GitHub issue to track the work. Use the GitHub MCP tools to create the issue.
+- **Branch name in title**: Prefix the issue title with the current branch name in brackets,
+  e.g., `[longgame-perf] database install fails when project hasn't been built yet`
+- **Keep issues focused**: One issue per bug or feature. Include steps to reproduce for bugs.
+- **Reference issues in commits**: When committing, list the issues being fixed (see below).
+
 ### Branch Strategy
 
 - **Main branch**: `main` - Production-ready code
@@ -454,6 +463,8 @@ Tests/
 - **ALWAYS ask permission**: AI assistants must ask the user for permission before creating any commit
 - **Commit frequently**: Small, logical commits
 - **Clear messages**: Describe what and why, not how
+- **Reference issues**: Include `Fixes #<number>` or `Relates to #<number>` in the commit message
+  body for each issue addressed by the commit
 - **Group related changes**: Stage files that belong together
 - **Test before commit**: Ensure build passes
 - **Lint before commit**: Run `./catan.ps1 lint` to check all changed files:
@@ -482,6 +493,19 @@ git commit -m "Add board measurement design document"
 git --no-pager status
 git --no-pager log --oneline -10
 ```
+
+### Pull Request Workflow
+
+Before creating or merging a pull request, AI assistants must perform a code review:
+
+1. **Review the diff**: Examine all changes between the feature branch and the target branch
+2. **Run the build and tests**: Verify everything passes before the PR
+3. **Self-review**: Check for issues listed in the project's code review guidelines
+   (see `.ai/code-review.md`)
+4. **Add PR comments**: Post findings as comments on the pull request using GitHub MCP tools.
+   Include both positive observations and any issues found
+5. **List fixed issues**: Ensure the PR description lists all GitHub issues addressed
+   (e.g., "Fixes #100, Fixes #101")
 
 ## Project-Specific Context
 
