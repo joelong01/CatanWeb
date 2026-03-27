@@ -501,11 +501,48 @@ Before creating or merging a pull request, AI assistants must perform a code rev
 1. **Review the diff**: Examine all changes between the feature branch and the target branch
 2. **Run the build and tests**: Verify everything passes before the PR
 3. **Self-review**: Check for issues listed in the project's code review guidelines
-   (see `.ai/code-review.md`)
-4. **Add PR comments**: Post findings as comments on the pull request using GitHub MCP tools.
+   (see `.ai/commands/code-review.md`)
+4. **Add PR comments**: Post findings as comments on the pull request using GitHub CLI.
    Include both positive observations and any issues found
 5. **List fixed issues**: Ensure the PR description lists all GitHub issues addressed
-   (e.g., "Fixes #100, Fixes #101")
+   (e.g., "Closes #100, Fixes #101")
+
+### After Creating a PR
+
+After creating a PR, **always** provide:
+
+1. The PR link
+2. AI code review instructions the developer can paste into another AI agent (Copilot,
+   ChatGPT, another Claude session, etc.) to get an independent review
+
+**Template for AI review instructions:**
+
+````text
+Review PR #{number}: {title}
+Repository: {owner}/{repo}
+URL: {pr_url}
+
+Instructions:
+1. Read `.ai/commands/code-review.md` for the review process
+2. Run `gh pr diff {number}` to get the diff
+3. For each changed file, read the FULL file (not just the diff)
+4. Post each finding as a separate comment on PR #{number} using:
+   `gh api repos/{owner}/{repo}/issues/{number}/comments -f body="..."`
+5. Number findings sequentially (Finding 1/N, 2/N, etc.)
+6. End with a summary table of all findings with severity
+7. Follow the iterative cycle: review → comment → fix → verify
+````
+
+### Post-Merge Cleanup
+
+After a PR is merged:
+
+1. **Close referenced issues** with a comment linking to the merge commit:
+   `gh issue close <number> -c "Fixed in commit <sha> (PR #<pr>)"`
+2. **Partially addressed issues** get a comment instead of closing:
+   `gh issue comment <number> -c "Partially addressed in PR #<pr>. Remaining: ..."`
+
+This creates a traceable chain: **Issue → PR → Commit → Code**.
 
 ## Project-Specific Context
 
