@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import { FontReloader } from '@/components/dev/FontReloader';
 import { StartupLogger } from '@/components/StartupLogger';
 import { ThemeInitializer } from '@/components/providers/ThemeInitializer';
+import BuildVersion from '@/components/BuildVersion';
 import './globals.css';
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -86,6 +87,7 @@ export default function RootLayout({
         <ThemeInitializer />
         {children}
         <StartupLogger />
+        <BuildVersion />
         {isDev && <FontReloader />}
       </body>
     </html>
