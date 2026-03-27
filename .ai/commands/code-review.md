@@ -256,6 +256,8 @@ Description of the issue...
   - **Suggestion** — consider for improvement (style, DRY, naming)
 - **Each finding must include**: file path with line number, description of the
   problem, why it matters, and a concrete fix (code example preferred)
+- **No praise findings** — don't waste a finding slot saying "good job". If the
+  code is good, the absence of findings IS the praise. Focus on what needs fixing.
 - **Final comment**: Summary table of all findings with severity and action
 
 ### Phase 4: Iterate Until Clean
@@ -508,9 +510,6 @@ Post each finding as a PR comment in this format:
 ## Questions
 [Clarifications needed about intent or design]
 
-## Praise
-[Good solutions worth calling out]
-
 ## Desktop App Comparison
 [For WebUI: Compare with Desktop XAML, note divergences]
 
@@ -597,7 +596,7 @@ Description of the problem and why it matters.
 | 1 | Command injection in execSync | Critical | **FIX** |
 | 2 | Missing error handling | Important | **FIX** |
 | 3 | Variable naming | Suggestion | Consider |
-| 4 | Clean DRY pattern | Praise | — |
+| 3 | Variable naming | Suggestion | Consider |
 
 All N fixes will be in the next commit.
 ```
@@ -673,7 +672,7 @@ After reviewing all target files, create a summary response to the user:
 
 - Explains why changes are needed
 - Provides examples and alternatives
-- Balances criticism with praise
+- Focuses on actionable feedback, not flattery
 - Focuses on important issues
 - Distinguishes must-fix from nice-to-have
 
