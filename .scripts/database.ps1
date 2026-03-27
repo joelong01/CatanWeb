@@ -848,8 +848,10 @@ function Show-LocalDoctorOutput {
 .SYNOPSIS
     Reads .azure/catan-azure.json and returns it as a PSCustomObject.
     Throws if the file does not exist.
+    Note: This is a local wrapper around the module's Get-AzureConfig that uses the
+    script-level $AzureConfigFile variable for backward compatibility.
 #>
-function Get-AzureConfig {
+function Get-LocalAzureConfig {
     if (-not (Test-Path $AzureConfigFile)) {
         throw "Azure config not found at $AzureConfigFile. Run catan-azure.ps1 install first."
     }
@@ -1028,7 +1030,7 @@ function Deploy-AzureDatabase {
     param([psobject]$Config, [string]$AccountName, [string]$Endpoint)
 
     $rg      = $Config.resourceGroup
-    $appName = $Config.gameService.appName
+    $appName = Get-AzureGameServiceAppName -AzureConfig $Config
 
     # 1. Set COSMOS_ENDPOINT and COSMOS_DATABASE on production slot
     Write-Log -Level "INFO" -Message "Setting Cosmos app settings on '$appName' (production)..."
@@ -1238,7 +1240,7 @@ function Get-AzureDoctorResult {
     param([psobject]$Config, [string]$AccountName)
 
     $rg      = $Config.resourceGroup
-    $appName = $Config.gameService.appName
+    $appName = Get-AzureGameServiceAppName -AzureConfig $Config
 
     # Discover current public IP once — used for firewall check
     $currentIp = ""
@@ -1699,7 +1701,7 @@ try {
     if ($Azure) {
         if (-not (Assert-AzCli)) { exit 1 }
 
-        $config      = Get-AzureConfig
+        $config      = Get-LocalAzureConfig
         $accountName = Get-CosmosAccountName -Config $config
         $endpoint    = Get-CosmosEndpointUrl  -AccountName $accountName
 

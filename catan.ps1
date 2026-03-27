@@ -712,8 +712,8 @@ switch ($Verb) {
                             Write-Log -Level WARN -Message "No player statistics found." -NoLabel
                         } else {
                             # Table header
-                            Write-Log -Level DEBUG -Message ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f "Player", "Games", "Wins", "Win%", "Best", "AvgStars") -NoLabel
-                            Write-Log -Level DEBUG -Message ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f "---------------", "------", "-----", "------", "------", "--------") -NoLabel
+                            Write-Log -Level INFO -Message ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f "Player", "Games", "Wins", "Win%", "Best", "AvgStars") -NoLabel
+                            Write-Log -Level INFO -Message ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f "---------------", "------", "-----", "------", "------", "--------") -NoLabel
 
                             foreach ($player in $stats) {
                                 $winRate = if ($player.gamesPlayed -gt 0) { "{0:N1}%" -f $player.winRate } else { "0.0%" }
@@ -758,7 +758,7 @@ switch ($Verb) {
                     $export | ConvertTo-Json -Depth 10 | Out-File -FilePath $outputPath -Encoding UTF8
 
                     Write-Log -Level INFO -Message "Exported $($export.players.Count) player(s) to:" -NoLabel -ForegroundColor Green
-                    Write-Log -Level DEBUG -Message "  $outputPath" -NoLabel
+                    Write-Log -Level INFO -Message "  $outputPath" -NoLabel
                 } catch {
                     Write-Log -Level ERROR -Message "Failed to export stats: $_" -NoLabel
                     exit 1
@@ -809,9 +809,9 @@ switch ($Verb) {
                         -TimeoutSec 30
 
                     Write-Log -Level INFO -Message "Import complete:" -NoLabel -ForegroundColor Green
-                    Write-Log -Level DEBUG -Message "  Imported: $($response.imported)" -NoLabel
-                    Write-Log -Level DEBUG -Message "  Merged:   $($response.merged)" -NoLabel
-                    Write-Log -Level DEBUG -Message "  Skipped:  $($response.skipped)" -NoLabel
+                    Write-Log -Level INFO -Message "  Imported: $($response.imported)" -NoLabel
+                    Write-Log -Level INFO -Message "  Merged:   $($response.merged)" -NoLabel
+                    Write-Log -Level INFO -Message "  Skipped:  $($response.skipped)" -NoLabel
                 } catch {
                     Write-Log -Level ERROR -Message "Failed to import stats: $_" -NoLabel
                     exit 1
@@ -954,7 +954,7 @@ switch ($Verb) {
                 }
 
                 Write-Log -Level INFO -Message "Found $($recordings.Count) recording(s)" -NoLabel -ForegroundColor Green
-                Write-Log -Level DEBUG -Message "Saving to: $recordingsDir" -NoLabel
+                Write-Log -Level INFO -Message "Saving to: $recordingsDir" -NoLabel
                 Write-Log -Level INFO -Message "" -NoLabel
 
                 $saved = 0
@@ -962,7 +962,7 @@ switch ($Verb) {
                     $safeName = $recording.name -replace '[^\w\-\.]', '-'
                     $filePath = Join-Path $recordingsDir "$safeName.json"
 
-                    Write-Log -Level DEBUG -Message "  Saving: $($recording.name)..." -NoLabel -NoNewline
+                    Write-Log -Level INFO -Message "  Saving: $($recording.name)..." -NoLabel -NoNewline
 
                     # Fetch full recording data
                     try {
@@ -1053,7 +1053,7 @@ switch ($Verb) {
                 }
 
                 Write-Log -Level INFO -Message "Found $($jsonFiles.Count) recording file(s)" -NoLabel -ForegroundColor Green
-                Write-Log -Level DEBUG -Message "Loading to: $targetUrl" -NoLabel
+                Write-Log -Level INFO -Message "Loading to: $targetUrl" -NoLabel
                 Write-Log -Level INFO -Message "" -NoLabel
 
                 $imported = 0
@@ -1088,7 +1088,7 @@ switch ($Verb) {
                     }
                     catch {
                         if ($_.Exception.Response.StatusCode -eq 409) {
-                            Write-Log -Level DEBUG -Message " already exists" -NoLabel
+                            Write-Log -Level INFO -Message " already exists" -NoLabel
                             $skipped++
                         } else {
                             Write-Log -Level ERROR -Message " failed: $_" -NoLabel
@@ -1138,7 +1138,7 @@ switch ($Verb) {
                 if ($toDelete.Count -gt 1) {
                     Write-Log -Level ERROR -Message "Multiple recordings match '$Name'. Please use the full ID:" -NoLabel
                     foreach ($r in $toDelete) {
-                        Write-Log -Level DEBUG -Message "  $($r.id) - $($r.name)" -NoLabel
+                        Write-Log -Level INFO -Message "  $($r.id) - $($r.name)" -NoLabel
                     }
                     exit 1
                 }
@@ -1149,7 +1149,7 @@ switch ($Verb) {
                     Write-Log -Level WARN -Message "About to delete: $($recording.name) ($($recording.id))" -NoLabel
                     $confirm = Read-Host "Are you sure? (y/N)"
                     if ($confirm -ne 'y' -and $confirm -ne 'Y') {
-                        Write-Log -Level DEBUG -Message "Cancelled." -NoLabel
+                        Write-Log -Level INFO -Message "Cancelled." -NoLabel
                         exit 0
                     }
                 }
@@ -1259,7 +1259,7 @@ switch ($Verb) {
                     foreach ($test in $failedTests) {
                         Write-Log -Level ERROR -Message "  - $($test.Name): $($test.Error)" -NoLabel
                         if ($test.Expected -and $test.Actual) {
-                            Write-Log -Level DEBUG -Message "    Expected: $($test.Expected), Actual: $($test.Actual)" -NoLabel
+                            Write-Log -Level INFO -Message "    Expected: $($test.Expected), Actual: $($test.Actual)" -NoLabel
                         }
                     }
                     exit 1
@@ -1487,7 +1487,7 @@ switch ($Verb) {
         Write-Log -Level INFO -Message "This will launch GameService with debugger attached." -NoLabel -ForegroundColor White
         Write-Log -Level INFO -Message "" -NoLabel
         Write-Log -Level INFO -Message "Debug configurations:" -NoLabel -ForegroundColor White
-        Write-Log -Level DEBUG -Message "  - 'Debug GameService' - GameService only" -NoLabel
+        Write-Log -Level INFO -Message "  - 'Debug GameService' - GameService only" -NoLabel
         Write-Log -Level INFO -Message "" -NoLabel
 
         # Offer to open VS Code
@@ -1541,7 +1541,7 @@ switch ($Verb) {
         Write-Log -Level INFO -Message "" -NoLabel
         Write-Log -Level INFO -Message "Clean completed!" -NoLabel -ForegroundColor Green
         if (-not $cleanDatabase) {
-            Write-Log -Level DEBUG -Message "Database preserved. Use './catan.ps1 clean database' to also clean database." -NoLabel
+            Write-Log -Level INFO -Message "Database preserved. Use './catan.ps1 clean database' to also clean database." -NoLabel
         }
         Write-Log -Level INFO -Message "Run './catan.ps1 build' to rebuild, or './catan.ps1 run' to rebuild and run." -NoLabel -ForegroundColor White
         exit 0
@@ -1932,7 +1932,7 @@ switch ($Verb) {
                         Write-Log -Level INFO -Message "" -NoLabel
 
                         # Run all doctors to determine what needs to be done
-                        Write-Log -Level DEBUG -Message "Checking deployment status..." -NoLabel
+                        Write-Log -Level INFO -Message "Checking deployment status..." -NoLabel
 
                         # GameService doctor
                         $gsDoctor = & $azureScript game-service doctor -HashTable -TraceLevel $TraceLevel
@@ -2048,7 +2048,7 @@ switch ($Verb) {
                 $rgName = $azureConfig.resourceGroup
 
                 # Use doctor to get complete picture of the system
-                Write-Log -Level DEBUG -Message "Running UI health check..." -NoLabel
+                Write-Log -Level INFO -Message "Running UI health check..." -NoLabel
                 $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel $TraceLevel
 
                 if ($uiDoctor.needsInstall) {
@@ -2059,9 +2059,9 @@ switch ($Verb) {
                 # Show current state from doctor
                 Write-Log -Level WARN -Message "This will swap the staging slot into production." -NoLabel
                 Write-Log -Level INFO -Message "" -NoLabel
-                Write-Log -Level DEBUG -Message "  App:         $appName" -NoLabel
-                Write-Log -Level DEBUG -Message "  Production:  https://$appName.azurewebsites.net" -NoLabel
-                Write-Log -Level DEBUG -Message "  Staging:     https://$appName-staging.azurewebsites.net" -NoLabel
+                Write-Log -Level INFO -Message "  App:         $appName" -NoLabel
+                Write-Log -Level INFO -Message "  Production:  https://$appName.azurewebsites.net" -NoLabel
+                Write-Log -Level INFO -Message "  Staging:     https://$appName-staging.azurewebsites.net" -NoLabel
                 Write-Log -Level INFO -Message "" -NoLabel
 
                 # Show what's currently in each slot
@@ -2074,12 +2074,12 @@ switch ($Verb) {
                         return $Runtime
                     }
                     Write-Log -Level WARN -Message "Current configuration:" -NoLabel
-                    Write-Log -Level DEBUG -Message "  Production: $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -NoLabel
-                    Write-Log -Level DEBUG -Message "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
+                    Write-Log -Level INFO -Message "  Production: $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -NoLabel
+                    Write-Log -Level INFO -Message "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
                     Write-Log -Level INFO -Message "" -NoLabel
                     Write-Log -Level WARN -Message "After swap:" -NoLabel
-                    Write-Log -Level DEBUG -Message "  Production: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
-                    Write-Log -Level DEBUG -Message "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -NoLabel
+                    Write-Log -Level INFO -Message "  Production: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
+                    Write-Log -Level INFO -Message "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -NoLabel
                     Write-Log -Level INFO -Message "" -NoLabel
                 }
 
@@ -2099,13 +2099,13 @@ switch ($Verb) {
 
                 # Show staging commit info
                 if ($uiDoctor.stagingDeployedCommit) {
-                    Write-Log -Level DEBUG -Message "  Staging commit: $($uiDoctor.stagingDeployedCommit)" -NoLabel
+                    Write-Log -Level INFO -Message "  Staging commit: $($uiDoctor.stagingDeployedCommit)" -NoLabel
                 }
 
                 # Check staging runtime is correct (NODE for React)
                 if (-not $uiDoctor.checks.stagingRuntime) {
                     Write-Log -Level ERROR -Message "Staging slot runtime is not configured for Node.js." -NoLabel
-                    Write-Log -Level DEBUG -Message "  Current: $($uiDoctor.stagingRuntime)" -NoLabel
+                    Write-Log -Level INFO -Message "  Current: $($uiDoctor.stagingRuntime)" -NoLabel
                     Write-Log -Level INFO -Message "  Run: ./catan.ps1 azure ui deploy-staging" -NoLabel -ForegroundColor Cyan
                     exit 1
                 }
@@ -2133,8 +2133,8 @@ switch ($Verb) {
                         Write-Log -Level ERROR -Message "Staging slot is not responding after 3 attempts." -NoLabel
                         Write-Log -Level INFO -Message "" -NoLabel
                         Write-Log -Level WARN -Message "Try:" -NoLabel
-                        Write-Log -Level DEBUG -Message "  1. Wait a minute and retry (cold start can be slow)" -NoLabel
-                        Write-Log -Level DEBUG -Message "  2. Redeploy: ./catan.ps1 azure deploy ui -Force" -NoLabel
+                        Write-Log -Level INFO -Message "  1. Wait a minute and retry (cold start can be slow)" -NoLabel
+                        Write-Log -Level INFO -Message "  2. Redeploy: ./catan.ps1 azure deploy ui -Force" -NoLabel
                         exit 1
                     }
                 }
@@ -2157,8 +2157,8 @@ switch ($Verb) {
 
                 Write-Log -Level INFO -Message "" -NoLabel
                 Write-Log -Level INFO -Message "Slot swap complete!" -NoLabel -ForegroundColor Green
-                Write-Log -Level DEBUG -Message "  Production is now serving: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
-                Write-Log -Level DEBUG -Message "  To swap back: ./catan.ps1 azure swap-slots" -NoLabel
+                Write-Log -Level INFO -Message "  Production is now serving: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
+                Write-Log -Level INFO -Message "  To swap back: ./catan.ps1 azure swap-slots" -NoLabel
             }
             "start" {
                 Write-Log -Level INFO -Message "Starting Azure services..." -NoLabel -ForegroundColor Cyan
@@ -2247,8 +2247,8 @@ switch ($Verb) {
                     Write-Log -Level WARN -Message "Some services may still be starting. Run './catan.ps1 azure doctor' to check." -NoLabel
                 }
                 Write-Log -Level INFO -Message "" -NoLabel
-                Write-Log -Level DEBUG -Message "  WebUI:       $uiUrl" -NoLabel
-                Write-Log -Level DEBUG -Message "  GameService: $gsUrl" -NoLabel
+                Write-Log -Level INFO -Message "  WebUI:       $uiUrl" -NoLabel
+                Write-Log -Level INFO -Message "  GameService: $gsUrl" -NoLabel
             }
             "clean" {
                 Write-Log -Level WARN -Message "Cleaning all Azure resources..." -NoLabel
@@ -2279,7 +2279,7 @@ switch ($Verb) {
                 if (-not $Target) {
                     Write-Log -Level WARN -Message "Usage: ./catan.ps1 azure $SubCommand <verb>" -NoLabel
                     Write-Log -Level INFO -Message "" -NoLabel
-                    Write-Log -Level DEBUG -Message "Verbs: install, deploy, deploy-staging, doctor, clean, fix" -NoLabel
+                    Write-Log -Level INFO -Message "Verbs: install, deploy, deploy-staging, doctor, clean, fix" -NoLabel
                     exit 1
                 }
                 $extraArgs = @{}

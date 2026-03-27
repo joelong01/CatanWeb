@@ -920,8 +920,8 @@ function Get-AzureConfig {
 
     $configFile = Join-Path $ProjectRoot ".azure/catan-azure.json"
     if (-not (Test-Path $configFile)) {
-        Write-Host "Azure configuration not found at $configFile" -ForegroundColor Red
-        Write-Host "Run './catan.ps1 azure install' first." -ForegroundColor Yellow
+        Write-Log -Level ERROR -Message "Azure configuration not found at $configFile" -TraceLevel ERROR
+        Write-Log -Level WARN -Message "Run './catan.ps1 azure install' first." -TraceLevel ERROR
         exit 1
     }
 
@@ -948,10 +948,54 @@ function Get-AzureGameServiceUrl {
         $url = "https://$($AzureConfig.baseName)-api.azurewebsites.net"
     }
     if (-not $url) {
-        Write-Host "Cannot determine Azure GameService URL. Set gameService.url in .azure/catan-azure.json or ensure baseName is set." -ForegroundColor Red
+        Write-Log -Level ERROR -Message "Cannot determine Azure GameService URL. Set gameService.url or baseName in .azure/catan-azure.json" -TraceLevel ERROR
         exit 1
     }
     return $url
+}
+
+<#
+.SYNOPSIS
+    Resolves the Azure GameService App Service name from config, deriving from baseName if needed.
+.PARAMETER AzureConfig
+    The parsed Azure configuration object from Get-AzureConfig.
+#>
+function Get-AzureGameServiceAppName {
+    param(
+        [Parameter(Mandatory = $true)]
+        $AzureConfig
+    )
+
+    if ($AzureConfig.gameService -and $AzureConfig.gameService.appName) {
+        return $AzureConfig.gameService.appName
+    }
+    if ($AzureConfig.baseName) {
+        return "$($AzureConfig.baseName)-api"
+    }
+    Write-Log -Level ERROR -Message "Cannot determine GameService app name. Set gameService.appName or baseName in .azure/catan-azure.json" -TraceLevel ERROR
+    exit 1
+}
+
+<#
+.SYNOPSIS
+    Resolves the Azure resource group name from config, deriving from baseName if needed.
+.PARAMETER AzureConfig
+    The parsed Azure configuration object from Get-AzureConfig.
+#>
+function Get-AzureResourceGroup {
+    param(
+        [Parameter(Mandatory = $true)]
+        $AzureConfig
+    )
+
+    if ($AzureConfig.resourceGroup) {
+        return $AzureConfig.resourceGroup
+    }
+    if ($AzureConfig.baseName) {
+        return "$($AzureConfig.baseName)-rg"
+    }
+    Write-Log -Level ERROR -Message "Cannot determine resource group. Set resourceGroup or baseName in .azure/catan-azure.json" -TraceLevel ERROR
+    exit 1
 }
 
 
@@ -969,5 +1013,7 @@ Export-ModuleMember -Function @(
     'Get-PowerShellVersion',
     'Invoke-BackgroundInstaller',
     'Get-AzureConfig',
-    'Get-AzureGameServiceUrl'
+    'Get-AzureGameServiceUrl',
+    'Get-AzureGameServiceAppName',
+    'Get-AzureResourceGroup'
 )
