@@ -238,6 +238,20 @@ export default function SplashOverlay({ health, onRetry, onDismiss }: SplashOver
           ))}
         </div>
 
+        {/* Step log — shows exactly what's happening for troubleshooting */}
+        {health.steps.length > 0 && (
+          <div className="bg-gray-900/80 rounded-lg border border-gray-700 px-4 py-3 mb-4">
+            <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Activity Log</p>
+            <div className="font-mono text-[11px] text-gray-400 space-y-0.5 max-h-40 overflow-y-auto">
+              {health.steps.map((step, i) => (
+                <div key={i} className={step.startsWith('Error') ? 'text-red-400' : step.startsWith('All checks') ? 'text-green-400' : ''}>
+                  {step}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Phase 3: Azure doctor results (when running) */}
         {(phase === 'azure-doctor' || (phase === 'done' && azureChecks.length > 0)) && (
           <div className="bg-gray-900/80 rounded-lg border border-gray-700 px-4 py-3 mb-4">

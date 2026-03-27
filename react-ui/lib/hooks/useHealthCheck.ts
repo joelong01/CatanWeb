@@ -49,8 +49,12 @@ export interface HealthResult {
   data?: HealthResponse;
   /** Human-readable error message (when status is 'failed' or 'retrying'). */
   error?: string;
+  /** Step-by-step log of what's happening (for troubleshooting display). */
+  steps: string[];
   /** Number of retry attempts so far. */
   retryCount: number;
+  /** The URL being checked. */
+  healthUrl: string;
   /** Call to manually re-run the health check. */
   retry: () => void;
 }
@@ -78,7 +82,15 @@ export function useHealthCheck(): HealthResult {
   const [status, setStatus] = useState<HealthStatus>('checking');
   const [data, setData] = useState<HealthResponse | undefined>();
   const [error, setError] = useState<string | undefined>();
+  const [steps, setSteps] = useState<string[]>([]);
   const [retryCount, setRetryCount] = useState(0);
+
+  const healthUrl = `${serviceConfig.serviceUrl}/health`;
+
+  /** Append a step to the log (visible in the troubleshooting UI). */
+  const addStep = (step: string): void => {
+    setSteps((prev) => [...prev, step]);
+  };
 
   // Use ref to track whether the component is still mounted (avoid state
   // updates after unmount during async retries).
@@ -92,37 +104,50 @@ export function useHealthCheck(): HealthResult {
     setStatus('checking');
     setError(undefined);
     setRetryCount(0);
+    setSteps([`URL: ${healthUrl}`]);
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (!mountedRef.current) return;
 
       try {
+        addStep(`Attempt ${attempt + 1}: fetching ${healthUrl}...`);
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
 
-        const response = await fetch(`${serviceConfig.serviceUrl}/health`, {
+        const response = await fetch(healthUrl, {
           signal: controller.signal,
         });
         clearTimeout(timer);
 
+        addStep(`Response: HTTP ${response.status}`);
+
         if (response.ok) {
+          addStep('Parsing JSON response...');
           const healthData: HealthResponse = await response.json();
 
           if (!mountedRef.current) return;
 
+          addStep(`Service status: ${healthData.status}`);
+          addStep(`Database connected: ${healthData.databaseDiagnostics?.connected ?? 'unknown'}`);
+
+          if (healthData.databaseDiagnostics?.connected) {
+            const db = healthData.databaseDiagnostics;
+            addStep(`Players: ${db.playerCount}, Games: ${db.gameCount}, Templates: ${db.templateCount}, Recordings: ${db.recordingCount}`);
+          }
+
           // Check if database is connected
           if (healthData.status === 'healthy' && healthData.databaseDiagnostics?.connected) {
+            addStep('All checks passed');
             setData(healthData);
             setStatus('healthy');
             return;
           }
 
           // Service is up but database is degraded
+          const dbError = healthData.databaseDiagnostics?.error;
+          if (dbError) addStep(`Database error: ${dbError.substring(0, 150)}`);
           setData(healthData);
-          setError(
-            healthData.databaseDiagnostics?.error
-              ?? 'GameService is running but the database is not connected'
-          );
+          setError(dbError ?? 'GameService is running but the database is not connected');
           setStatus('failed');
           return;
         }
@@ -130,26 +155,31 @@ export function useHealthCheck(): HealthResult {
         // Non-OK response — retry if attempts remain
         if (attempt < MAX_RETRIES) {
           if (!mountedRef.current) return;
+          const msg = response.status === 503
+            ? 'GameService is starting up...'
+            : `GameService returned HTTP ${response.status}`;
+          addStep(`${msg} — retrying in ${RETRY_DELAYS[attempt] / 1000}s...`);
           setStatus('retrying');
           setRetryCount(attempt + 1);
-          setError(
-            response.status === 503
-              ? 'GameService is starting up...'
-              : `GameService returned HTTP ${response.status}`
-          );
+          setError(msg);
           await sleep(RETRY_DELAYS[attempt]);
           continue;
         }
 
         // All retries exhausted
         if (!mountedRef.current) return;
+        addStep(`Failed after ${MAX_RETRIES} retries`);
         setError(`GameService returned HTTP ${response.status} after ${MAX_RETRIES} retries`);
         setStatus('failed');
         return;
       } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        addStep(`Error: ${errMsg}`);
+
         // Network error or timeout
         if (attempt < MAX_RETRIES) {
           if (!mountedRef.current) return;
+          addStep(`Retrying in ${RETRY_DELAYS[attempt] / 1000}s...`);
           setStatus('retrying');
           setRetryCount(attempt + 1);
           setError('GameService is unreachable — retrying...');
@@ -159,6 +189,7 @@ export function useHealthCheck(): HealthResult {
 
         // All retries exhausted
         if (!mountedRef.current) return;
+        addStep(`Failed after ${MAX_RETRIES} retries`);
         setError('GameService is unreachable. Check that the service is running.');
         setStatus('failed');
         return;
@@ -171,7 +202,7 @@ export function useHealthCheck(): HealthResult {
     runCheck();
   }, [runCheck]);
 
-  return { status, data, error, retryCount, retry: runCheck };
+  return { status, data, error, steps, retryCount, healthUrl, retry: runCheck };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
