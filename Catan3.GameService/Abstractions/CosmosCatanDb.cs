@@ -77,6 +77,17 @@ public sealed class CosmosCatanDb : ICatanDb
 
     // ── Players ───────────────────────────────────────────────────────────────
 
+    public async Task<int> CountPlayersAsync()
+    {
+        var iter = _players.GetItemQueryIterator<int>("SELECT VALUE COUNT(1) FROM c");
+        if (iter.HasMoreResults)
+        {
+            var page = await iter.ReadNextAsync();
+            return page.FirstOrDefault();
+        }
+        return 0;
+    }
+
     public async Task<IReadOnlyList<PlayerProfile>> LoadPlayersAsync()
     {
         var results = new List<PlayerProfile>();
@@ -297,6 +308,17 @@ public sealed class CosmosCatanDb : ICatanDb
 
     public async Task DeleteTemplateAsync(string id) => await TryDeleteAsync(_templates, id);
 
+    public async Task<int> CountTemplatesAsync()
+    {
+        var iter = _templates.GetItemQueryIterator<int>("SELECT VALUE COUNT(1) FROM c");
+        if (iter.HasMoreResults)
+        {
+            var page = await iter.ReadNextAsync();
+            return page.FirstOrDefault();
+        }
+        return 0;
+    }
+
     // ── Recordings ────────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<GameServiceProxy.RecordingSummary>> ListRecordingsAsync()
@@ -356,6 +378,17 @@ public sealed class CosmosCatanDb : ICatanDb
                 ids.Add(doc.Id);
         foreach (var id in ids)
             await TryDeleteAsync(_recordings, id);
+    }
+
+    public async Task<int> CountRecordingsAsync()
+    {
+        var iter = _recordings.GetItemQueryIterator<int>("SELECT VALUE COUNT(1) FROM c");
+        if (iter.HasMoreResults)
+        {
+            var page = await iter.ReadNextAsync();
+            return page.FirstOrDefault();
+        }
+        return 0;
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

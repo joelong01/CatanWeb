@@ -17,6 +17,7 @@ public interface ICatanDb
     Task<IReadOnlyList<PlayerProfile>> LoadPlayersAsync();
     Task<PlayerProfile?> LoadPlayerAsync(string id);
     Task SavePlayerAsync(PlayerProfile player);
+    Task<int> CountPlayersAsync();
 
     /// <summary>
     /// Deletes a player and all associated data including image data.
@@ -47,6 +48,7 @@ public interface ICatanDb
         string id, string name, string category,
         bool isSystemTemplate, GameTemplateData data);
     Task DeleteTemplateAsync(string id);
+    Task<int> CountTemplatesAsync();
 
     // ── Recordings ────────────────────────────────────────────────────────────
     Task<IReadOnlyList<GameServiceProxy.RecordingSummary>> ListRecordingsAsync();
@@ -55,4 +57,5 @@ public interface ICatanDb
     Task SaveRecordingAsync(GameServiceProxy.RecordingSummary summary, string data);
     Task DeleteRecordingAsync(string id);
     Task DeleteRecordingsByGameIdAsync(string gameId);
+    Task<int> CountRecordingsAsync();
 }
