@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { execSync } from 'child_process';
 
 /**
  * Load minimal Azure config from .azure/catan-azure.json.
@@ -36,7 +37,6 @@ const azureEnv = loadAzureConfig();
  * These are baked in at build time — not runtime-discoverable.
  */
 function getBuildVersionEnv(): Record<string, string> {
-  const { execSync } = require('child_process');
   const env: Record<string, string> = {};
 
   try {
