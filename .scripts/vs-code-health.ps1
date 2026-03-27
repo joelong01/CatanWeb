@@ -569,16 +569,16 @@ function Show-HealthCheckOutput {
             Write-Log -Level INFO -Message $issue.Message -NoLabel
 
             if ($issue.Reason) {
-                Write-Log -Level DEBUG -Message "    Reason: $($issue.Reason)" -NoLabel
+                Write-Log -Level INFO -Message "    Reason: $($issue.Reason)" -NoLabel
             }
 
             if (-not $Fix -and $issue.Fix) {
                 if ($issue.CanAutoFix) {
-                    Write-Log -Level DEBUG -Message "    Fix: " -NoLabel -NoNewline
+                    Write-Log -Level INFO -Message "    Fix: " -NoLabel -NoNewline
                     Write-Log -Level INFO -Message $issue.Fix -NoLabel -ForegroundColor Cyan
-                    Write-Log -Level DEBUG -Message "    (or run with -Fix to auto-fix)" -NoLabel
+                    Write-Log -Level INFO -Message "    (or run with -Fix to auto-fix)" -NoLabel
                 } else {
-                    Write-Log -Level DEBUG -Message "    Fix: " -NoLabel -NoNewline
+                    Write-Log -Level INFO -Message "    Fix: " -NoLabel -NoNewline
                     Write-Log -Level INFO -Message $issue.Fix -NoLabel -ForegroundColor Cyan
                 }
             }

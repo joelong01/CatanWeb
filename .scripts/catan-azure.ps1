@@ -3167,20 +3167,20 @@ function Show-DoctorResult {
         Write-Log -Level INFO -Message ("  Git Commit").PadRight($col1) -NoLabel -NoNewline
         if ($Result.currentCommit -eq $Result.deployedCommit -and $Result.deployedCommit) {
             Write-Log -Level INFO -Message "MATCH".PadRight($col2) -NoLabel -NoNewline -ForegroundColor Green
-            Write-Log -Level DEBUG -Message "$($Result.currentCommit)" -NoLabel
+            Write-Log -Level INFO -Message "$($Result.currentCommit)" -NoLabel
         } elseif ($Result.deployedCommit -and $Result.deployedCommit -ne "local") {
             if ($Result.needsDeploy) {
                 # Commits differ and deployable files changed — action required
                 Write-Log -Level WARN -Message "MISMATCH".PadRight($col2) -NoNewline
-                Write-Log -Level DEBUG -Message "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)" -NoLabel
+                Write-Log -Level INFO -Message "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)" -NoLabel
             } else {
                 # Commits differ but no deployable files changed — informational only
                 Write-Log -Level INFO -Message "OK".PadRight($col2) -NoLabel -NoNewline -ForegroundColor Green
-                Write-Log -Level DEBUG -Message "deployed: $($Result.deployedCommit) (current: $($Result.currentCommit), no deployable changes)" -NoLabel
+                Write-Log -Level INFO -Message "deployed: $($Result.deployedCommit) (current: $($Result.currentCommit), no deployable changes)" -NoLabel
             }
         } else {
             Write-Log -Level WARN -Message "NONE".PadRight($col2) -NoNewline
-            Write-Log -Level DEBUG -Message "not yet deployed" -NoLabel
+            Write-Log -Level INFO -Message "not yet deployed" -NoLabel
         }
     }
 
@@ -3188,7 +3188,7 @@ function Show-DoctorResult {
     if ($Result.deployedBuildTime -and $Result.deployedBuildTime -ne "unknown") {
         Write-Log -Level INFO -Message ("  Build Time").PadRight($col1) -NoLabel -NoNewline
         Write-Log -Level INFO -Message "DEPLOYED".PadRight($col2) -NoLabel -NoNewline -ForegroundColor Green
-        Write-Log -Level DEBUG -Message "$($Result.deployedBuildTime)" -NoLabel
+        Write-Log -Level INFO -Message "$($Result.deployedBuildTime)" -NoLabel
     }
 
     # Show database status if available
@@ -3230,18 +3230,18 @@ function Show-DoctorResult {
     Write-Log -Level INFO -Message "Status: " -NoLabel -NoNewline
     if ($Result.needsInstall) {
         Write-Log -Level ERROR -Message "NEEDS INSTALL"
-        Write-Log -Level DEBUG -Message "  Recommended: " -NoLabel -NoNewline
+        Write-Log -Level INFO -Message "  Recommended: " -NoLabel -NoNewline
         Write-Log -Level INFO -Message "$script:CmdHintPrefix $($Result.resource) install" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.needsFix) {
         Write-Log -Level WARN -Message "NEEDS FIX"
-        Write-Log -Level DEBUG -Message "  Recommended: " -NoLabel -NoNewline
+        Write-Log -Level INFO -Message "  Recommended: " -NoLabel -NoNewline
         Write-Log -Level INFO -Message "$script:CmdHintPrefix $($Result.resource) fix" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.needsDeploy) {
         Write-Log -Level WARN -Message "NEEDS DEPLOY"
         if ($Result.deployReason) {
-            Write-Log -Level DEBUG -Message "  Reason: $($Result.deployReason)" -NoLabel
+            Write-Log -Level INFO -Message "  Reason: $($Result.deployReason)" -NoLabel
         }
-        Write-Log -Level DEBUG -Message "  Recommended: " -NoLabel -NoNewline
+        Write-Log -Level INFO -Message "  Recommended: " -NoLabel -NoNewline
         Write-Log -Level INFO -Message "$script:CmdHintPrefix $($Result.resource) deploy" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.healthy -and $Result.coldStart) {
         Write-Log -Level INFO -Message "HEALTHY " -NoLabel -NoNewline -ForegroundColor Green
@@ -3256,7 +3256,7 @@ function Show-DoctorResult {
     if ($Result.needsStagingDeploy) {
         Write-Log -Level INFO -Message "Staging: " -NoLabel -NoNewline
         Write-Log -Level WARN -Message "NEEDS DEPLOY"
-        Write-Log -Level DEBUG -Message "  Recommended: " -NoLabel -NoNewline
+        Write-Log -Level INFO -Message "  Recommended: " -NoLabel -NoNewline
         Write-Log -Level INFO -Message "$script:CmdHintPrefix ui deploy-staging" -NoLabel -ForegroundColor Cyan
     }
 
@@ -3348,13 +3348,13 @@ function Test-GameServicePerformance {
         # Performance assessment
         if ($first -gt 10) {
             Write-Log -Level WARN -Message "⚠️  Cold start is very slow (>10s). Check:"
-            Write-Log -Level DEBUG -Message "   - App Service Plan SKU (needs B1+ for Always On)" -NoLabel
-            Write-Log -Level DEBUG -Message "   - Always On setting (prevents cold starts)" -NoLabel
-            Write-Log -Level DEBUG -Message "   - Azure SQL auto-pause (may need to wake up)" -NoLabel
+            Write-Log -Level INFO -Message "   - App Service Plan SKU (needs B1+ for Always On)" -NoLabel
+            Write-Log -Level INFO -Message "   - Always On setting (prevents cold starts)" -NoLabel
+            Write-Log -Level INFO -Message "   - Azure SQL auto-pause (may need to wake up)" -NoLabel
         }
         elseif ($first -gt 5) {
             Write-Log -Level WARN -Message "⚠️  Cold start is slow (>5s). Consider:"
-            Write-Log -Level DEBUG -Message "   - Enabling Always On if not already enabled" -NoLabel
+            Write-Log -Level INFO -Message "   - Enabling Always On if not already enabled" -NoLabel
         }
         else {
             Write-Log -Level INFO -Message "✅ Cold start is acceptable (<5s)" -NoLabel -ForegroundColor Green
@@ -3362,8 +3362,8 @@ function Test-GameServicePerformance {
 
         if ($warmAvg -gt 2) {
             Write-Log -Level WARN -Message "⚠️  Warm requests are slow (>2s avg). Check:"
-            Write-Log -Level DEBUG -Message "   - Connection pooling in connection string" -NoLabel
-            Write-Log -Level DEBUG -Message "   - Azure SQL tier and capacity" -NoLabel
+            Write-Log -Level INFO -Message "   - Connection pooling in connection string" -NoLabel
+            Write-Log -Level INFO -Message "   - Azure SQL tier and capacity" -NoLabel
         }
         elseif ($warmAvg -gt 1) {
             Write-Log -Level WARN -Message "⚠️  Warm requests are a bit slow (>1s avg)"
@@ -3376,10 +3376,10 @@ function Test-GameServicePerformance {
         if ($times.Count -gt 2) {
             $variance = $max - $min
             if ($variance -gt 5) {
-                Write-Log -Level WARN -Message "⚠️  High variance detected ({0:N2}s). May indicate:" -f $variance
-                Write-Log -Level DEBUG -Message "   - Connection pool exhaustion" -NoLabel
-                Write-Log -Level DEBUG -Message "   - Network instability" -NoLabel
-                Write-Log -Level DEBUG -Message "   - Token refresh issues (Managed Identity)" -NoLabel
+                Write-Log -Level WARN -Message ("⚠️  High variance detected ({0:N2}s). May indicate:" -f $variance)
+                Write-Log -Level INFO -Message "   - Connection pool exhaustion" -NoLabel
+                Write-Log -Level INFO -Message "   - Network instability" -NoLabel
+                Write-Log -Level INFO -Message "   - Token refresh issues (Managed Identity)" -NoLabel
             }
         }
     }

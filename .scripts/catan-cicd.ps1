@@ -66,7 +66,7 @@ function Write-Step {
 
 function Write-Ok   { param([string]$Msg) Write-Log -Level INFO -Message "  [OK] $Msg" -NoLabel -ForegroundColor Green }
 function Write-Fail { param([string]$Msg) Write-Log -Level ERROR -Message "  [FAIL] $Msg" }
-function Write-Info { param([string]$Msg) Write-Log -Level DEBUG -Message "  [..] $Msg" -NoLabel }
+function Write-Info { param([string]$Msg) Write-Log -Level INFO -Message "  [..] $Msg" -NoLabel }
 
 function Invoke-Step {
     param([scriptblock]$Block, [string]$Label)

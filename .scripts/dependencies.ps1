@@ -287,7 +287,7 @@ function Show-DependencyTable {
     # Header
     $header = "{0,-$nameWidth} {1,-15} {2,-15}" -f "Component", "Status", "Version"
     Write-Log -Level INFO -Message $header -NoLabel -ForegroundColor White
-    Write-Log -Level DEBUG -Message ("-" * ($nameWidth + 32)) -NoLabel
+Write-Log -Level INFO -Message ("-" * ($nameWidth + 32)) -NoLabel
 
     foreach ($result in $Results) {
         $statusColor = switch ($result.Status) {
