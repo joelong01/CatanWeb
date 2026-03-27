@@ -13,7 +13,7 @@ Code reviews ensure:
 - **Early detection of bugs** - Identify logic errors, edge cases, and potential issues before they reach production
 - **Knowledge sharing** - Document decisions and patterns for future reference
 - **Security best practices** - No vulnerabilities or data exposure
-- **Thorough documentation** - All findings documented in `.code-reviews/` directory for tracking and follow-up
+- **Thorough documentation** - All findings posted as PR comments for tracking and iteration
 
 ## Review Checklist
 
@@ -185,90 +185,120 @@ Code reviews ensure:
 - [ ] No merge commits (rebase preferred)
 - [ ] Commits reference issues when applicable
 
-## Review Process
+## Review Process — PR-Centric Workflow
+
+Code reviews happen on **GitHub Pull Requests**. Findings are posted as PR comments,
+not separate files. The review cycle iterates until all findings are addressed.
+
+### Prerequisites: Issue and PR Hygiene
+
+Before a PR can be reviewed:
+
+- **Every PR must reference the GitHub issues it addresses** in the description
+  (e.g., `Closes #94`, `Fixes #95`). No orphan PRs.
+- **Every non-trivial code change should have a GitHub issue** created first.
+  The issue describes the problem; the PR describes the solution.
+- **PR description must include**: summary of changes, issues closed, and test plan.
 
 ### Phase 1: Context Gathering
 
-**Before reviewing code, understand the full context:**
+Before reviewing code, understand what the PR is trying to do:
 
-1. **Review Project Documentation**
-   - Read `.ai/project-summary.md` for current project state and architecture
-   - Check `.ai/ai-rules.md` for coding standards and conventions
-   - Review recent `.ai/sessions/*.md` files to understand recent changes
-   - Check `design_docs/` for architectural decisions
+1. **Read the PR description** — what issues does it close? What's the summary?
+2. **Read the linked GitHub issues** — understand the problem being solved
+3. **Get the diff** — use `gh pr diff <number>` or `git diff base..head` to see
+   all changes. This is what you're reviewing, not the entire codebase.
+4. **Identify high-risk files** — security-sensitive code, state management,
+   database changes, API contracts
 
-2. **Understand the Change Scope**
-   - Read PR description and linked issues (if applicable)
-   - Identify files changed and their purpose
-   - Understand the business logic being implemented
-   - Note any dependencies or integration points
+### Phase 2: Review the Diff
 
-3. **Identify Review Targets**
-   - Determine which files need thorough review
-   - Prioritize critical paths and complex logic
-   - Note files that integrate with existing systems
+Review the PR diff systematically. For each changed file:
 
-### Phase 2: Thorough Code Review
+1. **Read the full file** (not just the diff) — understand the context around
+   the changes. The diff shows what changed; the full file shows if it's correct.
+2. **Check the change against the issue** — does the code actually fix the
+   reported problem?
+3. **Look for**:
+   - Security issues (injection, auth bypass, credential exposure)
+   - Correctness bugs (logic errors, edge cases, off-by-one)
+   - Performance problems (N+1 queries, unnecessary allocations, blocking calls)
+   - Missing error handling (what happens when this fails?)
+   - Dead code or unnecessary changes (scope creep)
+4. **Verify against the codebase** — if the review claims something is missing
+   or wrong, READ the actual file first. Do not fabricate findings.
 
-**Review each target file systematically:**
+### Phase 3: Post Findings as PR Comments
 
-1. **Architecture and Design**
-   - Evaluate high-level structure and patterns
-   - Check for proper separation of concerns
-   - Verify follows established project patterns
-   - Compare with Desktop app implementation (for WebUI)
-   - Identify over-engineering or under-engineering
+Post each finding as a **separate comment** on the PR using `gh api`:
 
-2. **Implementation Details**
-   - Review logic correctness line-by-line
-   - Check edge cases and error handling
-   - Verify null/undefined safety
-   - Examine performance implications
-   - Look for code duplication or inconsistencies
+```bash
+gh api repos/{owner}/{repo}/issues/{pr}/comments -f body="## Finding title
 
-3. **Standards Compliance**
-   - Verify XML documentation on all public APIs
-   - Check naming conventions (PascalCase, camelCase, etc.)
-   - Ensure modern C# features used appropriately
-   - Validate CSS uses variables (not hardcoded colors)
-   - Confirm icons use Segoe MDL2 Assets (not emoji)
+**File:** path/to/file.ts:123
+**Severity:** Critical | Important | Suggestion
 
-4. **Testing and Verification**
-   - Check test coverage and quality
-   - Verify tests follow ReplayTest pattern
-   - Ensure tests are in correct directory structure
-   - Build and run tests if possible
-   - Test edge cases manually if needed
+Description of the issue...
 
-### Phase 3: Documentation
+**Fix:**
+\`\`\`typescript
+// suggested code
+\`\`\`
+"
+```
 
-**Document all findings in `.code-reviews/` directory:**
+**Finding format:**
 
-1. **Create Review Files**
-   - One file per reviewed source: `.code-reviews/<code review area>/<file-name>-cr-<ai>.md`
-   - Use consistent format (see Findings Format below)
-   - Include file path, review date, and reviewer
-   - Code review area is a placeholder for a logical name to place the code reviews.
+- **Title**: `## Code Review Finding N/M — SEVERITY: Short description`
+- **Severity levels**:
+  - **Critical** — must fix before merge (security, correctness, data loss)
+  - **Important** — should fix (performance, maintainability, error handling)
+  - **Suggestion** — consider for improvement (style, DRY, naming)
+- **Each finding must include**: file path with line number, description of the
+  problem, why it matters, and a concrete fix (code example preferred)
+- **Final comment**: Summary table of all findings with severity and action
 
-2. **Categorize Findings**
-   - **Critical:** Must be fixed (security, correctness, breaking changes)
-   - **Important:** Should be fixed (bugs, performance, maintainability)
-   - **Suggestion:** Consider for improvement (style, minor optimizations)
-   - **Question:** Clarification needed (intent, design decisions)
-   - **Praise:** Call out excellent solutions or clever implementations
+### Phase 4: Iterate Until Clean
 
-3. **Provide Actionable Feedback**
-   - Be specific about what needs to change
-   - Explain why the change is needed
-   - Provide examples or alternatives when possible
-   - Reference related Desktop code if applicable
-   - Link to relevant documentation or standards
+After findings are posted:
 
-4. **Cross-Reference Issues**
-   - Note redundant or duplicate code
-   - Identify inconsistencies across files
-   - Recommend which implementation to keep
-   - Document technical debt discovered
+1. **Author fixes the issues** and pushes new commits to the PR branch
+2. **Reviewer re-reads the changed files** to verify each fix
+3. **Reviewer responds to each finding** with either:
+   - "Fixed" — verified in code
+   - "Not fixed" — explain what's still wrong
+   - "Won't fix" — accepted with rationale
+4. **Repeat until all Critical and Important findings are resolved**
+5. **Merge** — only after all Critical issues are fixed and Important issues
+   are either fixed or explicitly accepted
+
+### Phase 5: Post-Merge — Close Issues
+
+After the PR is merged, close each referenced GitHub issue with a comment
+linking to the merge commit:
+
+```bash
+gh issue close <number> -c "Fixed in commit <sha> (PR #<pr-number>)"
+```
+
+This creates a traceable chain: **Issue → PR → Commit → Code**. Anyone
+looking at the issue can follow the links to see exactly what changed.
+
+If the PR only partially addresses an issue, add a comment instead of closing:
+
+```bash
+gh issue comment <number> -c "Partially addressed in PR #<pr-number> (commit <sha>). Remaining: <what's left>"
+```
+
+### What NOT to Do
+
+- **Do not create `.code-reviews/` files** — findings go on the PR as comments
+- **Do not fabricate findings** — if you haven't read the file, don't claim
+  something is wrong. "No findings" is better than false findings.
+- **Do not review code you haven't read** — use the Read tool on every file
+  you comment on
+- **Do not nitpick style** in areas the PR didn't touch — review the diff,
+  not the entire codebase
 
 ### For Code Authors
 
@@ -413,55 +443,54 @@ Before reviewing code, read these files using the Read tool:
 - Related `design_docs/` - Understand design decisions
 - Desktop implementation (for WebUI) - Compare patterns
 
-#### 4. Follow the Three-Phase Process
+#### 4. Follow the PR Review Workflow
 
-##### Phase 1: Context Gathering (15-20% of time)
+##### Step 1: Get the PR diff and linked issues
 
-- Read all context documents
-- Understand the change scope and purpose
-- Identify files to review and their relationships
-- Note specific concerns or areas of focus
+```bash
+gh pr view <number> --json title,body,files
+gh pr diff <number>
+gh issue view <issue-number>
+```
 
-##### Phase 2: Thorough Review (60-70% of time)
+##### Step 2: Read each changed file in full
 
-- Read each target file completely
-- Analyze architecture, logic, standards compliance
-- Check for bugs, performance issues, security concerns
-- Compare with Desktop implementation (for WebUI)
-- Document findings as you go
+For every file in the diff, use the Read tool to read the **entire file**, not
+just the changed lines. The diff shows what changed; the full file tells you if
+it's correct in context.
 
-##### Phase 3: Documentation (15-20% of time)
+##### Step 3: Post findings as PR comments
 
-- Create one `.code-reviews/<file>-cr-<ai>.md` per reviewed file
-- Use the standard template (see Review File Template section)
-- Organize findings by severity
-- Provide actionable recommendations with examples
-- Create summary report for multi-file reviews
+Use `gh api` to post each finding as a comment on the PR. Number them
+sequentially (Finding 1/N, 2/N, etc.). Include a final summary comment with
+a table of all findings.
+
+##### Step 4: Verify fixes
+
+When the author pushes fixes, re-read the changed files and respond to each
+finding confirming it's resolved or explaining what's still wrong.
 
 #### 5. Quality Checkpoints
 
-Before finishing a review, verify:
+Before posting findings, verify:
 
-- [ ] Read entire file(s), not just skimmed
-- [ ] Checked ALL public APIs for XML documentation
-- [ ] Verified ALL magic numbers have named constants
-- [ ] Reviewed ALL error handling paths
-- [ ] Cross-referenced with Desktop implementation (WebUI)
-- [ ] Documented ALL findings in standard format
-- [ ] Provided specific file:line references
-- [ ] Included code examples for recommendations
-- [ ] Explained WHY changes are needed
-- [ ] Created actionable follow-up tasks
+- [ ] Read every changed file in full (not just the diff)
+- [ ] Every finding references a specific file:line
+- [ ] Every finding has a concrete fix (code example preferred)
+- [ ] Every finding explains WHY the change matters
+- [ ] No fabricated findings — you read the code before commenting
+- [ ] Security implications checked (injection, auth, credential exposure)
+- [ ] Error handling paths reviewed
+- [ ] Final summary comment with severity table posted
 
 #### 6. Output Format
 
-Generate review files in this exact format:
+Post each finding as a PR comment in this format:
 
 ```markdown
-# Code Review: <FileName>
+## Code Review Finding N/M — SEVERITY: Short Title
 
-**File:** `<full/path/to/file.cs>`
-**Reviewed:** <YYYY-MM-DD>
+**File:** `path/to/file.ts:123`
 **Reviewer:** <AI Model Name>
 
 ## Summary
@@ -510,11 +539,10 @@ Generate review files in this exact format:
    - Add context or clarification to findings
    - Consolidate duplicate or related issues
 
-4. **Document in Standard Format**
-   - Save AI findings to `.code-reviews/<file>-cr-<ai>.md`
-   - Organize by severity (Critical → Praise)
-   - Include file location references (file:line)
-   - Add follow-up action items
+4. **Review the PR Comments**
+   - Verify AI findings are accurate (check the actual code)
+   - Filter out false positives or overly pedantic issues
+   - Respond to each finding: fix, won't fix, or needs discussion
 
 ## Resources
 
@@ -522,7 +550,7 @@ Generate review files in this exact format:
 
 - **Coding Standards**: `.ai/ai-rules.md` - Comprehensive coding standards and conventions
 - **Project State**: `.ai/project-summary.md` - Current architecture and status
-- **Code Reviews**: `.code-reviews/` - Past code review findings (gitignored)
+- **Code Reviews**: Posted as PR comments on GitHub (searchable via PR history)
 - **Design Docs**: `design_docs/` - Architecture decisions and rationale
 - **Session History**: `.ai/sessions/` - Past work context and decisions
 
@@ -539,181 +567,50 @@ Generate review files in this exact format:
 - **Build Script**: `build.ps1` - Build and test automation
 - **WebUI Script**: `webui.ps1` - Development workflow automation
 
-## Review Documentation Format
+## PR Comment Format Reference
 
-### File Structure
-
-All code review findings must be documented in the `.code-reviews/` directory (note the leading dot - this directory is gitignored):
-
-```text
-.code-reviews/
-├── BoardSvgGenerator-cr-claude.md      # Claude review
-├── BoardSvgGenerator-cr-cp.md          # GitHub Copilot review
-├── BoardSvgGenerator-cr-cline.md       # Cline review
-├── BoardSvgGenerator-cr-gpt.md         # ChatGPT/GPT review
-├── portrait-mode-cr-claude.md          # Feature review by Claude
-├── portrait-cr-recco-claude.md         # Recommendations file
-└── ...
-```
-
-### File Naming Convention
-
-Review files must follow this naming pattern:
-
-```text
-<subject>-cr-<ai-suffix>.md
-```
-
-**Components:**
-
-- `<subject>`: The file name (without extension) or feature being reviewed
-- `-cr-`: Code review marker (always present)
-- `<ai-suffix>`: Identifier for the AI that performed the review
-
-**AI Suffixes:**
-
-| AI Tool | Suffix | Example |
-|---------|--------|---------|
-| Claude (Anthropic) | `-claude` | `Game.razor-cr-claude.md` |
-| GitHub Copilot | `-cp` | `Game.razor-cr-cp.md` |
-| Cline | `-cline` | `Game.razor-cr-cline.md` |
-| ChatGPT/GPT | `-gpt` | `Game.razor-cr-gpt.md` |
-| Gemini | `-gemini` | `Game.razor-cr-gemini.md` |
-| Human reviewer | `-<initials>` | `Game.razor-cr-jl.md` |
-
-**Recommendation Files:**
-
-For prioritized fix recommendations, use `-recco-` before the AI suffix:
-
-```text
-<subject>-cr-recco-<ai-suffix>.md
-```
-
-Example: `portrait-cr-recco-claude.md`
-
-### Review File Template
-
-Each `.code-reviews/<file-name>-cr-<ai>.md` should follow this structure:
+### Individual Finding
 
 ```markdown
-# Code Review: <FileName>
+## Code Review Finding 1/N — CRITICAL: Short Title
 
-**File:** `<full/path/to/file.cs>`
-**Reviewed:** <YYYY-MM-DD>
-**Reviewer:** <Human/AI name>
+**File:** `path/to/file.ts:123`
 
-## Summary
+Description of the problem and why it matters.
 
-[2-3 sentence overview of file purpose and review scope]
+**Fix:**
 
-## Critical Issues
+\`\`\`typescript
+// suggested fix code
+\`\`\`
 
-### 1. [Issue Title]
-**Location:** `file.cs:123`
-**Severity:** Critical
-
-[Detailed description of the issue]
-
-**Recommendation:**
-[Specific fix or change needed]
-
-**Example:**
-```csharp
-// Current (problematic)
-public void DoSomething() { ... }
-
-// Recommended
-public async Task DoSomethingAsync() { ... }
+**Severity:** Critical — must fix before merge.
 ```
 
-## Important Issues
+### Summary Comment (posted last)
 
-[Same format as Critical]
+```markdown
+## Code Review Summary
 
-## Suggestions
+| # | Finding | Severity | Action |
+|---|---------|----------|--------|
+| 1 | Command injection in execSync | Critical | **FIX** |
+| 2 | Missing error handling | Important | **FIX** |
+| 3 | Variable naming | Suggestion | Consider |
+| 4 | Clean DRY pattern | Praise | — |
 
-[Same format as Critical, but lower priority]
+All N fixes will be in the next commit.
+```
 
-## Questions
+### Response Comment (after fixes)
 
-### 1. [Question about design/intent]
+```markdown
+### Re: Finding 1/N — Command Injection
 
-**Location:** `file.cs:456`
+**Action: FIX** ✅
 
-[What needs clarification]
-
-## Praise
-
-### 1. [Good solution]
-
-**Location:** `file.cs:789`
-
-[What was done well and why]
-
-## Desktop App Comparison
-
-[For WebUI files: Compare with Desktop XAML implementation]
-
-- **Desktop:** `DesktopApp/Views/BoardView.xaml:45`
-- **WebUI:** `WebUI/Services/BoardSvgGenerator.cs:123`
-- **Divergence:** [Explain difference and justify if acceptable]
-
-## Follow-Up Actions
-
-- [ ] Fix critical issue #1
-- [ ] Address important issue #2
-- [ ] Consider suggestion #3
-- [ ] Clarify question #4
-
-```text
-on 
-
-### Key Requirements
-
-1. **One File Per Review**
-   - Each source file gets its own review document
-   - Keep reviews focused and organized
-   - Update review files as issues are resolved
-
-2. **Severity Ordering**
-   - Always order sections: Critical → Important → Suggestion → Question → Praise
-   - Within each section, order by file location (top to bottom)
-   - Use file:line references for all findings
-
-3. **Actionable Feedback**
-   - Every finding must have a clear recommendation
-   - Provide code examples when possible
-   - Explain why the change is needed
-   - Reference standards or patterns
-
-4. **Cross-References**
-   - Link to related Desktop code for WebUI reviews
-   - Reference `.ai/ai-rules.md` for standards violations
-   - Link to `design_docs/` for architecture decisions
-   - Note duplicate code across files
-
-5. **Completeness**
-   - Review ALL public APIs for XML documentation
-   - Check ALL magic numbers for constants
-   - Verify ALL error paths are handled
-   - Test ALL edge cases are considered
-   - Ensure ALL assumptions are documented
-
-### Verification Checklist
-
-Before completing a review, verify:
-
-- [ ] Cross-checked constants with Desktop XAML (for WebUI)
-- [ ] All public APIs have XML documentation
-- [ ] Modern C# patterns used (async/await, records, etc.)
-- [ ] Performance implications noted (even if small scale)
-- [ ] Security concerns addressed
-- [ ] Test coverage evaluated
-- [ ] Error handling reviewed
-- [ ] Code duplication identified
-- [ ] Naming conventions verified
-- [ ] CSS uses variables (not hardcoded colors)
-- [ ] Icons use Segoe MDL2 Assets (not emoji)
+Description of what was fixed and how. Reference the commit if helpful.
+```
 
 ## Summary Report
 
