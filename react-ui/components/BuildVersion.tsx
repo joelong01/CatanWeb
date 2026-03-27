@@ -16,14 +16,14 @@ import React from 'react';
 
 /**
  * Formats the build version string from environment variables.
- * Returns null if no build info is available.
+ * Always returns something — "dev" if no build info is available.
  */
-function getBuildVersion(): string | null {
+function getBuildVersion(): string {
   const branch = process.env.NEXT_PUBLIC_BUILD_BRANCH;
   const time = process.env.NEXT_PUBLIC_BUILD_TIME;
   const commit = process.env.NEXT_PUBLIC_BUILD_COMMIT;
 
-  if (!commit || commit === 'unknown') return null;
+  if (!commit || commit === 'unknown') return 'dev';
 
   const parts: string[] = [];
   if (branch && branch !== 'unknown') parts.push(branch);
@@ -37,13 +37,12 @@ function getBuildVersion(): string | null {
  * Renders a subtle version string in the bottom-right corner of the viewport.
  * Fixed position, low opacity, small text — visible but not distracting.
  */
-export default function BuildVersion(): React.ReactElement | null {
+export default function BuildVersion(): React.ReactElement {
   const version = getBuildVersion();
-  if (!version) return null;
 
   return (
     <div
-      className="fixed bottom-1 right-2 text-[10px] text-gray-600 font-mono opacity-50 hover:opacity-100 transition-opacity select-all z-40"
+      className="fixed bottom-2 right-2 text-sm text-yellow-400 font-mono bg-black/80 px-2 py-1 rounded select-all z-[9999] pointer-events-auto"
       title={`Build: ${version}`}
     >
       {version}
