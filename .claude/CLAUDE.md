@@ -180,7 +180,7 @@ Use typed messages, not generic string commands:
 - **.NET 9.0** (pinned in `global.json`)
 - **Next.js / React** for frontend UI
 - **ASP.NET Core** with SignalR
-- **SQLite** via Entity Framework Core
+- **CosmosDB** for NoSQL
 - **SVG** for dynamic board rendering
 - **xunit** for testing
 

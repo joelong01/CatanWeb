@@ -51,6 +51,7 @@ param(
 
     [Parameter()]
     [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+    [Alias("LogLevel")]
     [string]$TraceLevel = "INFO",
 
     [Parameter()]
@@ -102,6 +103,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Import shared utility module
+Import-Module "$PSScriptRoot/.scripts/utility-scripts.psm1" -Force
+
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 # Platform detection (use built-in automatic variables in PS Core, fallback for PS 5.1)
 if (-not (Test-Path variable:IsMacOS)) { $script:IsMacOS = $false }
 if (-not (Test-Path variable:IsLinux)) { $script:IsLinux = $false }
@@ -109,8 +115,8 @@ if (-not (Test-Path variable:IsWindows)) { $script:IsWindows = $true }
 
 # Check for unknown arguments (typos, etc.)
 if ($RemainingArgs) {
-    Write-Host "Unknown argument(s): $($RemainingArgs -join ', ')" -ForegroundColor Red
-    Write-Host ""
+    Write-Log -Level ERROR -Message "Unknown argument(s): $($RemainingArgs -join ', ')" -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
     $Verb = "help"
 }
 
@@ -118,7 +124,7 @@ $GameServicePort = 8080
 $ReactUIPort = 3000
 $GameServiceUrl = "http://localhost:$GameServicePort"
 $ReactUIUrl = "http://localhost:$ReactUIPort"
-# SQLite removed — all database operations use CosmosDB via .scripts/database.ps1
+# All database operations use CosmosDB via .scripts/database.ps1
 $PidFile = Join-Path $PSScriptRoot ".webui-pids.json"
 
 function Test-PortInUse {
@@ -211,7 +217,7 @@ function Get-SavedPids {
 function Start-GameService {
     param([switch]$NetworkBinding)
 
-    Write-Host "Starting GameService..." -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "Starting GameService..." -NoLabel -ForegroundColor Cyan
 
     $gameServicePath = Join-Path $PSScriptRoot "Catan3.GameService"
 
@@ -233,19 +239,19 @@ function Start-GameService {
         }
     }
 
-    Write-Host "Waiting for GameService..." -ForegroundColor Yellow
+    Write-Log -Level WARN -Message "Waiting for GameService..." -NoLabel
     Wait-ForService -Url "$GameServiceUrl/health" -TimeoutSeconds 30 | Out-Null
-    Write-Host "GameService running at $GameServiceUrl" -ForegroundColor Green
+    Write-Log -Level INFO -Message "GameService running at $GameServiceUrl" -NoLabel -ForegroundColor Green
 }
 
 function Start-ReactUI {
-    Write-Host "Starting React UI..." -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "Starting React UI..." -NoLabel -ForegroundColor Cyan
 
     $reactUIPath = Join-Path $PSScriptRoot "react-ui"
 
     # Check if react-ui directory exists
     if (-not (Test-Path $reactUIPath)) {
-        Write-Host "React UI directory not found at $reactUIPath" -ForegroundColor Red
+        Write-Log -Level ERROR -Message "React UI directory not found at $reactUIPath" -NoLabel
         return
     }
 
@@ -255,13 +261,13 @@ function Start-ReactUI {
     $nextBinPath = Join-Path $reactUIPath "node_modules" ".bin" "next"
     $needsInstall = $false
     if (-not (Test-Path $nodeModulesPath)) {
-        Write-Host "node_modules not found. Running npm ci..." -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "node_modules not found. Running npm ci..." -NoLabel
         $needsInstall = $true
     } elseif (-not (Test-Path $nextBinPath)) {
-        Write-Host "next binary missing from node_modules. Running npm ci..." -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "next binary missing from node_modules. Running npm ci..." -NoLabel
         $needsInstall = $true
     } elseif ((Get-Item $packageJsonPath).LastWriteTime -gt (Get-Item $nodeModulesPath).LastWriteTime) {
-        Write-Host "package.json is newer than node_modules. Running npm ci..." -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "package.json is newer than node_modules. Running npm ci..." -NoLabel
         $needsInstall = $true
     }
     if ($needsInstall) {
@@ -269,7 +275,7 @@ function Start-ReactUI {
         try {
             & npm ci
             if ($LASTEXITCODE -ne 0) {
-                Write-Host "npm ci failed!" -ForegroundColor Red
+                Write-Log -Level ERROR -Message "npm ci failed!" -NoLabel
                 return
             }
         } finally {
@@ -286,16 +292,16 @@ function Start-ReactUI {
         & osascript -e "tell application `"Terminal`" to do script `"$script`""
     }
 
-    Write-Host "Waiting for React UI..." -ForegroundColor Yellow
+    Write-Log -Level WARN -Message "Waiting for React UI..." -NoLabel
     Wait-ForService -Url $ReactUIUrl -TimeoutSeconds 30 | Out-Null
-    Write-Host "React UI running at $ReactUIUrl" -ForegroundColor Green
+    Write-Log -Level INFO -Message "React UI running at $ReactUIUrl" -NoLabel -ForegroundColor Green
 
     # Open browser to React UI
     Start-Process $ReactUIUrl
 }
 
 function Initialize-Database {
-    Write-Host "Checking Cosmos emulator..." -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "Checking Cosmos emulator..." -NoLabel -ForegroundColor Cyan
     $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
     & pwsh $dbScript install
     return ($LASTEXITCODE -eq 0)
@@ -324,7 +330,7 @@ function Stop-ChildProcesses {
 }
 
 function Stop-Services {
-    Write-Host "Stopping services..." -ForegroundColor Yellow
+    Write-Log -Level WARN -Message "Stopping services..." -NoLabel
 
     $killedCount = 0
 
@@ -342,7 +348,7 @@ function Stop-Services {
                     if ($processId -and $processId -ne 0) {
                         try {
                             Stop-Process -Id $processId -Force -ErrorAction Stop
-                            Write-Host "  Killed process $processId (port $port)" -ForegroundColor Gray
+                            Write-Log -Level DEBUG -Message "  Killed process $processId (port $port)" -NoLabel
                             $killedCount++
                         } catch {
                             # Process may have already exited
@@ -353,7 +359,7 @@ function Stop-Services {
         }
 
         if ($killedCount -eq 0) {
-            Write-Host "  No services running" -ForegroundColor Gray
+            Write-Log -Level DEBUG -Message "  No services running" -NoLabel
         }
     } else {
         # macOS: Kill processes and close Terminal windows
@@ -364,7 +370,7 @@ function Stop-Services {
             if ($procId) {
                 Stop-ChildProcesses -ParentPid $procId
                 Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
-                Write-Host "  Killed process $procId (GameService port)" -ForegroundColor Gray
+                Write-Log -Level DEBUG -Message "  Killed process $procId (GameService port)" -NoLabel
                 $killedCount++
             }
         }
@@ -374,7 +380,7 @@ function Stop-Services {
             if ($procId) {
                 Stop-ChildProcesses -ParentPid $procId
                 Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
-                Write-Host "  Killed process $procId (React UI port)" -ForegroundColor Gray
+                Write-Log -Level DEBUG -Message "  Killed process $procId (React UI port)" -NoLabel
                 $killedCount++
             }
         }
@@ -384,7 +390,7 @@ function Stop-Services {
         foreach ($procId in $procIds) {
             if ($procId) {
                 Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
-                Write-Host "  Killed process $procId" -ForegroundColor Gray
+                Write-Log -Level DEBUG -Message "  Killed process $procId" -NoLabel
                 $killedCount++
             }
         }
@@ -412,7 +418,7 @@ end tell
         & osascript -e $closeScript 2>$null
 
         if ($killedCount -gt 0) {
-            Write-Host "  Killed $killedCount process(es)" -ForegroundColor Gray
+            Write-Log -Level DEBUG -Message "  Killed $killedCount process(es)" -NoLabel
         }
     }
 
@@ -432,11 +438,11 @@ end tell
     $reactUIStillRunning = Test-PortInUse -Port $ReactUIPort
 
     if ($gameStillRunning -or $reactUIStillRunning) {
-        Write-Host "  Waiting for ports to be released..." -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "  Waiting for ports to be released..." -NoLabel
         Start-Sleep -Seconds 2
     }
 
-    Write-Host "Services stopped." -ForegroundColor Green
+    Write-Log -Level INFO -Message "Services stopped." -NoLabel -ForegroundColor Green
 }
 
 # Handle -Help switch (redirect to help verb)
@@ -446,19 +452,19 @@ if ($Help) {
 
 switch ($Verb) {
     "build" {
-        Write-Host "Building solution..." -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Building solution..." -NoLabel -ForegroundColor Cyan
         & "$PSScriptRoot\.scripts\build.ps1" -NoTest
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "Build failed!" -ForegroundColor Red
+            Write-Log -Level ERROR -Message "Build failed!" -NoLabel
             exit 1
         }
-        Write-Host "Build completed successfully!" -ForegroundColor Green
+        Write-Log -Level INFO -Message "Build completed successfully!" -NoLabel -ForegroundColor Green
 
         # Generate TypeScript types (if react-ui exists)
         $reactUiPath = Join-Path $PSScriptRoot "react-ui"
         if (Test-Path $reactUiPath) {
-            Write-Host ""
-            Write-Host "Generating TypeScript types..." -ForegroundColor Yellow
+            Write-Log -Level INFO -Message "" -NoLabel
+            Write-Log -Level WARN -Message "Generating TypeScript types..." -NoLabel
 
             # Generate model types from C# using TypeGenRunner (TypeGen 7.0.0)
             # Note: do NOT use --no-build here; TypeGenRunner is not in the solution so
@@ -466,70 +472,70 @@ switch ($Verb) {
             $typegenRunnerProject = Join-Path $PSScriptRoot "Catan3.Shared\TypeScript\TypeGenRunner\TypeGenRunner.csproj"
             $null = & dotnet run --project $typegenRunnerProject 2>&1
             if ($LASTEXITCODE -eq 0) {
-                Write-Host "  [OK] Model types updated (TypeGen 7.0.0)" -ForegroundColor Green
+                Write-Log -Level INFO -Message "  [OK] Model types updated (TypeGen 7.0.0)" -NoLabel -ForegroundColor Green
             } else {
-                Write-Host "  [WARN] TypeGen failed (non-blocking)" -ForegroundColor Yellow
+                Write-Log -Level WARN -Message "  [WARN] TypeGen failed (non-blocking)" -NoLabel
             }
         }
     }
 
     "test" {
-        Write-Host "Running tests..." -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Running tests..." -NoLabel -ForegroundColor Cyan
 
         # Stop services first to avoid file locking issues during build
         Stop-Services
 
         # Start CosmosDB Emulator and seed if not already running
-        Write-Host ""
-        Write-Host "Starting CosmosDB Emulator..." -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Starting CosmosDB Emulator..." -NoLabel
         $dbScript = Join-Path $PSScriptRoot ".scripts\database.ps1"
         & $dbScript start -Yes
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "  [FAIL] CosmosDB Emulator failed to start — CatanDb tests will fail" -ForegroundColor Red
+            Write-Log -Level ERROR -Message "  [FAIL] CosmosDB Emulator failed to start — CatanDb tests will fail" -NoLabel
             exit 1
         }
         & $dbScript seed
         # Write test params via database.ps1 (single source of emulator endpoint/key)
         $testParamsPath = Join-Path $PSScriptRoot "Tests\GameService\CatanDb\.cosmos-test-params.json"
         & $dbScript write-test-params
-        Write-Host "  [OK] CosmosDB Emulator running" -ForegroundColor Green
+        Write-Log -Level INFO -Message "  [OK] CosmosDB Emulator running" -NoLabel -ForegroundColor Green
 
         # Run .NET tests (clean up params file on exit)
-        Write-Host ""
-        Write-Host "Running .NET tests..." -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Running .NET tests..." -NoLabel
         try {
             & "$PSScriptRoot\.scripts\build.ps1"
             if ($LASTEXITCODE -ne 0) {
-                Write-Host ".NET tests failed!" -ForegroundColor Red
+                Write-Log -Level ERROR -Message ".NET tests failed!" -NoLabel
                 exit 1
             }
         } finally {
             if (Test-Path $testParamsPath) { Remove-Item $testParamsPath -Force }
         }
-        Write-Host "  [OK] .NET tests passed" -ForegroundColor Green
+        Write-Log -Level INFO -Message "  [OK] .NET tests passed" -NoLabel -ForegroundColor Green
 
         # Run TypeScript tests (if react-ui exists)
         $reactUiPath = Join-Path $PSScriptRoot "react-ui"
         if (Test-Path $reactUiPath) {
-            Write-Host ""
-            Write-Host "Running TypeScript tests..." -ForegroundColor Yellow
+            Write-Log -Level INFO -Message "" -NoLabel
+            Write-Log -Level WARN -Message "Running TypeScript tests..." -NoLabel
             Push-Location $reactUiPath
             try {
                 $tsTestResult = & npm run test:run 2>&1
                 if ($LASTEXITCODE -ne 0) {
-                    Write-Host "  [FAIL] TypeScript tests failed:" -ForegroundColor Red
-                    Write-Host $tsTestResult -ForegroundColor Gray
+                    Write-Log -Level ERROR -Message "  [FAIL] TypeScript tests failed:" -NoLabel
+                    Write-Log -Level DEBUG -Message $tsTestResult -NoLabel
                     exit 1
                 }
-                Write-Host "  [OK] TypeScript tests passed" -ForegroundColor Green
+                Write-Log -Level INFO -Message "  [OK] TypeScript tests passed" -NoLabel -ForegroundColor Green
             }
             finally {
                 Pop-Location
             }
         }
 
-        Write-Host ""
-        Write-Host "All tests passed!" -ForegroundColor Green
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "All tests passed!" -NoLabel -ForegroundColor Green
     }
 
     "lint" {
@@ -549,8 +555,8 @@ switch ($Verb) {
             $lintArgs.Type = $SubCommand
         }
         elseif ($SubCommand -and $SubCommand -ne "" -and $SubCommand -ne "all") {
-            Write-Host "Unknown lint type: $SubCommand" -ForegroundColor Red
-            Write-Host "Valid: ./catan.ps1 lint [-All] [all|cs|ts|md|json|ps1|spell]" -ForegroundColor Yellow
+            Write-Log -Level ERROR -Message "Unknown lint type: $SubCommand" -NoLabel
+            Write-Log -Level WARN -Message "Valid: ./catan.ps1 lint [-All] [all|cs|ts|md|json|ps1|spell]" -NoLabel
             exit 1
         }
 
@@ -580,8 +586,8 @@ switch ($Verb) {
             $formatArgs.Type = $SubCommand
         }
         elseif ($SubCommand -and $SubCommand -ne "" -and $SubCommand -notin @("all", "check")) {
-            Write-Host "Unknown format type: $SubCommand" -ForegroundColor Red
-            Write-Host "Valid: ./catan.ps1 format [-All] [all|check|cs|ts]" -ForegroundColor Yellow
+            Write-Log -Level ERROR -Message "Unknown format type: $SubCommand" -NoLabel
+            Write-Log -Level WARN -Message "Valid: ./catan.ps1 format [-All] [all|check|cs|ts]" -NoLabel
             exit 1
         }
 
@@ -590,37 +596,37 @@ switch ($Verb) {
     }
 
     "generate-types" {
-        Write-Host "Generating TypeScript types from C# models..." -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Generating TypeScript types from C# models..." -NoLabel -ForegroundColor Cyan
 
         $reactUiPath = Join-Path $PSScriptRoot "react-ui"
         if (-not (Test-Path $reactUiPath)) {
-            Write-Host "react-ui directory not found!" -ForegroundColor Red
+            Write-Log -Level ERROR -Message "react-ui directory not found!" -NoLabel
             exit 1
         }
 
         # Generate model types from C# using TypeGenRunner (TypeGen 7.0.0)
         $typegenRunnerProject = Join-Path $PSScriptRoot "Catan3.Shared\TypeScript\TypeGenRunner\TypeGenRunner.csproj"
-        Write-Host ""
-        Write-Host "Running TypeGenRunner..." -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Running TypeGenRunner..." -NoLabel
 
         $typegenOutput = & dotnet run --project $typegenRunnerProject 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "  [FAIL] TypeGen failed:" -ForegroundColor Red
-            Write-Host $typegenOutput -ForegroundColor Gray
+            Write-Log -Level ERROR -Message "  [FAIL] TypeGen failed:" -NoLabel
+            Write-Log -Level DEBUG -Message $typegenOutput -NoLabel
             exit 1
         }
 
         # Count generated files from output
         $fileCount = ($typegenOutput | Select-String "Generated \d+ files").Matches.Value -replace "Generated | files", ""
-        Write-Host "  [OK] Generated $fileCount TypeScript files to react-ui/types/generated/models/" -ForegroundColor Green
+        Write-Log -Level INFO -Message "  [OK] Generated $fileCount TypeScript files to react-ui/types/generated/models/" -NoLabel -ForegroundColor Green
 
-        Write-Host ""
-        Write-Host "TypeScript types generated successfully!" -ForegroundColor Green
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "TypeScript types generated successfully!" -NoLabel -ForegroundColor Green
     }
 
     "replay" {
         # Redirect to recording replay for backward compatibility
-        Write-Host "Note: 'replay' command moved to 'recording replay'. Redirecting..." -ForegroundColor DarkYellow
+        Write-Log -Level INFO -Message "Note: 'replay' command moved to 'recording replay'. Redirecting..." -NoLabel -ForegroundColor DarkYellow
         $Verb = "recording"
         $SubCommand = "replay"
         # Re-invoke with the new verb (fall through to recording handler won't work, so we call it directly)
@@ -640,13 +646,8 @@ switch ($Verb) {
         $targetName = "Local"
 
         if ($Azure) {
-            $azureConfigFile = Join-Path $PSScriptRoot ".azure\catan-azure.json"
-            if (-not (Test-Path $azureConfigFile)) {
-                Write-Host "Azure configuration not found. Run './catan.ps1 azure install' first." -ForegroundColor Red
-                exit 1
-            }
-            $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
-            $targetUrl = $azureConfig.gameService.url
+            $azureConfig = Get-AzureConfig -ProjectRoot $PSScriptRoot
+            $targetUrl = Get-AzureGameServiceUrl -AzureConfig $azureConfig
             $targetName = "Azure"
         }
 
@@ -656,48 +657,48 @@ switch ($Verb) {
         switch ($SubVerb) {
             "" {
                 # Show stats help
-                Write-Host ""
-                Write-Host "Stats Management Commands" -ForegroundColor Cyan
-                Write-Host "=========================" -ForegroundColor Cyan
-                Write-Host ""
-                Write-Host "Usage: ./catan.ps1 stats <subcommand> [options]" -ForegroundColor Yellow
-                Write-Host ""
-                Write-Host "Subcommands:"
-                Write-Host "  list     - Show all player statistics"
-                Write-Host "  export   - Export stats to JSON file"
-                Write-Host "  import   - Import stats from JSON file"
-                Write-Host "  reset    - Delete all statistics"
-                Write-Host ""
-                Write-Host "Options:"
-                Write-Host "  -Local        Target local GameService (default)"
-                Write-Host "  -Azure        Target Azure GameService"
-                Write-Host "  -Json         Output as JSON (for list)"
-                Write-Host "  -Location     File path for export"
-                Write-Host "  -File         File path for import (required)"
-                Write-Host "  -Replace      Replace all stats with imported data"
-                Write-Host "  -Yes          Skip confirmation prompts"
-                Write-Host ""
-                Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./catan.ps1 stats list                       - List local player stats"
-                Write-Host "  ./catan.ps1 stats list -Azure                - List Azure player stats"
-                Write-Host "  ./catan.ps1 stats export                     - Export local stats"
-                Write-Host "  ./catan.ps1 stats export -Azure              - Export Azure stats"
-                Write-Host "  ./catan.ps1 stats import -File stats.json    - Import and merge"
-                Write-Host "  ./catan.ps1 stats import -File stats.json -Replace  - Replace all"
-                Write-Host "  ./catan.ps1 stats reset -Yes                 - Reset local stats"
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Stats Management Commands" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "=========================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Usage: ./catan.ps1 stats <subcommand> [options]" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Subcommands:" -NoLabel
+                Write-Log -Level INFO -Message "  list     - Show all player statistics" -NoLabel
+                Write-Log -Level INFO -Message "  export   - Export stats to JSON file" -NoLabel
+                Write-Log -Level INFO -Message "  import   - Import stats from JSON file" -NoLabel
+                Write-Log -Level INFO -Message "  reset    - Delete all statistics" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Options:" -NoLabel
+                Write-Log -Level INFO -Message "  -Local        Target local GameService (default)" -NoLabel
+                Write-Log -Level INFO -Message "  -Azure        Target Azure GameService" -NoLabel
+                Write-Log -Level INFO -Message "  -Json         Output as JSON (for list)" -NoLabel
+                Write-Log -Level INFO -Message "  -Location     File path for export" -NoLabel
+                Write-Log -Level INFO -Message "  -File         File path for import (required)" -NoLabel
+                Write-Log -Level INFO -Message "  -Replace      Replace all stats with imported data" -NoLabel
+                Write-Log -Level INFO -Message "  -Yes          Skip confirmation prompts" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Examples:" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 stats list                       - List local player stats" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 stats list -Azure                - List Azure player stats" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 stats export                     - Export local stats" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 stats export -Azure              - Export Azure stats" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 stats import -File stats.json    - Import and merge" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 stats import -File stats.json -Replace  - Replace all" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 stats reset -Yes                 - Reset local stats" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
             }
 
             "list" {
-                Write-Host ""
-                Write-Host "Player Statistics ($targetName)" -ForegroundColor Cyan
-                Write-Host "========================" -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Player Statistics ($targetName)" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "========================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Check if service is reachable
                 if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
-                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
-                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "GameService is not running on port $GameServicePort" -NoLabel
+                    Write-Log -Level WARN -Message "Start services first with: ./catan.ps1 run" -NoLabel
                     exit 1
                 }
 
@@ -708,38 +709,38 @@ switch ($Verb) {
                         $stats | ConvertTo-Json -Depth 10
                     } else {
                         if ($stats.Count -eq 0) {
-                            Write-Host "No player statistics found." -ForegroundColor Yellow
+                            Write-Log -Level WARN -Message "No player statistics found." -NoLabel
                         } else {
                             # Table header
-                            Write-Host ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f "Player", "Games", "Wins", "Win%", "Best", "AvgStars") -ForegroundColor Gray
-                            Write-Host ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f "---------------", "------", "-----", "------", "------", "--------") -ForegroundColor Gray
+                            Write-Log -Level DEBUG -Message ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f "Player", "Games", "Wins", "Win%", "Best", "AvgStars") -NoLabel
+                            Write-Log -Level DEBUG -Message ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f "---------------", "------", "-----", "------", "------", "--------") -NoLabel
 
                             foreach ($player in $stats) {
                                 $winRate = if ($player.gamesPlayed -gt 0) { "{0:N1}%" -f $player.winRate } else { "0.0%" }
                                 $avgStars = "{0:N1}" -f $player.averageStars
-                                Write-Host ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f $player.playerName, $player.gamesPlayed, $player.wins, $winRate, $player.highestScore, $avgStars)
+                                Write-Log -Level INFO -Message ("{0,-15} {1,6} {2,5} {3,6} {4,6} {5,8}" -f $player.playerName, $player.gamesPlayed, $player.wins, $winRate, $player.highestScore, $avgStars) -NoLabel
                             }
 
-                            Write-Host ""
-                            Write-Host "Total: $($stats.Count) players" -ForegroundColor Green
+                            Write-Log -Level INFO -Message "" -NoLabel
+                            Write-Log -Level INFO -Message "Total: $($stats.Count) players" -NoLabel -ForegroundColor Green
                         }
                     }
                 } catch {
-                    Write-Host "Failed to fetch stats: $_" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Failed to fetch stats: $_" -NoLabel
                     exit 1
                 }
             }
 
             "export" {
-                Write-Host ""
-                Write-Host "Exporting Player Statistics ($targetName)" -ForegroundColor Cyan
-                Write-Host "========================================" -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Exporting Player Statistics ($targetName)" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "========================================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Check if service is reachable
                 if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
-                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
-                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "GameService is not running on port $GameServicePort" -NoLabel
+                    Write-Log -Level WARN -Message "Start services first with: ./catan.ps1 run" -NoLabel
                     exit 1
                 }
 
@@ -756,45 +757,45 @@ switch ($Verb) {
                     $export = Invoke-RestMethod -Uri "$targetUrl/api/stats/export" -Method Get -TimeoutSec 30
                     $export | ConvertTo-Json -Depth 10 | Out-File -FilePath $outputPath -Encoding UTF8
 
-                    Write-Host "Exported $($export.players.Count) player(s) to:" -ForegroundColor Green
-                    Write-Host "  $outputPath" -ForegroundColor Gray
+                    Write-Log -Level INFO -Message "Exported $($export.players.Count) player(s) to:" -NoLabel -ForegroundColor Green
+                    Write-Log -Level DEBUG -Message "  $outputPath" -NoLabel
                 } catch {
-                    Write-Host "Failed to export stats: $_" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Failed to export stats: $_" -NoLabel
                     exit 1
                 }
             }
 
             "import" {
-                Write-Host ""
-                Write-Host "Importing Player Statistics to $targetName" -ForegroundColor Cyan
-                Write-Host "===========================================" -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Importing Player Statistics to $targetName" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "===========================================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Check if service is reachable
                 if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
-                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
-                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "GameService is not running on port $GameServicePort" -NoLabel
+                    Write-Log -Level WARN -Message "Start services first with: ./catan.ps1 run" -NoLabel
                     exit 1
                 }
 
                 if (-not $File) {
-                    Write-Host "ERROR: -File parameter is required for import" -ForegroundColor Red
-                    Write-Host "Usage: ./catan.ps1 stats import -File <path>" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "ERROR: -File parameter is required for import" -NoLabel
+                    Write-Log -Level WARN -Message "Usage: ./catan.ps1 stats import -File <path>" -NoLabel
                     exit 1
                 }
 
                 if (-not (Test-Path $File)) {
-                    Write-Host "ERROR: File not found: $File" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "ERROR: File not found: $File" -NoLabel
                     exit 1
                 }
 
                 try {
                     $document = Get-Content $File -Raw | ConvertFrom-Json
-                    Write-Host "Found $($document.players.Count) player(s) in file" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "Found $($document.players.Count) player(s) in file" -NoLabel -ForegroundColor Green
 
                     $mode = if ($Replace) { "replace" } else { "merge" }
-                    Write-Host "Import mode: $mode" -ForegroundColor Gray
-                    Write-Host ""
+                    Write-Log -Level DEBUG -Message "Import mode: $mode" -NoLabel
+                    Write-Log -Level INFO -Message "" -NoLabel
 
                     $importRequest = @{
                         document = $document
@@ -807,50 +808,50 @@ switch ($Verb) {
                         -Body ($importRequest | ConvertTo-Json -Depth 10) `
                         -TimeoutSec 30
 
-                    Write-Host "Import complete:" -ForegroundColor Green
-                    Write-Host "  Imported: $($response.imported)" -ForegroundColor Gray
-                    Write-Host "  Merged:   $($response.merged)" -ForegroundColor Gray
-                    Write-Host "  Skipped:  $($response.skipped)" -ForegroundColor Gray
+                    Write-Log -Level INFO -Message "Import complete:" -NoLabel -ForegroundColor Green
+                    Write-Log -Level DEBUG -Message "  Imported: $($response.imported)" -NoLabel
+                    Write-Log -Level DEBUG -Message "  Merged:   $($response.merged)" -NoLabel
+                    Write-Log -Level DEBUG -Message "  Skipped:  $($response.skipped)" -NoLabel
                 } catch {
-                    Write-Host "Failed to import stats: $_" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Failed to import stats: $_" -NoLabel
                     exit 1
                 }
             }
 
             "reset" {
-                Write-Host ""
-                Write-Host "Reset Player Statistics ($targetName)" -ForegroundColor Cyan
-                Write-Host "=====================================" -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Reset Player Statistics ($targetName)" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "=====================================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Check if service is reachable
                 if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
-                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
-                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "GameService is not running on port $GameServicePort" -NoLabel
+                    Write-Log -Level WARN -Message "Start services first with: ./catan.ps1 run" -NoLabel
                     exit 1
                 }
 
                 if (-not $Yes) {
-                    Write-Host "WARNING: This will delete ALL player statistics on $targetName!" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "WARNING: This will delete ALL player statistics on $targetName!" -NoLabel
                     $confirm = Read-Host "Type 'yes' to confirm"
                     if ($confirm -ne "yes") {
-                        Write-Host "Aborted." -ForegroundColor Yellow
+                        Write-Log -Level WARN -Message "Aborted." -NoLabel
                         exit 0
                     }
                 }
 
                 try {
                     $response = Invoke-RestMethod -Uri "$targetUrl/api/stats" -Method Delete -TimeoutSec 30
-                    Write-Host "Reset complete: $($response.playersReset) player(s) reset" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "Reset complete: $($response.playersReset) player(s) reset" -NoLabel -ForegroundColor Green
                 } catch {
-                    Write-Host "Failed to reset stats: $_" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Failed to reset stats: $_" -NoLabel
                     exit 1
                 }
             }
 
             default {
-                Write-Host "Unknown stats subcommand: $SubVerb" -ForegroundColor Red
-                Write-Host "Run './catan.ps1 stats' for help" -ForegroundColor Yellow
+                Write-Log -Level ERROR -Message "Unknown stats subcommand: $SubVerb" -NoLabel
+                Write-Log -Level WARN -Message "Run './catan.ps1 stats' for help" -NoLabel
                 exit 1
             }
         }
@@ -862,13 +863,8 @@ switch ($Verb) {
         $targetName = "Local"
 
         if ($Azure) {
-            $azureConfigFile = Join-Path $PSScriptRoot ".azure\catan-azure.json"
-            if (-not (Test-Path $azureConfigFile)) {
-                Write-Host "Azure configuration not found. Run './catan.ps1 azure install' first." -ForegroundColor Red
-                exit 1
-            }
-            $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
-            $targetUrl = $azureConfig.gameService.url
+            $azureConfig = Get-AzureConfig -ProjectRoot $PSScriptRoot
+            $targetUrl = Get-AzureGameServiceUrl -AzureConfig $azureConfig
             $targetName = "Azure"
         }
 
@@ -878,27 +874,27 @@ switch ($Verb) {
 
         switch ($SubCommand) {
             "list" {
-                Write-Host ""
-                Write-Host "Recordings ($targetName)" -ForegroundColor Cyan
-                Write-Host "==================" -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Recordings ($targetName)" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "==================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Check if service is reachable
                 if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
-                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
-                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "GameService is not running on port $GameServicePort" -NoLabel
+                    Write-Log -Level WARN -Message "Start services first with: ./catan.ps1 run" -NoLabel
                     exit 1
                 }
 
                 try {
                     $recordings = Invoke-RestMethod -Uri "$targetUrl/api/recordings" -Method Get -TimeoutSec 30
                 } catch {
-                    Write-Host "Failed to fetch recordings from $targetUrl : $_" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Failed to fetch recordings from $targetUrl : $_" -NoLabel
                     exit 1
                 }
 
                 if ($recordings.Count -eq 0) {
-                    Write-Host "No recordings found." -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "No recordings found." -NoLabel
                     exit 0
                 }
 
@@ -907,43 +903,43 @@ switch ($Verb) {
                 } else {
                     # Table format with RecordingID and GameID columns
                     # Show first 8 chars of each GUID for readability
-                    Write-Host ("{0,-10} {1,-10} {2,-22} {3,-8} {4,-8} {5}" -f "RecID", "GameID", "Name", "Actions", "Players", "Type")
-                    Write-Host ("{0,-10} {1,-10} {2,-22} {3,-8} {4,-8} {5}" -f "----------", "----------", "----------------------", "--------", "--------", "---------")
+                    Write-Log -Level INFO -Message ("{0,-10} {1,-10} {2,-22} {3,-8} {4,-8} {5}" -f "RecID", "GameID", "Name", "Actions", "Players", "Type") -NoLabel
+                    Write-Log -Level INFO -Message ("{0,-10} {1,-10} {2,-22} {3,-8} {4,-8} {5}" -f "----------", "----------", "----------------------", "--------", "--------", "---------") -NoLabel
                     foreach ($r in $recordings) {
                         $displayName = if ($r.name.Length -gt 21) { $r.name.Substring(0, 18) + "..." } else { $r.name }
                         $shortRecId = if ($r.id.Length -ge 8) { $r.id.Substring(0, 8) } else { $r.id }
                         $shortGameId = if ($r.gameId -and $r.gameId.Length -ge 8) { $r.gameId.Substring(0, 8) } else { $r.gameId }
-                        Write-Host ("{0,-10} {1,-10} {2,-22} {3,-8} {4,-8} {5}" -f $shortRecId, $shortGameId, $displayName, $r.actionCount, $r.playerCount, $r.gameType)
+                        Write-Log -Level INFO -Message ("{0,-10} {1,-10} {2,-22} {3,-8} {4,-8} {5}" -f $shortRecId, $shortGameId, $displayName, $r.actionCount, $r.playerCount, $r.gameType) -NoLabel
                     }
                 }
-                Write-Host ""
-                Write-Host "Total: $($recordings.Count) recording(s)" -ForegroundColor Green
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Total: $($recordings.Count) recording(s)" -NoLabel -ForegroundColor Green
             }
 
             "save" {
-                Write-Host ""
-                Write-Host "Saving Recordings ($targetName)" -ForegroundColor Cyan
-                Write-Host "========================" -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Saving Recordings ($targetName)" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "========================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Check if service is reachable
                 if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
-                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
-                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "GameService is not running on port $GameServicePort" -NoLabel
+                    Write-Log -Level WARN -Message "Start services first with: ./catan.ps1 run" -NoLabel
                     exit 1
                 }
 
                 # Ensure output directory exists
                 if (-not (Test-Path $recordingsDir)) {
                     New-Item -ItemType Directory -Path $recordingsDir -Force | Out-Null
-                    Write-Host "Created directory: $recordingsDir" -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "Created directory: $recordingsDir" -NoLabel
                 }
 
                 # Fetch recordings list
                 try {
                     $recordings = Invoke-RestMethod -Uri "$targetUrl/api/recordings" -Method Get -TimeoutSec 30
                 } catch {
-                    Write-Host "Failed to fetch recordings: $_" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Failed to fetch recordings: $_" -NoLabel
                     exit 1
                 }
 
@@ -953,26 +949,26 @@ switch ($Verb) {
                 }
 
                 if ($recordings.Count -eq 0) {
-                    Write-Host "No recordings found matching criteria." -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "No recordings found matching criteria." -NoLabel
                     exit 0
                 }
 
-                Write-Host "Found $($recordings.Count) recording(s)" -ForegroundColor Green
-                Write-Host "Saving to: $recordingsDir" -ForegroundColor Gray
-                Write-Host ""
+                Write-Log -Level INFO -Message "Found $($recordings.Count) recording(s)" -NoLabel -ForegroundColor Green
+                Write-Log -Level DEBUG -Message "Saving to: $recordingsDir" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 $saved = 0
                 foreach ($recording in $recordings) {
                     $safeName = $recording.name -replace '[^\w\-\.]', '-'
                     $filePath = Join-Path $recordingsDir "$safeName.json"
 
-                    Write-Host "  Saving: $($recording.name)..." -ForegroundColor Gray -NoNewline
+                    Write-Log -Level DEBUG -Message "  Saving: $($recording.name)..." -NoLabel -NoNewline
 
                     # Fetch full recording data
                     try {
                         $fullRecording = Invoke-RestMethod -Uri "$targetUrl/api/recording/$($recording.id)" -Method Get -TimeoutSec 30
                     } catch {
-                        Write-Host " failed to fetch: $_" -ForegroundColor Red
+                        Write-Log -Level ERROR -Message " failed to fetch: $_" -NoLabel
                         continue
                     }
 
@@ -988,58 +984,58 @@ switch ($Verb) {
                     }
 
                     $exportObj | ConvertTo-Json -Depth 10 -Compress | Set-Content -Path $filePath -Encoding UTF8
-                    Write-Host " saved" -ForegroundColor Green
+                    Write-Log -Level INFO -Message " saved" -NoLabel -ForegroundColor Green
                     $saved++
                 }
 
-                Write-Host ""
-                Write-Host "Saved $saved recording(s) to: $recordingsDir" -ForegroundColor Green
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Saved $saved recording(s) to: $recordingsDir" -NoLabel -ForegroundColor Green
             }
 
             "load" {
-                Write-Host ""
-                Write-Host "Loading Recordings to $targetName" -ForegroundColor Cyan
-                Write-Host "==========================" -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Loading Recordings to $targetName" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "==========================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Check if service is reachable
                 if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
-                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
-                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "GameService is not running on port $GameServicePort" -NoLabel
+                    Write-Log -Level WARN -Message "Start services first with: ./catan.ps1 run" -NoLabel
                     exit 1
                 }
 
                 # For Azure, verify service is healthy and import endpoint exists
                 if ($Azure) {
-                    Write-Host "Checking Azure service health..." -NoNewline
+                    Write-Log -Level INFO -Message "Checking Azure service health..." -NoLabel -NoNewline
                     try {
                         $null = Invoke-RestMethod -Uri "$targetUrl/health" -TimeoutSec 10
-                        Write-Host " OK" -ForegroundColor Green
+                        Write-Log -Level INFO -Message " OK" -NoLabel -ForegroundColor Green
                     } catch {
-                        Write-Host " FAILED" -ForegroundColor Red
-                        Write-Host "Azure service is not responding at $targetUrl/health" -ForegroundColor Red
-                        Write-Host "Check deployment status or try again later." -ForegroundColor Yellow
+                        Write-Log -Level ERROR -Message " FAILED" -NoLabel
+                        Write-Log -Level ERROR -Message "Azure service is not responding at $targetUrl/health" -NoLabel
+                        Write-Log -Level WARN -Message "Check deployment status or try again later." -NoLabel
                         exit 1
                     }
 
                     # Verify import endpoint exists by checking recordings list first
-                    Write-Host "Checking import endpoint..." -NoNewline
+                    Write-Log -Level INFO -Message "Checking import endpoint..." -NoLabel -NoNewline
                     try {
                         # A simple GET to /api/recordings verifies the recording endpoints are deployed
                         $null = Invoke-RestMethod -Uri "$targetUrl/api/recordings" -TimeoutSec 10
-                        Write-Host " OK" -ForegroundColor Green
+                        Write-Log -Level INFO -Message " OK" -NoLabel -ForegroundColor Green
                     } catch {
-                        Write-Host " FAILED" -ForegroundColor Red
-                        Write-Host "Recording API not available. Deployment may be in progress." -ForegroundColor Red
-                        Write-Host "Wait for deployment to complete and try again." -ForegroundColor Yellow
+                        Write-Log -Level ERROR -Message " FAILED" -NoLabel
+                        Write-Log -Level ERROR -Message "Recording API not available. Deployment may be in progress." -NoLabel
+                        Write-Log -Level WARN -Message "Wait for deployment to complete and try again." -NoLabel
                         exit 1
                     }
-                    Write-Host ""
+                    Write-Log -Level INFO -Message "" -NoLabel
                 }
 
                 if (-not (Test-Path $recordingsDir)) {
-                    Write-Host "Recordings directory not found: $recordingsDir" -ForegroundColor Red
-                    Write-Host "Run './catan.ps1 recording save' first to export recordings" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "Recordings directory not found: $recordingsDir" -NoLabel
+                    Write-Log -Level WARN -Message "Run './catan.ps1 recording save' first to export recordings" -NoLabel
                     exit 1
                 }
 
@@ -1052,20 +1048,20 @@ switch ($Verb) {
                 }
 
                 if ($jsonFiles.Count -eq 0) {
-                    Write-Host "No recording files found in $recordingsDir" -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "No recording files found in $recordingsDir" -NoLabel
                     exit 0
                 }
 
-                Write-Host "Found $($jsonFiles.Count) recording file(s)" -ForegroundColor Green
-                Write-Host "Loading to: $targetUrl" -ForegroundColor Gray
-                Write-Host ""
+                Write-Log -Level INFO -Message "Found $($jsonFiles.Count) recording file(s)" -NoLabel -ForegroundColor Green
+                Write-Log -Level DEBUG -Message "Loading to: $targetUrl" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 $imported = 0
                 $skipped = 0
                 $failed = 0
 
                 foreach ($file in $jsonFiles) {
-                    Write-Host "  Loading: $($file.Name)..." -NoNewline
+                    Write-Log -Level INFO -Message "  Loading: $($file.Name)..." -NoLabel -NoNewline
 
                     try {
                         $recording = Get-Content $file.FullName -Raw | ConvertFrom-Json
@@ -1087,40 +1083,40 @@ switch ($Verb) {
                             -Body ($importRequest | ConvertTo-Json -Depth 10) `
                             -TimeoutSec 30
 
-                        Write-Host " imported" -ForegroundColor Green
+                        Write-Log -Level INFO -Message " imported" -NoLabel -ForegroundColor Green
                         $imported++
                     }
                     catch {
                         if ($_.Exception.Response.StatusCode -eq 409) {
-                            Write-Host " already exists" -ForegroundColor Gray
+                            Write-Log -Level DEBUG -Message " already exists" -NoLabel
                             $skipped++
                         } else {
-                            Write-Host " failed: $_" -ForegroundColor Red
+                            Write-Log -Level ERROR -Message " failed: $_" -NoLabel
                             $failed++
                         }
                     }
                 }
 
-                Write-Host ""
-                Write-Host "Results: $imported imported, $skipped skipped, $failed failed" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Results: $imported imported, $skipped skipped, $failed failed" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" }) -NoLabel
             }
 
             "delete" {
                 if (-not $Name) {
-                    Write-Host "Error: -Name parameter is required for delete" -ForegroundColor Red
-                    Write-Host "Usage: ./catan.ps1 recording delete -Name <name-or-id>" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "Error: -Name parameter is required for delete" -NoLabel
+                    Write-Log -Level WARN -Message "Usage: ./catan.ps1 recording delete -Name <name-or-id>" -NoLabel
                     exit 1
                 }
 
-                Write-Host ""
-                Write-Host "Deleting Recording from $targetName" -ForegroundColor Cyan
-                Write-Host "=============================" -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Deleting Recording from $targetName" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "=============================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Check if service is reachable
                 if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
-                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
-                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "GameService is not running on port $GameServicePort" -NoLabel
+                    Write-Log -Level WARN -Message "Start services first with: ./catan.ps1 run" -NoLabel
                     exit 1
                 }
 
@@ -1128,21 +1124,21 @@ switch ($Verb) {
                 try {
                     $recordings = Invoke-RestMethod -Uri "$targetUrl/api/recordings" -Method Get -TimeoutSec 30
                 } catch {
-                    Write-Host "Failed to fetch recordings: $_" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Failed to fetch recordings: $_" -NoLabel
                     exit 1
                 }
 
                 $toDelete = $recordings | Where-Object { $_.name -eq $Name -or $_.id -eq $Name }
 
                 if ($toDelete.Count -eq 0) {
-                    Write-Host "Recording not found: $Name" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Recording not found: $Name" -NoLabel
                     exit 1
                 }
 
                 if ($toDelete.Count -gt 1) {
-                    Write-Host "Multiple recordings match '$Name'. Please use the full ID:" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Multiple recordings match '$Name'. Please use the full ID:" -NoLabel
                     foreach ($r in $toDelete) {
-                        Write-Host "  $($r.id) - $($r.name)" -ForegroundColor Gray
+                        Write-Log -Level DEBUG -Message "  $($r.id) - $($r.name)" -NoLabel
                     }
                     exit 1
                 }
@@ -1150,56 +1146,56 @@ switch ($Verb) {
                 $recording = $toDelete[0]
 
                 if (-not $Yes) {
-                    Write-Host "About to delete: $($recording.name) ($($recording.id))" -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "About to delete: $($recording.name) ($($recording.id))" -NoLabel
                     $confirm = Read-Host "Are you sure? (y/N)"
                     if ($confirm -ne 'y' -and $confirm -ne 'Y') {
-                        Write-Host "Cancelled." -ForegroundColor Gray
+                        Write-Log -Level DEBUG -Message "Cancelled." -NoLabel
                         exit 0
                     }
                 }
 
                 try {
                     Invoke-RestMethod -Uri "$targetUrl/api/recording/$($recording.id)" -Method Delete -TimeoutSec 30 | Out-Null
-                    Write-Host "Deleted: $($recording.name)" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "Deleted: $($recording.name)" -NoLabel -ForegroundColor Green
                 } catch {
-                    Write-Host "Failed to delete: $_" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Failed to delete: $_" -NoLabel
                     exit 1
                 }
             }
 
             "replay" {
-                Write-Host ""
-                Write-Host "Running Recording Replay Tests ($targetName)" -ForegroundColor Cyan
-                Write-Host "======================================" -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Running Recording Replay Tests ($targetName)" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "======================================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Check if service is reachable
                 if (-not $Azure -and -not (Test-PortInUse $GameServicePort)) {
-                    Write-Host "GameService is not running on port $GameServicePort" -ForegroundColor Red
-                    Write-Host "Start services first with: ./catan.ps1 run" -ForegroundColor Yellow
+                    Write-Log -Level ERROR -Message "GameService is not running on port $GameServicePort" -NoLabel
+                    Write-Log -Level WARN -Message "Start services first with: ./catan.ps1 run" -NoLabel
                     exit 1
                 }
 
                 # For Azure, verify service is healthy first
                 if ($Azure) {
-                    Write-Host "Checking Azure service health..." -NoNewline
+                    Write-Log -Level INFO -Message "Checking Azure service health..." -NoLabel -NoNewline
                     try {
                         $null = Invoke-RestMethod -Uri "$targetUrl/health" -TimeoutSec 10
-                        Write-Host " OK" -ForegroundColor Green
+                        Write-Log -Level INFO -Message " OK" -NoLabel -ForegroundColor Green
                     } catch {
-                        Write-Host " FAILED" -ForegroundColor Red
-                        Write-Host "Azure service is not responding at $targetUrl/health" -ForegroundColor Red
-                        Write-Host "Check deployment status or try again later." -ForegroundColor Yellow
+                        Write-Log -Level ERROR -Message " FAILED" -NoLabel
+                        Write-Log -Level ERROR -Message "Azure service is not responding at $targetUrl/health" -NoLabel
+                        Write-Log -Level WARN -Message "Check deployment status or try again later." -NoLabel
                         exit 1
                     }
-                    Write-Host ""
+                    Write-Log -Level INFO -Message "" -NoLabel
                 }
 
                 # Get all recordings
                 try {
                     $recordings = Invoke-RestMethod -Uri "$targetUrl/api/recordings" -Method Get -TimeoutSec 30
                 } catch {
-                    Write-Host "Failed to fetch recordings: $_" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Failed to fetch recordings: $_" -NoLabel
                     exit 1
                 }
 
@@ -1209,28 +1205,28 @@ switch ($Verb) {
                 }
 
                 if ($recordings.Count -eq 0) {
-                    Write-Host "No recordings found. Create some recordings first!" -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "No recordings found. Create some recordings first!" -NoLabel
                     exit 0
                 }
 
-                Write-Host "Found $($recordings.Count) recording(s)" -ForegroundColor Green
-                Write-Host ""
+                Write-Log -Level INFO -Message "Found $($recordings.Count) recording(s)" -NoLabel -ForegroundColor Green
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 $passed = 0
                 $failed = 0
                 $failedTests = @()
 
                 foreach ($recording in $recordings) {
-                    Write-Host "  Running: $($recording.name) ($($recording.actionCount) actions)... " -NoNewline
+                    Write-Log -Level INFO -Message "  Running: $($recording.name) ($($recording.actionCount) actions)... " -NoLabel -NoNewline
 
                     try {
                         $result = Invoke-RestMethod -Uri "$targetUrl/api/recording/$($recording.id)/replay" -Method Post -TimeoutSec 120
 
                         if ($result.success) {
-                            Write-Host "PASS" -ForegroundColor Green
+                            Write-Log -Level INFO -Message "PASS" -NoLabel -ForegroundColor Green
                             $passed++
                         } else {
-                            Write-Host "FAIL" -ForegroundColor Red
+                            Write-Log -Level ERROR -Message "FAIL" -NoLabel
                             $failed++
                             $errorMsg = if ($result.failedAtAction) {
                                 "Failed at action $($result.failedAtAction): $($result.errorMessage)"
@@ -1245,7 +1241,7 @@ switch ($Verb) {
                             }
                         }
                     } catch {
-                        Write-Host "ERROR" -ForegroundColor Red
+                        Write-Log -Level ERROR -Message "ERROR" -NoLabel
                         $failed++
                         $failedTests += @{
                             Name = $recording.name
@@ -1254,61 +1250,61 @@ switch ($Verb) {
                     }
                 }
 
-                Write-Host ""
-                Write-Host "Results: $passed passed, $failed failed" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Results: $passed passed, $failed failed" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" }) -NoLabel
 
                 if ($failedTests.Count -gt 0) {
-                    Write-Host ""
-                    Write-Host "Failed Tests:" -ForegroundColor Red
+                    Write-Log -Level INFO -Message "" -NoLabel
+                    Write-Log -Level ERROR -Message "Failed Tests:" -NoLabel
                     foreach ($test in $failedTests) {
-                        Write-Host "  - $($test.Name): $($test.Error)" -ForegroundColor Red
+                        Write-Log -Level ERROR -Message "  - $($test.Name): $($test.Error)" -NoLabel
                         if ($test.Expected -and $test.Actual) {
-                            Write-Host "    Expected: $($test.Expected), Actual: $($test.Actual)" -ForegroundColor DarkGray
+                            Write-Log -Level DEBUG -Message "    Expected: $($test.Expected), Actual: $($test.Actual)" -NoLabel
                         }
                     }
                     exit 1
                 }
 
-                Write-Host ""
-                Write-Host "All recording replay tests passed!" -ForegroundColor Green
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "All recording replay tests passed!" -NoLabel -ForegroundColor Green
             }
 
             default {
-                Write-Host ""
-                Write-Host "Recording Management Commands" -ForegroundColor Cyan
-                Write-Host "=============================" -ForegroundColor Cyan
-                Write-Host ""
-                Write-Host "Usage: ./catan.ps1 recording <subcommand> [options]" -ForegroundColor Yellow
-                Write-Host ""
-                Write-Host "Subcommands:" -ForegroundColor Yellow
-                Write-Host "  list     - List all recordings"
-                Write-Host "  save     - Save recordings to JSON files"
-                Write-Host "  load     - Load recordings from JSON files"
-                Write-Host "  delete   - Delete a recording"
-                Write-Host "  replay   - Run replay tests"
-                Write-Host ""
-                Write-Host "Options:" -ForegroundColor Yellow
-                Write-Host "  -Local        Target local GameService (default)"
-                Write-Host "  -Azure        Target Azure GameService"
-                Write-Host "  -Name <name>  Filter by recording name (supports wildcards)"
-                Write-Host "  -Location     Directory for save/load (default: Default Data/Recordings/)"
-                Write-Host "  -Json         Output as JSON (for list)"
-                Write-Host "  -Yes          Skip confirmation prompts"
-                Write-Host ""
-                Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./catan.ps1 recording list                    - List local recordings"
-                Write-Host "  ./catan.ps1 recording list -Azure             - List Azure recordings"
-                Write-Host "  ./catan.ps1 recording save                    - Save all local recordings"
-                Write-Host "  ./catan.ps1 recording save -Azure             - Save all Azure recordings"
-                Write-Host "  ./catan.ps1 recording load                    - Load recordings to local"
-                Write-Host "  ./catan.ps1 recording load -Azure             - Load recordings to Azure"
-                Write-Host "  ./catan.ps1 recording replay                  - Run all replay tests locally"
-                Write-Host "  ./catan.ps1 recording replay -Azure           - Run replay tests on Azure"
-                Write-Host "  ./catan.ps1 recording delete -Name 'Test*'    - Delete matching recording"
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Recording Management Commands" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "=============================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Usage: ./catan.ps1 recording <subcommand> [options]" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Subcommands:" -NoLabel
+                Write-Log -Level INFO -Message "  list     - List all recordings" -NoLabel
+                Write-Log -Level INFO -Message "  save     - Save recordings to JSON files" -NoLabel
+                Write-Log -Level INFO -Message "  load     - Load recordings from JSON files" -NoLabel
+                Write-Log -Level INFO -Message "  delete   - Delete a recording" -NoLabel
+                Write-Log -Level INFO -Message "  replay   - Run replay tests" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Options:" -NoLabel
+                Write-Log -Level INFO -Message "  -Local        Target local GameService (default)" -NoLabel
+                Write-Log -Level INFO -Message "  -Azure        Target Azure GameService" -NoLabel
+                Write-Log -Level INFO -Message "  -Name <name>  Filter by recording name (supports wildcards)" -NoLabel
+                Write-Log -Level INFO -Message "  -Location     Directory for save/load (default: Default Data/Recordings/)" -NoLabel
+                Write-Log -Level INFO -Message "  -Json         Output as JSON (for list)" -NoLabel
+                Write-Log -Level INFO -Message "  -Yes          Skip confirmation prompts" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Examples:" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording list                    - List local recordings" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording list -Azure             - List Azure recordings" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording save                    - Save all local recordings" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording save -Azure             - Save all Azure recordings" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording load                    - Load recordings to local" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording load -Azure             - Load recordings to Azure" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording replay                  - Run all replay tests locally" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording replay -Azure           - Run replay tests on Azure" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording delete -Name 'Test*'    - Delete matching recording" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 if ($SubCommand) {
-                    Write-Host "Unknown subcommand: $SubCommand" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Unknown subcommand: $SubCommand" -NoLabel
                     exit 1
                 }
             }
@@ -1316,100 +1312,100 @@ switch ($Verb) {
     }
 
     "doctor" {
-        Write-Host ""
-        Write-Host "Catan3 Health Check" -ForegroundColor Cyan
-        Write-Host "===================" -ForegroundColor Cyan
-        Write-Host ""
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Catan3 Health Check" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "===================" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "" -NoLabel
 
         # Check dependencies
-        Write-Host "Checking dependencies..." -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "Checking dependencies..." -NoLabel
         & "$PSScriptRoot\.scripts\dependencies.ps1" -Doctor
-        Write-Host ""
+        Write-Log -Level INFO -Message "" -NoLabel
 
         # Check react-ui npm packages (Prettier, ESLint, etc.)
         $reactUiCheck = Join-Path $PSScriptRoot "react-ui"
         if (Test-Path $reactUiCheck) {
-            Write-Host "Checking react-ui npm packages..." -ForegroundColor Yellow
+            Write-Log -Level WARN -Message "Checking react-ui npm packages..." -NoLabel
             $nodeModules = Join-Path $reactUiCheck "node_modules"
             $prettierBin = Join-Path $nodeModules ".bin\prettier"
             $eslintBin = Join-Path $nodeModules ".bin\eslint"
 
             if (-not (Test-Path $nodeModules)) {
-                Write-Host "  [WARN] node_modules not found. Run: cd react-ui && npm install" -ForegroundColor Yellow
+                Write-Log -Level WARN -Message "  [WARN] node_modules not found. Run: cd react-ui && npm install" -NoLabel
             }
             else {
                 $allGood = $true
                 if (Test-Path $prettierBin) {
                     $prettierVer = & npx --prefix $reactUiCheck prettier --version 2>$null
-                    Write-Host "  [OK] Prettier v$prettierVer" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "  [OK] Prettier v$prettierVer" -NoLabel -ForegroundColor Green
                 }
                 else {
-                    Write-Host "  [WARN] Prettier not found. Run: cd react-ui && npm install" -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "  [WARN] Prettier not found. Run: cd react-ui && npm install" -NoLabel
                     $allGood = $false
                 }
                 if (Test-Path $eslintBin) {
                     $eslintVer = & npx --prefix $reactUiCheck eslint --version 2>$null
-                    Write-Host "  [OK] ESLint v$eslintVer" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "  [OK] ESLint v$eslintVer" -NoLabel -ForegroundColor Green
                 }
                 else {
-                    Write-Host "  [WARN] ESLint not found. Run: cd react-ui && npm install" -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "  [WARN] ESLint not found. Run: cd react-ui && npm install" -NoLabel
                     $allGood = $false
                 }
                 if ($allGood) {
-                    Write-Host "  [OK] All react-ui npm packages installed" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "  [OK] All react-ui npm packages installed" -NoLabel -ForegroundColor Green
                 }
             }
-            Write-Host ""
+            Write-Log -Level INFO -Message "" -NoLabel
         }
 
         # Check database (Cosmos emulator)
-        Write-Host "Checking database..." -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "Checking database..." -NoLabel
         $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
         & pwsh $dbScript doctor
         if ($LASTEXITCODE -ne 0) {
-            Write-Host ""
-            Write-Host "Some issues found. Run './catan.ps1 database install' to fix." -ForegroundColor Yellow
+            Write-Log -Level INFO -Message "" -NoLabel
+            Write-Log -Level WARN -Message "Some issues found. Run './catan.ps1 database install' to fix." -NoLabel
             exit 1
         }
     }
 
     "install" {
-        Write-Host ""
-        Write-Host "Catan3 Installation" -ForegroundColor Cyan
-        Write-Host "===================" -ForegroundColor Cyan
-        Write-Host ""
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Catan3 Installation" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "===================" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "" -NoLabel
 
         # Install dependencies (dependencies.ps1 already checks if installed)
-        Write-Host "Checking dependencies..." -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "Checking dependencies..." -NoLabel
         & "$PSScriptRoot\.scripts\dependencies.ps1" -Install -Yes:$Yes
-        Write-Host ""
+        Write-Log -Level INFO -Message "" -NoLabel
 
         # Install database (Cosmos emulator)
-        Write-Host "Installing database..." -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "Installing database..." -NoLabel
         $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
         & pwsh $dbScript install
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "Database installation failed!" -ForegroundColor Red
+            Write-Log -Level ERROR -Message "Database installation failed!" -NoLabel
             exit 1
         }
-        Write-Host ""
-        Write-Host "Installation complete!" -ForegroundColor Green
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Installation complete!" -NoLabel -ForegroundColor Green
     }
 
     "run" {
-        Write-Host "Building..." -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Building..." -NoLabel -ForegroundColor Cyan
         & "$PSScriptRoot\.scripts\build.ps1" -NoTest
 
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "Build failed! Cannot start services." -ForegroundColor Red
+            Write-Log -Level ERROR -Message "Build failed! Cannot start services." -NoLabel
             exit 1
         }
-        Write-Host "Build completed successfully!" -ForegroundColor Green
-        Write-Host ""
+        Write-Log -Level INFO -Message "Build completed successfully!" -NoLabel -ForegroundColor Green
+        Write-Log -Level INFO -Message "" -NoLabel
 
         # Ensure database is initialized
         if (-not (Initialize-Database)) {
-            Write-Host "Failed to initialize database. Cannot start services." -ForegroundColor Red
+            Write-Log -Level ERROR -Message "Failed to initialize database. Cannot start services." -NoLabel
             exit 1
         }
 
@@ -1419,11 +1415,11 @@ switch ($Verb) {
             # Port is in use - verify service is actually responding
             $responding = Wait-ForService -Url "$GameServiceUrl/health" -TimeoutSeconds 3
             if ($responding) {
-                Write-Host "GameService already running on port $GameServicePort" -ForegroundColor Green
+                Write-Log -Level INFO -Message "GameService already running on port $GameServicePort" -NoLabel -ForegroundColor Green
                 $gameServiceRunning = $true
             }
             else {
-                Write-Host "Port $GameServicePort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
+                Write-Log -Level WARN -Message "Port $GameServicePort in use but service not responding. Killing stale process..." -NoLabel
                 Stop-ProcessOnPort -Port $GameServicePort
                 Start-Sleep -Milliseconds 500
             }
@@ -1438,11 +1434,11 @@ switch ($Verb) {
         if (Test-PortInUse -Port $ReactUIPort) {
             $responding = Wait-ForService -Url $ReactUIUrl -TimeoutSeconds 3
             if ($responding) {
-                Write-Host "React UI already running on port $ReactUIPort" -ForegroundColor Green
+                Write-Log -Level INFO -Message "React UI already running on port $ReactUIPort" -NoLabel -ForegroundColor Green
                 $reactUIRunning = $true
             }
             else {
-                Write-Host "Port $ReactUIPort in use but service not responding. Killing stale process..." -ForegroundColor Yellow
+                Write-Log -Level WARN -Message "Port $ReactUIPort in use but service not responding. Killing stale process..." -NoLabel
                 Stop-ProcessOnPort -Port $ReactUIPort
                 Start-Sleep -Milliseconds 500
             }
@@ -1452,10 +1448,10 @@ switch ($Verb) {
             Start-ReactUI
         }
 
-        Write-Host ""
-        Write-Host "Services running:" -ForegroundColor Green
-        Write-Host "  GameService: $GameServiceUrl" -ForegroundColor White
-        Write-Host "  React UI:    $ReactUIUrl" -ForegroundColor White
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Services running:" -NoLabel -ForegroundColor Green
+        Write-Log -Level INFO -Message "  GameService: $GameServiceUrl" -NoLabel -ForegroundColor White
+        Write-Log -Level INFO -Message "  React UI:    $ReactUIUrl" -NoLabel -ForegroundColor White
 
         if ($Network) {
             # Get the local IP address for network access
@@ -1465,34 +1461,34 @@ switch ($Verb) {
                 $localIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127.*" -and $_.PrefixOrigin -ne "WellKnown" } | Select-Object -First 1).IPAddress
             }
             if ($localIp) {
-                Write-Host ""
-                Write-Host "Network access (for iPhone simulator, other devices):" -ForegroundColor Cyan
-                Write-Host "  React UI:    http://${localIp}:$ReactUIPort" -ForegroundColor White
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Network access (for iPhone simulator, other devices):" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "  React UI:    http://${localIp}:$ReactUIPort" -NoLabel -ForegroundColor White
             }
         }
 
-        Write-Host ""
+        Write-Log -Level INFO -Message "" -NoLabel
         if ($IsWindows) {
-            Write-Host "Press Ctrl+C in service windows to stop them." -ForegroundColor Yellow
+            Write-Log -Level WARN -Message "Press Ctrl+C in service windows to stop them." -NoLabel
         } else {
-            Write-Host "Use './catan.ps1 stop' to stop services. Logs: .gameservice.log, .webui.log" -ForegroundColor Yellow
+            Write-Log -Level WARN -Message "Use './catan.ps1 stop' to stop services. Logs: .gameservice.log, .webui.log" -NoLabel
         }
     }
 
     "debug" {
-        Write-Host "Debug Mode" -ForegroundColor Cyan
-        Write-Host ""
-        Write-Host "For debugging, use VS Code with the configured launch profiles:" -ForegroundColor White
-        Write-Host ""
-        Write-Host "  1. Open VS Code in the Catan directory" -ForegroundColor Yellow
-        Write-Host "  2. Press F5 or use Run > Start Debugging" -ForegroundColor Yellow
-        Write-Host "  3. Select 'GameService' launch configuration" -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "This will launch GameService with debugger attached." -ForegroundColor White
-        Write-Host ""
-        Write-Host "Debug configurations:" -ForegroundColor White
-        Write-Host "  - 'Debug GameService' - GameService only" -ForegroundColor Gray
-        Write-Host ""
+        Write-Log -Level INFO -Message "Debug Mode" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "For debugging, use VS Code with the configured launch profiles:" -NoLabel -ForegroundColor White
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "  1. Open VS Code in the Catan directory" -NoLabel
+        Write-Log -Level WARN -Message "  2. Press F5 or use Run > Start Debugging" -NoLabel
+        Write-Log -Level WARN -Message "  3. Select 'GameService' launch configuration" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "This will launch GameService with debugger attached." -NoLabel -ForegroundColor White
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Debug configurations:" -NoLabel -ForegroundColor White
+        Write-Log -Level DEBUG -Message "  - 'Debug GameService' - GameService only" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
 
         # Offer to open VS Code
         $openVSCode = Read-Host "Open VS Code now? (y/n)"
@@ -1505,9 +1501,9 @@ switch ($Verb) {
         $cleanDatabase = ($SubCommand -eq "database")
 
         if ($cleanDatabase) {
-            Write-Host "Cleaning project (including database)..." -ForegroundColor Cyan
+            Write-Log -Level INFO -Message "Cleaning project (including database)..." -NoLabel -ForegroundColor Cyan
         } else {
-            Write-Host "Cleaning project (preserving database)..." -ForegroundColor Cyan
+            Write-Log -Level INFO -Message "Cleaning project (preserving database)..." -NoLabel -ForegroundColor Cyan
         }
 
         # Stop any running services first
@@ -1520,7 +1516,7 @@ switch ($Verb) {
         }
 
         # Clean build artifacts
-        Write-Host "Cleaning build artifacts..." -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "Cleaning build artifacts..." -NoLabel
         $projectsToClean = @(
             "Catan3.Shared/Catan3.Shared.csproj",
             "Catan3.GameService/Catan3.GameService.csproj",
@@ -1533,21 +1529,21 @@ switch ($Verb) {
                 & dotnet clean $projPath --verbosity quiet 2>$null
             }
         }
-        Write-Host "Build artifacts cleaned." -ForegroundColor Green
+        Write-Log -Level INFO -Message "Build artifacts cleaned." -NoLabel -ForegroundColor Green
 
         # Remove bin/obj directories for thorough clean
-        Write-Host "Removing bin/obj directories..." -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "Removing bin/obj directories..." -NoLabel
         Get-ChildItem -Path $PSScriptRoot -Include bin, obj -Recurse -Directory |
             ForEach-Object {
                 Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
             }
 
-        Write-Host ""
-        Write-Host "Clean completed!" -ForegroundColor Green
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Clean completed!" -NoLabel -ForegroundColor Green
         if (-not $cleanDatabase) {
-            Write-Host "Database preserved. Use './catan.ps1 clean database' to also clean database." -ForegroundColor Gray
+            Write-Log -Level DEBUG -Message "Database preserved. Use './catan.ps1 clean database' to also clean database." -NoLabel
         }
-        Write-Host "Run './catan.ps1 build' to rebuild, or './catan.ps1 run' to rebuild and run." -ForegroundColor White
+        Write-Log -Level INFO -Message "Run './catan.ps1 build' to rebuild, or './catan.ps1 run' to rebuild and run." -NoLabel -ForegroundColor White
         exit 0
     }
 
@@ -1557,59 +1553,59 @@ switch ($Verb) {
     }
 
     "restart" {
-        Write-Host "Restarting services..." -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Restarting services..." -NoLabel -ForegroundColor Cyan
         Stop-Services
         Start-Sleep -Milliseconds 500
 
         # Ensure database is initialized
         if (-not (Initialize-Database)) {
-            Write-Host "Failed to initialize database. Cannot start services." -ForegroundColor Red
+            Write-Log -Level ERROR -Message "Failed to initialize database. Cannot start services." -NoLabel
             exit 1
         }
 
         Start-GameService
         Start-ReactUI
 
-        Write-Host ""
-        Write-Host "Services restarted:" -ForegroundColor Green
-        Write-Host "  GameService: $GameServiceUrl" -ForegroundColor White
-        Write-Host "  React UI:    $ReactUIUrl" -ForegroundColor White
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Services restarted:" -NoLabel -ForegroundColor Green
+        Write-Log -Level INFO -Message "  GameService: $GameServiceUrl" -NoLabel -ForegroundColor White
+        Write-Log -Level INFO -Message "  React UI:    $ReactUIUrl" -NoLabel -ForegroundColor White
     }
 
     "update" {
         # Terminate all Terminal windows on macOS if requested
         if ($Terminate -and $IsMacOS) {
-            Write-Host "Terminating all Terminal windows..." -ForegroundColor Yellow
+            Write-Log -Level WARN -Message "Terminating all Terminal windows..." -NoLabel
             try {
                 # Use killall to force-terminate Terminal without confirmation dialog
                 & killall Terminal 2>$null
                 Start-Sleep -Milliseconds 500
-                Write-Host "Terminal windows closed." -ForegroundColor Green
+                Write-Log -Level INFO -Message "Terminal windows closed." -NoLabel -ForegroundColor Green
             }
             catch {
-                Write-Host "Note: Could not close Terminal windows (may not be running)" -ForegroundColor DarkYellow
+                Write-Log -Level INFO -Message "Note: Could not close Terminal windows (may not be running)" -NoLabel -ForegroundColor DarkYellow
             }
         }
         elseif ($Terminate -and -not $IsMacOS) {
-            Write-Host "Note: -Terminate switch is only supported on macOS" -ForegroundColor DarkYellow
+            Write-Log -Level INFO -Message "Note: -Terminate switch is only supported on macOS" -NoLabel -ForegroundColor DarkYellow
         }
 
         # Build GameService (always needed)
-        Write-Host "Rebuilding GameService..." -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Rebuilding GameService..." -NoLabel -ForegroundColor Cyan
         $gameServicePath = Join-Path $PSScriptRoot "Catan3.GameService"
         & dotnet build $gameServicePath --verbosity quiet
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "GameService build failed!" -ForegroundColor Red
+            Write-Log -Level ERROR -Message "GameService build failed!" -NoLabel
             exit 1
         }
-        Write-Host "GameService rebuilt." -ForegroundColor Green
+        Write-Log -Level INFO -Message "GameService rebuilt." -NoLabel -ForegroundColor Green
 
         # Check what services are running
         $gameRunning = Test-PortInUse -Port $GameServicePort
         $reactRunning = Test-PortInUse -Port $ReactUIPort
 
         if ($gameRunning -or $reactRunning) {
-            Write-Host "Restarting services..." -ForegroundColor Yellow
+            Write-Log -Level WARN -Message "Restarting services..." -NoLabel
             Stop-Services
             Start-Sleep -Milliseconds 500
 
@@ -1619,17 +1615,17 @@ switch ($Verb) {
             if ($reactRunning) {
                 Start-ReactUI
             }
-            Write-Host "Services rebuilt and restarted! Refresh browser to load changes." -ForegroundColor Green
+            Write-Log -Level INFO -Message "Services rebuilt and restarted! Refresh browser to load changes." -NoLabel -ForegroundColor Green
         }
         elseif ($Terminate) {
             # -Terminate killed the services, so start them fresh
-            Write-Host "Starting services..." -ForegroundColor Yellow
+            Write-Log -Level WARN -Message "Starting services..." -NoLabel
             Start-GameService
             Start-ReactUI
-            Write-Host "Services rebuilt and started! Refresh browser to load changes." -ForegroundColor Green
+            Write-Log -Level INFO -Message "Services rebuilt and started! Refresh browser to load changes." -NoLabel -ForegroundColor Green
         }
         else {
-            Write-Host "Projects rebuilt successfully! Run './catan.ps1 run' to start." -ForegroundColor Green
+            Write-Log -Level INFO -Message "Projects rebuilt successfully! Run './catan.ps1 run' to start." -NoLabel -ForegroundColor Green
         }
     }
 
@@ -1660,41 +1656,37 @@ switch ($Verb) {
                 & pwsh $dbScript test @modeFlag -TraceLevel $TraceLevel
                 exit $LASTEXITCODE
             }
-            "export-game" {
-                Write-Host "export-game is not yet migrated to CosmosDB." -ForegroundColor Red
-                Write-Host "The CLI db-export command still uses the old SQLite path." -ForegroundColor Red
-                exit 1
-            }
+
             default {
-                Write-Host ""
-                Write-Host "Database Commands" -ForegroundColor Cyan
-                Write-Host "=================" -ForegroundColor Cyan
-                Write-Host ""
-                Write-Host "Usage: ./catan.ps1 database <subcommand>" -ForegroundColor Yellow
-                Write-Host ""
-                Write-Host "Subcommands:" -ForegroundColor Yellow
-                Write-Host "  doctor       - Check CosmosDB health (emulator or Azure)"
-                Write-Host "  install      - Install emulator, create containers, seed data"
-                Write-Host "  clean        - Delete containers (nuke-containers)"
-                Write-Host "  seed-data    - Seed players and recordings"
-                Write-Host "  test         - Run contract tests"
-                Write-Host ""
-                Write-Host "Flags:" -ForegroundColor Yellow
-                Write-Host "  -Azure       - Target Azure CosmosDB instead of local emulator"
-                Write-Host ""
-                Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./catan.ps1 database doctor                        - Check local emulator"
-                Write-Host "  ./catan.ps1 database doctor -Azure                 - Check Azure CosmosDB"
-                Write-Host "  ./catan.ps1 database install                       - Install local emulator + seed"
-                Write-Host "  ./catan.ps1 database install -Azure                - Install Azure account + seed"
-                Write-Host "  ./catan.ps1 database test                          - Run tests against emulator"
-                Write-Host "  ./catan.ps1 database test -Azure                   - Run tests against Azure"
-                Write-Host ""
-                Write-Host "Note: Recording management moved to './catan.ps1 recording'" -ForegroundColor DarkYellow
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Database Commands" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "=================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Usage: ./catan.ps1 database <subcommand>" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Subcommands:" -NoLabel
+                Write-Log -Level INFO -Message "  doctor       - Check CosmosDB health (emulator or Azure)" -NoLabel
+                Write-Log -Level INFO -Message "  install      - Install emulator, create containers, seed data" -NoLabel
+                Write-Log -Level INFO -Message "  clean        - Delete containers (nuke-containers)" -NoLabel
+                Write-Log -Level INFO -Message "  seed-data    - Seed players and recordings" -NoLabel
+                Write-Log -Level INFO -Message "  test         - Run contract tests" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Flags:" -NoLabel
+                Write-Log -Level INFO -Message "  -Azure       - Target Azure CosmosDB instead of local emulator" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Examples:" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 database doctor                        - Check local emulator" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 database doctor -Azure                 - Check Azure CosmosDB" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 database install                       - Install local emulator + seed" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 database install -Azure                - Install Azure account + seed" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 database test                          - Run tests against emulator" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 database test -Azure                   - Run tests against Azure" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Note: Recording management moved to './catan.ps1 recording'" -NoLabel -ForegroundColor DarkYellow
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 if ($SubCommand) {
-                    Write-Host "Unknown subcommand: $SubCommand" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Unknown subcommand: $SubCommand" -NoLabel
                     exit 1
                 }
             }
@@ -1721,31 +1713,31 @@ switch ($Verb) {
                 & $depsScript -Clean -Yes:$Yes -Force:$Force -TraceLevel $TraceLevel
             }
             default {
-                Write-Host ""
-                Write-Host "Dependencies Commands" -ForegroundColor Cyan
-                Write-Host "=====================" -ForegroundColor Cyan
-                Write-Host ""
-                Write-Host "Usage: ./catan.ps1 dependencies <subcommand>" -ForegroundColor Yellow
-                Write-Host ""
-                Write-Host "Subcommands:" -ForegroundColor Yellow
-                Write-Host "  doctor   - Check status of all dependencies"
-                Write-Host "  install  - Install all dependencies"
-                Write-Host "  clean    - Remove/reset dependencies"
-                Write-Host ""
-                Write-Host "Options:" -ForegroundColor Yellow
-                Write-Host "  -Json        Output doctor as JSON"
-                Write-Host "  -HashTable   Output doctor as PowerShell hashtable"
-                Write-Host "  -Yes         Skip confirmation prompts"
-                Write-Host "  -Force       Force reinstall even if already installed"
-                Write-Host "  -TraceLevel  Output detail: ERROR, WARN, INFO (default), DEBUG"
-                Write-Host ""
-                Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./catan.ps1 dependencies doctor    - Check all dependencies"
-                Write-Host "  ./catan.ps1 dependencies install   - Install missing dependencies"
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Dependencies Commands" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "=====================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Usage: ./catan.ps1 dependencies <subcommand>" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Subcommands:" -NoLabel
+                Write-Log -Level INFO -Message "  doctor   - Check status of all dependencies" -NoLabel
+                Write-Log -Level INFO -Message "  install  - Install all dependencies" -NoLabel
+                Write-Log -Level INFO -Message "  clean    - Remove/reset dependencies" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Options:" -NoLabel
+                Write-Log -Level INFO -Message "  -Json        Output doctor as JSON" -NoLabel
+                Write-Log -Level INFO -Message "  -HashTable   Output doctor as PowerShell hashtable" -NoLabel
+                Write-Log -Level INFO -Message "  -Yes         Skip confirmation prompts" -NoLabel
+                Write-Log -Level INFO -Message "  -Force       Force reinstall even if already installed" -NoLabel
+                Write-Log -Level INFO -Message "  -TraceLevel  Output detail: ERROR, WARN, INFO (default), DEBUG" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Examples:" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 dependencies doctor    - Check all dependencies" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 dependencies install   - Install missing dependencies" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 if ($SubCommand) {
-                    Write-Host "Unknown subcommand: $SubCommand" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Unknown subcommand: $SubCommand" -NoLabel
                     exit 1
                 }
             }
@@ -1763,20 +1755,20 @@ switch ($Verb) {
 
         switch ($SubCommand) {
             "build" {
-                Write-Host "Building Stream Deck plugin..." -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "Building Stream Deck plugin..." -NoLabel -ForegroundColor Cyan
                 Push-Location $sdDir
                 try {
                     npm run build
                     if ($LASTEXITCODE -ne 0) { throw "Build failed" }
-                    Write-Host "Stream Deck plugin built successfully" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "Stream Deck plugin built successfully" -NoLabel -ForegroundColor Green
 
                     # Build profile zip archives from JSON definitions
-                    Write-Host "Building profile archives..." -ForegroundColor Cyan
+                    Write-Log -Level INFO -Message "Building profile archives..." -NoLabel -ForegroundColor Cyan
                     node scripts/build-profiles.mjs
                     if ($LASTEXITCODE -ne 0) { throw "Profile build failed" }
 
                     # Convert SVG icons to PNG (required by Elgato CLI)
-                    Write-Host "Converting SVG icons to PNG..." -ForegroundColor Cyan
+                    Write-Log -Level INFO -Message "Converting SVG icons to PNG..." -NoLabel -ForegroundColor Cyan
                     Get-ChildItem -Path $sdPlugin -Filter "*.svg" -Recurse | ForEach-Object {
                         $png = $_.FullName -replace '\.svg$', '.png'
                         $png2x = $_.FullName -replace '\.svg$', '@2x.png'
@@ -1789,7 +1781,7 @@ switch ($Verb) {
                     }
 
                     # Pack and copy to wwwroot for download
-                    Write-Host "Packing plugin for download..." -ForegroundColor Cyan
+                    Write-Log -Level INFO -Message "Packing plugin for download..." -NoLabel -ForegroundColor Cyan
                     npx streamdeck pack $sdPlugin --force --output $sdDir 2>$null
                     if (Test-Path $sdPackedFile) {
                         if (-not (Test-Path $sdDownloadDir)) {
@@ -1799,16 +1791,16 @@ switch ($Verb) {
                         # Clean up old versioned downloads and write metadata
                         Get-ChildItem -Path $sdDownloadDir -Filter "CatanStreamDeck-v*.streamDeckPlugin" | Where-Object { $_.FullName -ne $sdDownloadFile } | Remove-Item -Force
                         @{ version = $sdVersion; filename = "CatanStreamDeck-v${sdVersion}.streamDeckPlugin" } | ConvertTo-Json | Set-Content (Join-Path $sdDownloadDir "streamdeck-latest.json")
-                        Write-Host "Plugin available at /downloads/CatanStreamDeck-v${sdVersion}.streamDeckPlugin" -ForegroundColor Green
+                        Write-Log -Level INFO -Message "Plugin available at /downloads/CatanStreamDeck-v${sdVersion}.streamDeckPlugin" -NoLabel -ForegroundColor Green
                     } else {
-                        Write-Host "Warning: Pack succeeded but output file not found" -ForegroundColor Yellow
+                        Write-Log -Level WARN -Message "Warning: Pack succeeded but output file not found" -NoLabel
                     }
                 } finally {
                     Pop-Location
                 }
             }
             "watch" {
-                Write-Host "Watching Stream Deck plugin (Ctrl+C to stop)..." -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "Watching Stream Deck plugin (Ctrl+C to stop)..." -NoLabel -ForegroundColor Cyan
                 Push-Location $sdDir
                 try {
                     npm run watch
@@ -1817,7 +1809,7 @@ switch ($Verb) {
                 }
             }
             "pack" {
-                Write-Host "Packing Stream Deck plugin..." -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "Packing Stream Deck plugin..." -NoLabel -ForegroundColor Cyan
                 Push-Location $sdDir
                 try {
                     npx streamdeck pack $sdPlugin --force --output $sdDir
@@ -1827,39 +1819,39 @@ switch ($Verb) {
                             New-Item -ItemType Directory -Path $sdDownloadDir -Force | Out-Null
                         }
                         Copy-Item $sdPackedFile $sdDownloadFile -Force
-                        Write-Host "Plugin packed and copied to wwwroot/downloads/" -ForegroundColor Green
+                        Write-Log -Level INFO -Message "Plugin packed and copied to wwwroot/downloads/" -NoLabel -ForegroundColor Green
                     }
                 } finally {
                     Pop-Location
                 }
             }
             "link" {
-                Write-Host "Linking Stream Deck plugin for development..." -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "Linking Stream Deck plugin for development..." -NoLabel -ForegroundColor Cyan
                 Push-Location $sdDir
                 try {
                     npx streamdeck link $sdPlugin
-                    Write-Host "Plugin linked. Restart Stream Deck to load it." -ForegroundColor Green
+                    Write-Log -Level INFO -Message "Plugin linked. Restart Stream Deck to load it." -NoLabel -ForegroundColor Green
                 } finally {
                     Pop-Location
                 }
             }
             "install" {
-                Write-Host "Installing Stream Deck plugin dependencies..." -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "Installing Stream Deck plugin dependencies..." -NoLabel -ForegroundColor Cyan
                 Push-Location $sdDir
                 try {
                     npm install
-                    Write-Host "Dependencies installed" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "Dependencies installed" -NoLabel -ForegroundColor Green
                 } finally {
                     Pop-Location
                 }
             }
             default {
-                Write-Host "Stream Deck plugin commands:" -ForegroundColor Yellow
-                Write-Host "  ./catan.ps1 streamdeck install  - Install npm dependencies"
-                Write-Host "  ./catan.ps1 streamdeck build    - Build the plugin"
-                Write-Host "  ./catan.ps1 streamdeck watch    - Build and watch for changes"
-                Write-Host "  ./catan.ps1 streamdeck pack     - Package as .streamDeckPlugin"
-                Write-Host "  ./catan.ps1 streamdeck link     - Symlink for local development"
+                Write-Log -Level WARN -Message "Stream Deck plugin commands:" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 streamdeck install  - Install npm dependencies" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 streamdeck build    - Build the plugin" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 streamdeck watch    - Build and watch for changes" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 streamdeck pack     - Package as .streamDeckPlugin" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 streamdeck link     - Symlink for local development" -NoLabel
             }
         }
     }
@@ -1870,8 +1862,8 @@ switch ($Verb) {
         switch ($SubCommand) {
             "install" {
                 $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
-                Write-Host "Installing all Azure resources..." -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "Installing all Azure resources..." -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
                 & $azureScript game-service install -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 & pwsh $dbScript install -Azure -TraceLevel $TraceLevel
@@ -1881,8 +1873,8 @@ switch ($Verb) {
                 # Deploy RBAC and app settings for CosmosDB
                 & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
-                Write-Host ""
-                Write-Host "All Azure resources installed and configured!" -ForegroundColor Green
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "All Azure resources installed and configured!" -NoLabel -ForegroundColor Green
             }
             "deploy" {
                 # Support targeted deploys: ./catan.ps1 azure deploy [ui|game-service|database]
@@ -1891,56 +1883,56 @@ switch ($Verb) {
 
                 switch ($deployTarget) {
                     "ui" {
-                        Write-Host "Deploying UI to Azure..." -ForegroundColor Cyan
-                        Write-Host ""
+                        Write-Log -Level INFO -Message "Deploying UI to Azure..." -NoLabel -ForegroundColor Cyan
+                        Write-Log -Level INFO -Message "" -NoLabel
 
                         $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel $TraceLevel
                         if ($uiDoctor.needsInstall) {
-                            Write-Host "  UI: Not installed - installing..." -ForegroundColor Yellow
+                            Write-Log -Level WARN -Message "  UI: Not installed - installing..." -NoLabel
                             & $azureScript ui install -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                         }
 
                         if ($uiDoctor.needsDeploy -or $Force) {
-                            Write-Host "  UI: Deploying..." -ForegroundColor Yellow
+                            Write-Log -Level WARN -Message "  UI: Deploying..." -NoLabel
                             & $azureScript ui deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                         } else {
-                            Write-Host "  UI: Up to date - skipping" -ForegroundColor Green
+                            Write-Log -Level INFO -Message "  UI: Up to date - skipping" -NoLabel -ForegroundColor Green
                         }
 
                         # React staging is deployed by the deploy-react-staging.yml workflow
                         # Use './catan.ps1 azure ui deploy-staging' to deploy manually
 
-                        Write-Host ""
-                        Write-Host "UI deployment complete!" -ForegroundColor Green
+                        Write-Log -Level INFO -Message "" -NoLabel
+                        Write-Log -Level INFO -Message "UI deployment complete!" -NoLabel -ForegroundColor Green
                     }
                     "game-service" {
                         $slotLabel = if ($Slot) { " to slot '$Slot'" } else { "" }
-                        Write-Host "Deploying GameService${slotLabel} to Azure..." -ForegroundColor Cyan
-                        Write-Host ""
+                        Write-Log -Level INFO -Message "Deploying GameService${slotLabel} to Azure..." -NoLabel -ForegroundColor Cyan
+                        Write-Log -Level INFO -Message "" -NoLabel
                         $gsArgs = @{}
                         if ($Slot) { $gsArgs['Slot'] = $Slot }
                         & $azureScript game-service deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel @gsArgs
                         if ($LASTEXITCODE -ne 0) { exit 1 }
-                        Write-Host ""
-                        Write-Host "GameService deployment complete!" -ForegroundColor Green
+                        Write-Log -Level INFO -Message "" -NoLabel
+                        Write-Log -Level INFO -Message "GameService deployment complete!" -NoLabel -ForegroundColor Green
                     }
                     "database" {
                         $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
-                        Write-Host "Deploying database configuration..." -ForegroundColor Cyan
-                        Write-Host ""
+                        Write-Log -Level INFO -Message "Deploying database configuration..." -NoLabel -ForegroundColor Cyan
+                        Write-Log -Level INFO -Message "" -NoLabel
                         & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
                         if ($LASTEXITCODE -ne 0) { exit 1 }
-                        Write-Host ""
-                        Write-Host "Database deployment complete!" -ForegroundColor Green
+                        Write-Log -Level INFO -Message "" -NoLabel
+                        Write-Log -Level INFO -Message "Database deployment complete!" -NoLabel -ForegroundColor Green
                     }
                     "all" {
-                        Write-Host "Deploying to Azure..." -ForegroundColor Cyan
-                        Write-Host ""
+                        Write-Log -Level INFO -Message "Deploying to Azure..." -NoLabel -ForegroundColor Cyan
+                        Write-Log -Level INFO -Message "" -NoLabel
 
                         # Run all doctors to determine what needs to be done
-                        Write-Host "Checking deployment status..." -ForegroundColor Gray
+                        Write-Log -Level DEBUG -Message "Checking deployment status..." -NoLabel
 
                         # GameService doctor
                         $gsDoctor = & $azureScript game-service doctor -HashTable -TraceLevel $TraceLevel
@@ -1949,35 +1941,35 @@ switch ($Verb) {
                         $gsHealthy = $gsDoctor.healthy
 
                         if ($gsNeedsInstall) {
-                            Write-Host "  GameService: Not installed - installing..." -ForegroundColor Yellow
+                            Write-Log -Level WARN -Message "  GameService: Not installed - installing..." -NoLabel
                             & $azureScript game-service install -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                             $gsNeedsDeploy = $true
                         }
 
                         if ($gsHealthy -and -not $gsNeedsDeploy -and -not $Force) {
-                            Write-Host "  GameService: Up to date - skipping" -ForegroundColor Green
+                            Write-Log -Level INFO -Message "  GameService: Up to date - skipping" -NoLabel -ForegroundColor Green
                         }
                         elseif ($gsNeedsDeploy -or $Force) {
-                            Write-Host "  GameService: Needs deploy" -ForegroundColor Yellow
+                            Write-Log -Level WARN -Message "  GameService: Needs deploy" -NoLabel
                             & $azureScript game-service deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                         }
                         else {
-                            Write-Host "  GameService: OK - skipping" -ForegroundColor Green
+                            Write-Log -Level INFO -Message "  GameService: OK - skipping" -NoLabel -ForegroundColor Green
                         }
 
                         # Database: use database.ps1 for CosmosDB
                         $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
                         $dbDoctor = & pwsh $dbScript doctor -Azure -HashTable -TraceLevel $TraceLevel
                         if ($dbDoctor.Status -ne "Ready") {
-                            Write-Host "  Database: Needs setup" -ForegroundColor Yellow
+                            Write-Log -Level WARN -Message "  Database: Needs setup" -NoLabel
                             & pwsh $dbScript install -Azure -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                             & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                         } else {
-                            Write-Host "  Database: Ready - skipping" -ForegroundColor Green
+                            Write-Log -Level INFO -Message "  Database: Ready - skipping" -NoLabel -ForegroundColor Green
                         }
 
                         # UI doctor
@@ -1987,22 +1979,22 @@ switch ($Verb) {
                         $uiHealthy = $uiDoctor.healthy
 
                         if ($uiNeedsInstall) {
-                            Write-Host "  UI: Not installed - installing..." -ForegroundColor Yellow
+                            Write-Log -Level WARN -Message "  UI: Not installed - installing..." -NoLabel
                             & $azureScript ui install -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                             $uiNeedsDeploy = $true
                         }
 
                         if ($uiHealthy -and -not $uiNeedsDeploy -and -not $Force) {
-                            Write-Host "  UI: Up to date - skipping" -ForegroundColor Green
+                            Write-Log -Level INFO -Message "  UI: Up to date - skipping" -NoLabel -ForegroundColor Green
                         }
                         elseif ($uiNeedsDeploy -or $Force) {
-                            Write-Host "  UI: Needs deploy" -ForegroundColor Yellow
+                            Write-Log -Level WARN -Message "  UI: Needs deploy" -NoLabel
                             & $azureScript ui deploy -Force:$Force -NoBuild:$NoBuild -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                         }
                         else {
-                            Write-Host "  UI: OK - skipping" -ForegroundColor Green
+                            Write-Log -Level INFO -Message "  UI: OK - skipping" -NoLabel -ForegroundColor Green
                         }
 
                         # React UI staging is deployed by the deploy-react-staging.yml workflow
@@ -2010,19 +2002,19 @@ switch ($Verb) {
                         # that here — it requires Node.js which the deploy-azure.yml workflow
                         # doesn't set up, and would hang the deploy pipeline.
 
-                        Write-Host ""
-                        Write-Host "All deployments complete!" -ForegroundColor Green
+                        Write-Log -Level INFO -Message "" -NoLabel
+                        Write-Log -Level INFO -Message "All deployments complete!" -NoLabel -ForegroundColor Green
                     }
                     default {
-                        Write-Host "Unknown deploy target: $deployTarget" -ForegroundColor Red
-                        Write-Host ""
-                        Write-Host "Usage: ./catan.ps1 azure deploy [target]" -ForegroundColor Yellow
-                        Write-Host ""
-                        Write-Host "Targets:" -ForegroundColor Yellow
-                        Write-Host "  ui            - Deploy UI"
-                        Write-Host "  game-service  - Deploy GameService only"
-                        Write-Host "  database      - Deploy database configuration only"
-                        Write-Host "  (no target)   - Deploy everything"
+                        Write-Log -Level ERROR -Message "Unknown deploy target: $deployTarget" -NoLabel
+                        Write-Log -Level INFO -Message "" -NoLabel
+                        Write-Log -Level WARN -Message "Usage: ./catan.ps1 azure deploy [target]" -NoLabel
+                        Write-Log -Level INFO -Message "" -NoLabel
+                        Write-Log -Level WARN -Message "Targets:" -NoLabel
+                        Write-Log -Level INFO -Message "  ui            - Deploy UI" -NoLabel
+                        Write-Log -Level INFO -Message "  game-service  - Deploy GameService only" -NoLabel
+                        Write-Log -Level INFO -Message "  database      - Deploy database configuration only" -NoLabel
+                        Write-Log -Level INFO -Message "  (no target)   - Deploy everything" -NoLabel
                         exit 1
                     }
                 }
@@ -2041,14 +2033,14 @@ switch ($Verb) {
                 exit $LASTEXITCODE
             }
             "swap-slots" {
-                Write-Host "Swap Azure Deployment Slots" -ForegroundColor Cyan
-                Write-Host "==========================" -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "Swap Azure Deployment Slots" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "==========================" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Load config for app name and resource group
                 $azureConfigFile = Join-Path $PSScriptRoot ".azure/catan-azure.json"
                 if (-not (Test-Path $azureConfigFile)) {
-                    Write-Host "Azure configuration not found. Run './catan.ps1 azure install' first." -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Azure configuration not found. Run './catan.ps1 azure install' first." -NoLabel
                     exit 1
                 }
                 $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
@@ -2056,21 +2048,21 @@ switch ($Verb) {
                 $rgName = $azureConfig.resourceGroup
 
                 # Use doctor to get complete picture of the system
-                Write-Host "Running UI health check..." -ForegroundColor Gray
+                Write-Log -Level DEBUG -Message "Running UI health check..." -NoLabel
                 $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel $TraceLevel
 
                 if ($uiDoctor.needsInstall) {
-                    Write-Host "UI is not installed. Run './catan.ps1 azure install' first." -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "UI is not installed. Run './catan.ps1 azure install' first." -NoLabel
                     exit 1
                 }
 
                 # Show current state from doctor
-                Write-Host "This will swap the staging slot into production." -ForegroundColor Yellow
-                Write-Host ""
-                Write-Host "  App:         $appName" -ForegroundColor Gray
-                Write-Host "  Production:  https://$appName.azurewebsites.net" -ForegroundColor Gray
-                Write-Host "  Staging:     https://$appName-staging.azurewebsites.net" -ForegroundColor Gray
-                Write-Host ""
+                Write-Log -Level WARN -Message "This will swap the staging slot into production." -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level DEBUG -Message "  App:         $appName" -NoLabel
+                Write-Log -Level DEBUG -Message "  Production:  https://$appName.azurewebsites.net" -NoLabel
+                Write-Log -Level DEBUG -Message "  Staging:     https://$appName-staging.azurewebsites.net" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 # Show what's currently in each slot
                 if ($uiDoctor.prodRuntime -or $uiDoctor.stagingRuntime) {
@@ -2081,68 +2073,68 @@ switch ($Verb) {
                         if ($Runtime -like "NODE*") { return "React/Next.js ($Runtime)" }
                         return $Runtime
                     }
-                    Write-Host "Current configuration:" -ForegroundColor Yellow
-                    Write-Host "  Production: $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -ForegroundColor Gray
-                    Write-Host "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -ForegroundColor Gray
-                    Write-Host ""
-                    Write-Host "After swap:" -ForegroundColor Yellow
-                    Write-Host "  Production: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -ForegroundColor Gray
-                    Write-Host "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -ForegroundColor Gray
-                    Write-Host ""
+                    Write-Log -Level WARN -Message "Current configuration:" -NoLabel
+                    Write-Log -Level DEBUG -Message "  Production: $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -NoLabel
+                    Write-Log -Level DEBUG -Message "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
+                    Write-Log -Level INFO -Message "" -NoLabel
+                    Write-Log -Level WARN -Message "After swap:" -NoLabel
+                    Write-Log -Level DEBUG -Message "  Production: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
+                    Write-Log -Level DEBUG -Message "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -NoLabel
+                    Write-Log -Level INFO -Message "" -NoLabel
                 }
 
                 # Check staging slot exists
                 if (-not $uiDoctor.checks.stagingSlot) {
-                    Write-Host "Staging slot does not exist." -ForegroundColor Red
-                    Write-Host "  Run: ./catan.ps1 azure install" -ForegroundColor Cyan
+                    Write-Log -Level ERROR -Message "Staging slot does not exist." -NoLabel
+                    Write-Log -Level INFO -Message "  Run: ./catan.ps1 azure install" -NoLabel -ForegroundColor Cyan
                     exit 1
                 }
 
                 # Check staging has code deployed
                 if (-not $uiDoctor.checks.stagingCodeDeployed) {
-                    Write-Host "Staging slot has no code deployed." -ForegroundColor Red
-                    Write-Host "  Run: ./catan.ps1 azure deploy ui" -ForegroundColor Cyan
+                    Write-Log -Level ERROR -Message "Staging slot has no code deployed." -NoLabel
+                    Write-Log -Level INFO -Message "  Run: ./catan.ps1 azure deploy ui" -NoLabel -ForegroundColor Cyan
                     exit 1
                 }
 
                 # Show staging commit info
                 if ($uiDoctor.stagingDeployedCommit) {
-                    Write-Host "  Staging commit: $($uiDoctor.stagingDeployedCommit)" -ForegroundColor Gray
+                    Write-Log -Level DEBUG -Message "  Staging commit: $($uiDoctor.stagingDeployedCommit)" -NoLabel
                 }
 
                 # Check staging runtime is correct (NODE for React)
                 if (-not $uiDoctor.checks.stagingRuntime) {
-                    Write-Host "Staging slot runtime is not configured for Node.js." -ForegroundColor Red
-                    Write-Host "  Current: $($uiDoctor.stagingRuntime)" -ForegroundColor Gray
-                    Write-Host "  Run: ./catan.ps1 azure ui deploy-staging" -ForegroundColor Cyan
+                    Write-Log -Level ERROR -Message "Staging slot runtime is not configured for Node.js." -NoLabel
+                    Write-Log -Level DEBUG -Message "  Current: $($uiDoctor.stagingRuntime)" -NoLabel
+                    Write-Log -Level INFO -Message "  Run: ./catan.ps1 azure ui deploy-staging" -NoLabel -ForegroundColor Cyan
                     exit 1
                 }
 
                 # Check staging is responding (with retry for cold starts)
                 if (-not $uiDoctor.checks.stagingResponding) {
-                    Write-Host "Staging slot is not responding. Warming up..." -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "Staging slot is not responding. Warming up..." -NoLabel
                     $stagingUrl = "https://$appName-staging.azurewebsites.net"
                     $healthy = $false
                     for ($attempt = 1; $attempt -le 3; $attempt++) {
                         try {
                             $response = Invoke-WebRequest -Uri $stagingUrl -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
-                            Write-Host "  Staging slot is responding (HTTP $($response.StatusCode))" -ForegroundColor Green
+                            Write-Log -Level INFO -Message "  Staging slot is responding (HTTP $($response.StatusCode))" -NoLabel -ForegroundColor Green
                             $healthy = $true
                             break
                         }
                         catch {
                             if ($attempt -lt 3) {
-                                Write-Host "  Attempt $attempt/3: staging not ready, retrying..." -ForegroundColor Yellow
+                                Write-Log -Level WARN -Message "  Attempt $attempt/3: staging not ready, retrying..." -NoLabel
                                 Start-Sleep -Seconds 5
                             }
                         }
                     }
                     if (-not $healthy) {
-                        Write-Host "Staging slot is not responding after 3 attempts." -ForegroundColor Red
-                        Write-Host ""
-                        Write-Host "Try:" -ForegroundColor Yellow
-                        Write-Host "  1. Wait a minute and retry (cold start can be slow)" -ForegroundColor Gray
-                        Write-Host "  2. Redeploy: ./catan.ps1 azure deploy ui -Force" -ForegroundColor Gray
+                        Write-Log -Level ERROR -Message "Staging slot is not responding after 3 attempts." -NoLabel
+                        Write-Log -Level INFO -Message "" -NoLabel
+                        Write-Log -Level WARN -Message "Try:" -NoLabel
+                        Write-Log -Level DEBUG -Message "  1. Wait a minute and retry (cold start can be slow)" -NoLabel
+                        Write-Log -Level DEBUG -Message "  2. Redeploy: ./catan.ps1 azure deploy ui -Force" -NoLabel
                         exit 1
                     }
                 }
@@ -2151,30 +2143,30 @@ switch ($Verb) {
                 if (-not $Yes) {
                     $confirm = Read-Host "Proceed with swap? (y/N)"
                     if ($confirm -ne 'y' -and $confirm -ne 'Y') {
-                        Write-Host "Swap cancelled." -ForegroundColor Yellow
+                        Write-Log -Level WARN -Message "Swap cancelled." -NoLabel
                         exit 0
                     }
                 }
 
-                Write-Host "Swapping staging -> production..." -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "Swapping staging -> production..." -NoLabel -ForegroundColor Cyan
                 az webapp deployment slot swap --name $appName --resource-group $rgName --slot staging
                 if ($LASTEXITCODE -ne 0) {
-                    Write-Host "Slot swap failed!" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Slot swap failed!" -NoLabel
                     exit 1
                 }
 
-                Write-Host ""
-                Write-Host "Slot swap complete!" -ForegroundColor Green
-                Write-Host "  Production is now serving: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -ForegroundColor Gray
-                Write-Host "  To swap back: ./catan.ps1 azure swap-slots" -ForegroundColor Gray
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Slot swap complete!" -NoLabel -ForegroundColor Green
+                Write-Log -Level DEBUG -Message "  Production is now serving: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
+                Write-Log -Level DEBUG -Message "  To swap back: ./catan.ps1 azure swap-slots" -NoLabel
             }
             "start" {
-                Write-Host "Starting Azure services..." -ForegroundColor Cyan
-                Write-Host ""
+                Write-Log -Level INFO -Message "Starting Azure services..." -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 $azureConfigFile = Join-Path $PSScriptRoot ".azure/catan-azure.json"
                 if (-not (Test-Path $azureConfigFile)) {
-                    Write-Host "Azure configuration not found. Run './catan.ps1 azure install' first." -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Azure configuration not found. Run './catan.ps1 azure install' first." -NoLabel
                     exit 1
                 }
                 $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
@@ -2185,10 +2177,10 @@ switch ($Verb) {
                 $rgName = $azureConfig.resourceGroup
 
                 # Step 1: Resume database if paused (must complete before GameService can connect)
-                Write-Host -NoNewline "  Database...   "
+                Write-Log -Level INFO -Message "  Database...   " -NoLabel -NoNewline
                 $dbStatus = az sql db show --name $sqlDb --server $sqlServer --resource-group $rgName --query status -o tsv 2>$null
                 if ($dbStatus -eq "Paused") {
-                    Write-Host -NoNewline "resuming... " -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "resuming... " -NoLabel -NoNewline
                     az sql db update --name $sqlDb --server $sqlServer --resource-group $rgName --auto-pause-delay 720 2>$null | Out-Null
                     # Wait for resume (polls every 5s, up to 2 minutes)
                     for ($i = 0; $i -lt 24; $i++) {
@@ -2197,14 +2189,14 @@ switch ($Verb) {
                         if ($dbStatus -eq "Online") { break }
                     }
                     if ($dbStatus -eq "Online") {
-                        Write-Host "online" -ForegroundColor Green
+                        Write-Log -Level INFO -Message "online" -NoLabel -ForegroundColor Green
                     } else {
-                        Write-Host "status: $dbStatus (may still be resuming)" -ForegroundColor Yellow
+                        Write-Log -Level WARN -Message "status: $dbStatus (may still be resuming)" -NoLabel
                     }
                 } elseif ($dbStatus -eq "Online") {
-                    Write-Host "already online" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "already online" -NoLabel -ForegroundColor Green
                 } else {
-                    Write-Host "status: $dbStatus" -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "status: $dbStatus" -NoLabel
                 }
 
                 # Step 2: Wake GameService and UI in parallel
@@ -2226,41 +2218,41 @@ switch ($Verb) {
                 }
 
                 # Wait for both with progress
-                Write-Host -NoNewline "  GameService..."
+                Write-Log -Level INFO -Message "  GameService..." -NoLabel -NoNewline
                 $gsJob | Wait-Job | Out-Null
                 $gsResult = Receive-Job $gsJob
                 if ($gsResult.ok) {
-                    Write-Host "  $($gsResult.status)" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "  $($gsResult.status)" -NoLabel -ForegroundColor Green
                 } else {
-                    Write-Host "  failed to wake" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "  failed to wake" -NoLabel
                 }
                 $gsJob | Remove-Job -Force
 
-                Write-Host -NoNewline "  React UI...   "
+                Write-Log -Level INFO -Message "  React UI...   " -NoLabel -NoNewline
                 $uiJob | Wait-Job | Out-Null
                 $uiResult = Receive-Job $uiJob
                 if ($uiResult.ok) {
-                    Write-Host "  responding" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "  responding" -NoLabel -ForegroundColor Green
                 } else {
-                    Write-Host "  failed to wake" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "  failed to wake" -NoLabel
                 }
                 $uiJob | Remove-Job -Force
 
                 # Summary
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
                 $allOk = $gsResult.ok -and $uiResult.ok -and ($dbStatus -eq "Online")
                 if ($allOk) {
-                    Write-Host "All services running!" -ForegroundColor Green
+                    Write-Log -Level INFO -Message "All services running!" -NoLabel -ForegroundColor Green
                 } else {
-                    Write-Host "Some services may still be starting. Run './catan.ps1 azure doctor' to check." -ForegroundColor Yellow
+                    Write-Log -Level WARN -Message "Some services may still be starting. Run './catan.ps1 azure doctor' to check." -NoLabel
                 }
-                Write-Host ""
-                Write-Host "  WebUI:       $uiUrl" -ForegroundColor Gray
-                Write-Host "  GameService: $gsUrl" -ForegroundColor Gray
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level DEBUG -Message "  WebUI:       $uiUrl" -NoLabel
+                Write-Log -Level DEBUG -Message "  GameService: $gsUrl" -NoLabel
             }
             "clean" {
-                Write-Host "Cleaning all Azure resources..." -ForegroundColor Yellow
-                Write-Host ""
+                Write-Log -Level WARN -Message "Cleaning all Azure resources..." -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 if ($Yes) {
                     & $azureScript ui clean -Yes -TraceLevel $TraceLevel
@@ -2278,16 +2270,16 @@ switch ($Verb) {
                     & $azureScript game-service clean -TraceLevel $TraceLevel
                     if ($LASTEXITCODE -ne 0) { exit 1 }
                 }
-                Write-Host ""
-                Write-Host "All Azure resources cleaned!" -ForegroundColor Green
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "All Azure resources cleaned!" -NoLabel -ForegroundColor Green
             }
             # Noun-first routing: ./catan.ps1 azure <noun> <verb>
             # Passes through directly to catan-azure.ps1
             { $_ -in @("ui", "game-service", "database", "github") } {
                 if (-not $Target) {
-                    Write-Host "Usage: ./catan.ps1 azure $SubCommand <verb>" -ForegroundColor Yellow
-                    Write-Host ""
-                    Write-Host "Verbs: install, deploy, deploy-staging, doctor, clean, fix" -ForegroundColor Gray
+                    Write-Log -Level WARN -Message "Usage: ./catan.ps1 azure $SubCommand <verb>" -NoLabel
+                    Write-Log -Level INFO -Message "" -NoLabel
+                    Write-Log -Level DEBUG -Message "Verbs: install, deploy, deploy-staging, doctor, clean, fix" -NoLabel
                     exit 1
                 }
                 $extraArgs = @{}
@@ -2297,49 +2289,49 @@ switch ($Verb) {
                 if ($LASTEXITCODE -ne 0) { exit 1 }
             }
             default {
-                Write-Host ""
-                Write-Host "Azure Commands" -ForegroundColor Cyan
-                Write-Host "==============" -ForegroundColor Cyan
-                Write-Host ""
-                Write-Host "Usage: ./catan.ps1 azure <verb> [target]" -ForegroundColor Yellow
-                Write-Host "       ./catan.ps1 azure <target> <verb>" -ForegroundColor Yellow
-                Write-Host ""
-                Write-Host "Verbs (operate on all resources):" -ForegroundColor Yellow
-                Write-Host "  start       - Wake all services (resume DB, warm up apps)"
-                Write-Host "  install     - Create all Azure resources (idempotent)"
-                Write-Host "  deploy      - Deploy everything to Azure"
-                Write-Host "  doctor      - Check health of all Azure resources"
-                Write-Host "  clean       - Delete all Azure resources"
-                Write-Host "  swap-slots  - Swap staging and production slots"
-                Write-Host ""
-                Write-Host "Targeted (verb + target or target + verb):" -ForegroundColor Yellow
-                Write-Host "  deploy ui              - Deploy UI"
-                Write-Host "  deploy game-service    - Deploy GameService only"
-                Write-Host "  deploy database        - Deploy database config only"
-                Write-Host "  ui doctor              - Check UI health only"
-                Write-Host "  ui deploy-staging      - Deploy React to staging only"
-                Write-Host "  game-service deploy    - Deploy GameService only"
-                Write-Host "  github install         - Setup GitHub Actions OIDC"
-                Write-Host ""
-                Write-Host "Options:" -ForegroundColor Yellow
-                Write-Host "  -Force                  Force deploy even if up-to-date"
-                Write-Host "  -Slot <name>            Deploy to a specific slot (e.g., staging)"
-                Write-Host "  -AzureGameServiceUrl    GameService URL for React staging builds"
-                Write-Host "  -Json                   Output doctor as JSON"
-                Write-Host "  -HashTable              Output doctor as PowerShell hashtable"
-                Write-Host "  -TraceLevel             Output detail: ERROR, WARN, INFO (default), DEBUG"
-                Write-Host ""
-                Write-Host "Examples:" -ForegroundColor Yellow
-                Write-Host "  ./catan.ps1 azure deploy ui -Force    - Force deploy UI"
-                Write-Host "  ./catan.ps1 azure ui doctor            - Check UI health"
-                Write-Host "  ./catan.ps1 azure doctor               - Check all resources"
-                Write-Host "  ./catan.ps1 azure swap-slots           - Swap staging <-> production"
-                Write-Host "  ./catan.ps1 azure game-service deploy -Slot staging  - Deploy to staging slot"
-                Write-Host "  ./catan.ps1 azure ui deploy-staging -AzureGameServiceUrl https://catan-api-staging.azurewebsites.net"
-                Write-Host ""
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level INFO -Message "Azure Commands" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "==============" -NoLabel -ForegroundColor Cyan
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Usage: ./catan.ps1 azure <verb> [target]" -NoLabel
+                Write-Log -Level WARN -Message "       ./catan.ps1 azure <target> <verb>" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Verbs (operate on all resources):" -NoLabel
+                Write-Log -Level INFO -Message "  start       - Wake all services (resume DB, warm up apps)" -NoLabel
+                Write-Log -Level INFO -Message "  install     - Create all Azure resources (idempotent)" -NoLabel
+                Write-Log -Level INFO -Message "  deploy      - Deploy everything to Azure" -NoLabel
+                Write-Log -Level INFO -Message "  doctor      - Check health of all Azure resources" -NoLabel
+                Write-Log -Level INFO -Message "  clean       - Delete all Azure resources" -NoLabel
+                Write-Log -Level INFO -Message "  swap-slots  - Swap staging and production slots" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Targeted (verb + target or target + verb):" -NoLabel
+                Write-Log -Level INFO -Message "  deploy ui              - Deploy UI" -NoLabel
+                Write-Log -Level INFO -Message "  deploy game-service    - Deploy GameService only" -NoLabel
+                Write-Log -Level INFO -Message "  deploy database        - Deploy database config only" -NoLabel
+                Write-Log -Level INFO -Message "  ui doctor              - Check UI health only" -NoLabel
+                Write-Log -Level INFO -Message "  ui deploy-staging      - Deploy React to staging only" -NoLabel
+                Write-Log -Level INFO -Message "  game-service deploy    - Deploy GameService only" -NoLabel
+                Write-Log -Level INFO -Message "  github install         - Setup GitHub Actions OIDC" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Options:" -NoLabel
+                Write-Log -Level INFO -Message "  -Force                  Force deploy even if up-to-date" -NoLabel
+                Write-Log -Level INFO -Message "  -Slot <name>            Deploy to a specific slot (e.g., staging)" -NoLabel
+                Write-Log -Level INFO -Message "  -AzureGameServiceUrl    GameService URL for React staging builds" -NoLabel
+                Write-Log -Level INFO -Message "  -Json                   Output doctor as JSON" -NoLabel
+                Write-Log -Level INFO -Message "  -HashTable              Output doctor as PowerShell hashtable" -NoLabel
+                Write-Log -Level INFO -Message "  -TraceLevel             Output detail: ERROR, WARN, INFO (default), DEBUG" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Examples:" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 azure deploy ui -Force    - Force deploy UI" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 azure ui doctor            - Check UI health" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 azure doctor               - Check all resources" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 azure swap-slots           - Swap staging <-> production" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 azure game-service deploy -Slot staging  - Deploy to staging slot" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 azure ui deploy-staging -AzureGameServiceUrl https://catan-api-staging.azurewebsites.net" -NoLabel
+                Write-Log -Level INFO -Message "" -NoLabel
 
                 if ($SubCommand) {
-                    Write-Host "Unknown subcommand: $SubCommand" -ForegroundColor Red
+                    Write-Log -Level ERROR -Message "Unknown subcommand: $SubCommand" -NoLabel
                     exit 1
                 }
             }
@@ -2347,89 +2339,89 @@ switch ($Verb) {
     }
 
     "help" {
-        Write-Host ""
-        Write-Host "Catan3 Development Script" -ForegroundColor Cyan
-        Write-Host "=========================" -ForegroundColor Cyan
-        Write-Host ""
-        Write-Host "Quick Start:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 doctor           - Check if everything is set up correctly"
-        Write-Host "  ./catan.ps1 install          - Install dependencies and database"
-        Write-Host "  ./catan.ps1 run              - Build, start services, launch browser"
-        Write-Host ""
-        Write-Host "Development:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 run              - Start GameService + React UI"
-        Write-Host "  ./catan.ps1 run -Network     - Same, but accessible from other devices"
-        Write-Host "  ./catan.ps1 stop             - Stop running services"
-        Write-Host "  ./catan.ps1 restart          - Stop and restart services"
-        Write-Host "  ./catan.ps1 update           - Rebuild and restart (when hot reload fails)"
-        Write-Host "  ./catan.ps1 update -Terminate - Same, but close all Terminal windows first (macOS)"
-        Write-Host "  ./catan.ps1 build            - Build GameService + React UI (no tests)"
-        Write-Host "  ./catan.ps1 test             - Build and run all tests"
-        Write-Host "  ./catan.ps1 lint             - Format, lint, and spell check (PS, TS, MD)"
-        Write-Host "  ./catan.ps1 generate-types   - Generate TypeScript types from C# models (TypeGen 7.0.0)"
-        Write-Host "  ./catan.ps1 clean            - Stop services, clean build (preserves database)"
-        Write-Host "  ./catan.ps1 debug            - Instructions for VS Code debugging"
-        Write-Host "  ./catan.ps1 help (or -Help)  - Show this help"
-        Write-Host ""
-        Write-Host "Setup:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 doctor           - Check dependencies and database health"
-        Write-Host "  ./catan.ps1 install          - Install all dependencies and database"
-        Write-Host ""
-        Write-Host "Recording:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 recording list   - List all recordings (add -Azure for Azure)"
-        Write-Host "  ./catan.ps1 recording save   - Save recordings to JSON files"
-        Write-Host "  ./catan.ps1 recording load   - Load recordings from JSON files"
-        Write-Host "  ./catan.ps1 recording replay - Run replay tests (requires running server)"
-        Write-Host "  ./catan.ps1 recording delete - Delete a recording"
-        Write-Host "  ./catan.ps1 recording        - Show detailed recording help"
-        Write-Host ""
-        Write-Host "Stats:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 stats list       - Show stats summary (add -Azure for Azure)"
-        Write-Host "  ./catan.ps1 stats export     - Export stats to JSON file"
-        Write-Host "  ./catan.ps1 stats import     - Import stats from JSON file"
-        Write-Host "  ./catan.ps1 stats reset      - Reset all lifetime statistics"
-        Write-Host "  ./catan.ps1 stats            - Show detailed stats help"
-        Write-Host ""
-        Write-Host "Database:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 database doctor  - Diagnose database health and contents"
-        Write-Host "  ./catan.ps1 database clean   - Delete database"
-        Write-Host "  ./catan.ps1 database install - Fresh install with default data"
-        Write-Host ""
-        Write-Host "Dependencies:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 dependencies doctor  - Check all dependency status"
-        Write-Host "  ./catan.ps1 dependencies install - Install missing dependencies"
-        Write-Host "  ./catan.ps1 dependencies clean   - Remove/reset dependencies"
-        Write-Host ""
-        Write-Host "Stream Deck:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 streamdeck install  - Install npm dependencies"
-        Write-Host "  ./catan.ps1 streamdeck build    - Build the plugin"
-        Write-Host "  ./catan.ps1 streamdeck watch    - Build and watch for changes"
-        Write-Host "  ./catan.ps1 streamdeck pack     - Package as .streamDeckPlugin"
-        Write-Host "  ./catan.ps1 streamdeck link     - Symlink for local development"
-        Write-Host ""
-        Write-Host "Azure:" -ForegroundColor Yellow
-        Write-Host "  ./catan.ps1 azure start      - Wake all services (resume DB, warm apps)"
-        Write-Host "  ./catan.ps1 azure doctor     - Check Azure deployment health"
-        Write-Host "  ./catan.ps1 azure install    - Create all Azure resources"
-        Write-Host "  ./catan.ps1 azure deploy     - Deploy everything to Azure"
-        Write-Host "  ./catan.ps1 azure swap-slots - Swap staging <-> production"
-        Write-Host "  ./catan.ps1 azure clean      - Delete all Azure resources"
-        Write-Host ""
-        Write-Host "Typical workflow:" -ForegroundColor Yellow
-        Write-Host "  1. ./catan.ps1 run           - Start services (hot reload enabled)"
-        Write-Host "  2. Make code changes         - Browser auto-refreshes on save"
-        Write-Host "  3. ./catan.ps1 update        - If hot reload fails, rebuild and restart"
-        Write-Host ""
-        Write-Host "URLs:" -ForegroundColor Yellow
-        Write-Host "  GameService: $GameServiceUrl"
-        Write-Host "  React UI:    $ReactUIUrl"
-        Write-Host ""
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Catan3 Development Script" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "=========================" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Quick Start:" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 doctor           - Check if everything is set up correctly" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 install          - Install dependencies and database" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 run              - Build, start services, launch browser" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Development:" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 run              - Start GameService + React UI" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 run -Network     - Same, but accessible from other devices" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 stop             - Stop running services" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 restart          - Stop and restart services" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 update           - Rebuild and restart (when hot reload fails)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 update -Terminate - Same, but close all Terminal windows first (macOS)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 build            - Build GameService + React UI (no tests)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 test             - Build and run all tests" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 lint             - Format, lint, and spell check (PS, TS, MD)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 generate-types   - Generate TypeScript types from C# models (TypeGen 7.0.0)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 clean            - Stop services, clean build (preserves database)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 debug            - Instructions for VS Code debugging" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 help (or -Help)  - Show this help" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Setup:" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 doctor           - Check dependencies and database health" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 install          - Install all dependencies and database" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Recording:" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 recording list   - List all recordings (add -Azure for Azure)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 recording save   - Save recordings to JSON files" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 recording load   - Load recordings from JSON files" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 recording replay - Run replay tests (requires running server)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 recording delete - Delete a recording" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 recording        - Show detailed recording help" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Stats:" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 stats list       - Show stats summary (add -Azure for Azure)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 stats export     - Export stats to JSON file" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 stats import     - Import stats from JSON file" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 stats reset      - Reset all lifetime statistics" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 stats            - Show detailed stats help" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Database:" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 database doctor  - Diagnose database health and contents" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 database clean   - Delete database" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 database install - Fresh install with default data" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Dependencies:" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 dependencies doctor  - Check all dependency status" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 dependencies install - Install missing dependencies" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 dependencies clean   - Remove/reset dependencies" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Stream Deck:" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 streamdeck install  - Install npm dependencies" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 streamdeck build    - Build the plugin" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 streamdeck watch    - Build and watch for changes" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 streamdeck pack     - Package as .streamDeckPlugin" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 streamdeck link     - Symlink for local development" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Azure:" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 azure start      - Wake all services (resume DB, warm apps)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 azure doctor     - Check Azure deployment health" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 azure install    - Create all Azure resources" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 azure deploy     - Deploy everything to Azure" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 azure swap-slots - Swap staging <-> production" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 azure clean      - Delete all Azure resources" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Typical workflow:" -NoLabel
+        Write-Log -Level INFO -Message "  1. ./catan.ps1 run           - Start services (hot reload enabled)" -NoLabel
+        Write-Log -Level INFO -Message "  2. Make code changes         - Browser auto-refreshes on save" -NoLabel
+        Write-Log -Level INFO -Message "  3. ./catan.ps1 update        - If hot reload fails, rebuild and restart" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "URLs:" -NoLabel
+        Write-Log -Level INFO -Message "  GameService: $GameServiceUrl" -NoLabel
+        Write-Log -Level INFO -Message "  React UI:    $ReactUIUrl" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
     }
 
     default {
-        Write-Host ""
-        Write-Host "Invalid command: $Verb" -ForegroundColor Red
-        Write-Host ""
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level ERROR -Message "Invalid command: $Verb" -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
         & $PSCommandPath help
         exit 1
     }

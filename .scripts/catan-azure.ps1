@@ -3074,10 +3074,10 @@ function Show-DoctorResult {
     $col2 = 12  # Status
 
     # Header
-    Write-Host ""
-    Write-Host "$($Result.resource) ($($Result.name))" -ForegroundColor Cyan
-    Write-Host ("-" * 60)
-    Write-Host ("Check".PadRight($col1) + "Status".PadRight($col2) + "Details") -ForegroundColor Yellow
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "$($Result.resource) ($($Result.name))" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message ("-" * 60) -NoLabel
+    Write-Log -Level WARN -Message ("Check".PadRight($col1) + "Status".PadRight($col2) + "Details")
 
     # Helper to show a check row
     function Show-CheckRow {
@@ -3085,12 +3085,12 @@ function Show-DoctorResult {
         $statusText = if ($Status) { "OK" } else { "MISSING" }
         $statusColor = if ($Status) { "Green" } else { "Red" }
 
-        Write-Host -NoNewline ("  " + $Name).PadRight($col1)
-        Write-Host -NoNewline $statusText.PadRight($col2) -ForegroundColor $statusColor
+        Write-Log -Level INFO -Message ("  " + $Name).PadRight($col1) -NoLabel -NoNewline
+        Write-Log -Level INFO -Message $statusText.PadRight($col2) -ForegroundColor $statusColor -NoLabel -NoNewline
         if ($Details) {
-            Write-Host $Details -ForegroundColor Gray
+            Write-Log -Level DEBUG -Message $Details -NoLabel
         } else {
-            Write-Host ""
+            Write-Log -Level INFO -Message "" -NoLabel
         }
     }
 
@@ -3152,131 +3152,131 @@ function Show-DoctorResult {
 
     # Show runtime info if available
     if ($Result.prodRuntime) {
-        Write-Host ""
-        Write-Host -NoNewline ("  Runtime").PadRight($col1)
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message ("  Runtime").PadRight($col1) -NoLabel -NoNewline
         $rtLabel = if ($Result.prodRuntime -like "DOTNETCORE*") { "Blazor ($($Result.prodRuntime))" }
                    elseif ($Result.prodRuntime -like "NODE*") { "React/Next.js ($($Result.prodRuntime))" }
                    else { $Result.prodRuntime }
         $rtColor = if ($Result.checks.siteResponding) { "Green" } else { "Yellow" }
-        Write-Host $rtLabel -ForegroundColor $rtColor
+        Write-Log -Level INFO -Message $rtLabel -ForegroundColor $rtColor -NoLabel
     }
 
     # Show git commit info if available
     if ($Result.currentCommit -or $Result.deployedCommit) {
-        Write-Host ""
-        Write-Host -NoNewline ("  Git Commit").PadRight($col1)
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message ("  Git Commit").PadRight($col1) -NoLabel -NoNewline
         if ($Result.currentCommit -eq $Result.deployedCommit -and $Result.deployedCommit) {
-            Write-Host -NoNewline "MATCH".PadRight($col2) -ForegroundColor Green
-            Write-Host "$($Result.currentCommit)" -ForegroundColor Gray
+            Write-Log -Level INFO -Message "MATCH".PadRight($col2) -NoLabel -NoNewline -ForegroundColor Green
+            Write-Log -Level DEBUG -Message "$($Result.currentCommit)" -NoLabel
         } elseif ($Result.deployedCommit -and $Result.deployedCommit -ne "local") {
             if ($Result.needsDeploy) {
                 # Commits differ and deployable files changed — action required
-                Write-Host -NoNewline "MISMATCH".PadRight($col2) -ForegroundColor Yellow
-                Write-Host "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)" -ForegroundColor Gray
+                Write-Log -Level WARN -Message "MISMATCH".PadRight($col2) -NoNewline
+                Write-Log -Level DEBUG -Message "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)" -NoLabel
             } else {
                 # Commits differ but no deployable files changed — informational only
-                Write-Host -NoNewline "OK".PadRight($col2) -ForegroundColor Green
-                Write-Host "deployed: $($Result.deployedCommit) (current: $($Result.currentCommit), no deployable changes)" -ForegroundColor Gray
+                Write-Log -Level INFO -Message "OK".PadRight($col2) -NoLabel -NoNewline -ForegroundColor Green
+                Write-Log -Level DEBUG -Message "deployed: $($Result.deployedCommit) (current: $($Result.currentCommit), no deployable changes)" -NoLabel
             }
         } else {
-            Write-Host -NoNewline "NONE".PadRight($col2) -ForegroundColor Yellow
-            Write-Host "not yet deployed" -ForegroundColor Gray
+            Write-Log -Level WARN -Message "NONE".PadRight($col2) -NoNewline
+            Write-Log -Level DEBUG -Message "not yet deployed" -NoLabel
         }
     }
 
     # Show build time if available
     if ($Result.deployedBuildTime -and $Result.deployedBuildTime -ne "unknown") {
-        Write-Host -NoNewline ("  Build Time").PadRight($col1)
-        Write-Host -NoNewline "DEPLOYED".PadRight($col2) -ForegroundColor Green
-        Write-Host "$($Result.deployedBuildTime)" -ForegroundColor Gray
+        Write-Log -Level INFO -Message ("  Build Time").PadRight($col1) -NoLabel -NoNewline
+        Write-Log -Level INFO -Message "DEPLOYED".PadRight($col2) -NoLabel -NoNewline -ForegroundColor Green
+        Write-Log -Level DEBUG -Message "$($Result.deployedBuildTime)" -NoLabel
     }
 
     # Show database status if available
     if ($Result.dbStatus) {
-        Write-Host -NoNewline ("  Database Status").PadRight($col1)
+        Write-Log -Level INFO -Message ("  Database Status").PadRight($col1) -NoLabel -NoNewline
         $dbColor = switch ($Result.dbStatus) {
             "Online" { "Green" }
             "Paused" { "Yellow" }
             default { "Red" }
         }
-        Write-Host $Result.dbStatus -ForegroundColor $dbColor
+        Write-Log -Level INFO -Message $Result.dbStatus -ForegroundColor $dbColor -NoLabel
     }
 
     # Show diagnostic issue from health endpoint if available
     if ($Result.diagnosticIssue) {
-        Write-Host -NoNewline ("  Diagnostic Issue").PadRight($col1)
+        Write-Log -Level INFO -Message ("  Diagnostic Issue").PadRight($col1) -NoLabel -NoNewline
         $issueColor = switch ($Result.diagnosticIssue) {
             "None" { "Green" }
             "DatabasePaused" { "Yellow" }
             "ConnectionTimeout" { "Yellow" }
             default { "Red" }
         }
-        Write-Host $Result.diagnosticIssue -ForegroundColor $issueColor
+        Write-Log -Level INFO -Message $Result.diagnosticIssue -ForegroundColor $issueColor -NoLabel
     }
 
     # Show Azure database status from diagnostics if different from local check
     if ($Result.azureDatabaseStatus -and $Result.azureDatabaseStatus -ne $Result.dbStatus) {
-        Write-Host -NoNewline ("  Azure DB Status").PadRight($col1)
+        Write-Log -Level INFO -Message ("  Azure DB Status").PadRight($col1) -NoLabel -NoNewline
         $azureDbColor = switch ($Result.azureDatabaseStatus) {
             "Online" { "Green" }
             "Paused" { "Yellow" }
             default { "Red" }
         }
-        Write-Host $Result.azureDatabaseStatus -ForegroundColor $azureDbColor
+        Write-Log -Level INFO -Message $Result.azureDatabaseStatus -ForegroundColor $azureDbColor -NoLabel
     }
 
     # Summary line
-    Write-Host ""
-    Write-Host -NoNewline "Status: "
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Status: " -NoLabel -NoNewline
     if ($Result.needsInstall) {
-        Write-Host "NEEDS INSTALL" -ForegroundColor Red
-        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "$script:CmdHintPrefix $($Result.resource) install" -ForegroundColor Cyan
+        Write-Log -Level ERROR -Message "NEEDS INSTALL"
+        Write-Log -Level DEBUG -Message "  Recommended: " -NoLabel -NoNewline
+        Write-Log -Level INFO -Message "$script:CmdHintPrefix $($Result.resource) install" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.needsFix) {
-        Write-Host "NEEDS FIX" -ForegroundColor Yellow
-        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "$script:CmdHintPrefix $($Result.resource) fix" -ForegroundColor Cyan
+        Write-Log -Level WARN -Message "NEEDS FIX"
+        Write-Log -Level DEBUG -Message "  Recommended: " -NoLabel -NoNewline
+        Write-Log -Level INFO -Message "$script:CmdHintPrefix $($Result.resource) fix" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.needsDeploy) {
-        Write-Host "NEEDS DEPLOY" -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "NEEDS DEPLOY"
         if ($Result.deployReason) {
-            Write-Host "  Reason: $($Result.deployReason)" -ForegroundColor Gray
+            Write-Log -Level DEBUG -Message "  Reason: $($Result.deployReason)" -NoLabel
         }
-        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "$script:CmdHintPrefix $($Result.resource) deploy" -ForegroundColor Cyan
+        Write-Log -Level DEBUG -Message "  Recommended: " -NoLabel -NoNewline
+        Write-Log -Level INFO -Message "$script:CmdHintPrefix $($Result.resource) deploy" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.healthy -and $Result.coldStart) {
-        Write-Host "HEALTHY " -ForegroundColor Green -NoNewline
-        Write-Host "(site not responding — likely cold start, browse URL to wake)" -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "HEALTHY " -NoLabel -NoNewline -ForegroundColor Green
+        Write-Log -Level WARN -Message "(site not responding — likely cold start, browse URL to wake)"
     } elseif ($Result.healthy) {
-        Write-Host "HEALTHY" -ForegroundColor Green
+        Write-Log -Level INFO -Message "HEALTHY" -NoLabel -ForegroundColor Green
     } else {
-        Write-Host "UNKNOWN" -ForegroundColor Red
+        Write-Log -Level ERROR -Message "UNKNOWN"
     }
 
     # Show staging deploy status separately (staging issues don't block production)
     if ($Result.needsStagingDeploy) {
-        Write-Host -NoNewline "Staging: "
-        Write-Host "NEEDS DEPLOY" -ForegroundColor Yellow
-        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "$script:CmdHintPrefix ui deploy-staging" -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Staging: " -NoLabel -NoNewline
+        Write-Log -Level WARN -Message "NEEDS DEPLOY"
+        Write-Log -Level DEBUG -Message "  Recommended: " -NoLabel -NoNewline
+        Write-Log -Level INFO -Message "$script:CmdHintPrefix ui deploy-staging" -NoLabel -ForegroundColor Cyan
     }
 
     # Show performance warnings if any
     if ($Result.performanceWarnings) {
-        Write-Host ""
-        Write-Host "Performance Warnings:" -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level WARN -Message "Performance Warnings:"
         foreach ($warning in $Result.performanceWarnings) {
-            Write-Host "  ⚠️  $warning" -ForegroundColor Yellow
+            Write-Log -Level WARN -Message "  ⚠️  $warning"
         }
     }
 
     # Show note if any
     if ($Result.note) {
-        Write-Host "  Note: $($Result.note)" -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "  Note: $($Result.note)"
     }
 
     # Show error if any
     if ($Result.error) {
-        Write-Host "  Error: $($Result.error)" -ForegroundColor Red
+        Write-Log -Level ERROR -Message "  Error: $($Result.error)"
     }
 }
 
@@ -3299,12 +3299,12 @@ function Test-GameServicePerformance {
     $testCount = 5
     $times = @()
 
-    Write-Host ""
-    Write-Host "Performance Test: $url" -ForegroundColor Cyan
-    Write-Host "=" * 50
-    Write-Host ""
-    Write-Host "Running $testCount sequential requests to /api/players..."
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Performance Test: $url" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "=" * 50 -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Running $testCount sequential requests to /api/players..." -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 
     for ($i = 1; $i -le $testCount; $i++) {
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -3317,21 +3317,21 @@ function Test-GameServicePerformance {
             $color = if ($elapsed -lt 1) { "Green" } elseif ($elapsed -lt 3) { "Yellow" } else { "Red" }
             $status = if ($elapsed -lt 1) { "FAST" } elseif ($elapsed -lt 3) { "SLOW" } else { "VERY SLOW" }
 
-            Write-Host ("  Request {0}: {1,6:N2}s  " -f $i, $elapsed) -NoNewline
-            Write-Host $status -ForegroundColor $color
+            Write-Log -Level INFO -Message ("  Request {0}: {1,6:N2}s  " -f $i, $elapsed) -NoLabel -NoNewline
+            Write-Log -Level INFO -Message $status -ForegroundColor $color -NoLabel
         }
         catch {
             $stopwatch.Stop()
-            Write-Host ("  Request {0}: FAILED - {1}" -f $i, $_.Exception.Message) -ForegroundColor Red
+            Write-Log -Level ERROR -Message ("  Request {0}: FAILED - {1}" -f $i, $_.Exception.Message)
         }
 
         # Small delay between requests
         Start-Sleep -Milliseconds 200
     }
 
-    Write-Host ""
-    Write-Host "Summary:" -ForegroundColor Cyan
-    Write-Host "-" * 30
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Summary:" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "-" * 30 -NoLabel
 
     if ($times.Count -gt 0) {
         $min = ($times | Measure-Object -Minimum).Minimum
@@ -3340,54 +3340,54 @@ function Test-GameServicePerformance {
         $first = $times[0]
         $warmAvg = if ($times.Count -gt 1) { ($times[1..($times.Count-1)] | Measure-Object -Average).Average } else { $first }
 
-        Write-Host ("  First request (cold):  {0,6:N2}s" -f $first)
-        Write-Host ("  Warm average:          {0,6:N2}s" -f $warmAvg)
-        Write-Host ("  Min / Max:             {0,6:N2}s / {1:N2}s" -f $min, $max)
-        Write-Host ""
+        Write-Log -Level INFO -Message ("  First request (cold):  {0,6:N2}s" -f $first) -NoLabel
+        Write-Log -Level INFO -Message ("  Warm average:          {0,6:N2}s" -f $warmAvg) -NoLabel
+        Write-Log -Level INFO -Message ("  Min / Max:             {0,6:N2}s / {1:N2}s" -f $min, $max) -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
 
         # Performance assessment
         if ($first -gt 10) {
-            Write-Host "⚠️  Cold start is very slow (>10s). Check:" -ForegroundColor Yellow
-            Write-Host "   - App Service Plan SKU (needs B1+ for Always On)" -ForegroundColor Gray
-            Write-Host "   - Always On setting (prevents cold starts)" -ForegroundColor Gray
-            Write-Host "   - Azure SQL auto-pause (may need to wake up)" -ForegroundColor Gray
+            Write-Log -Level WARN -Message "⚠️  Cold start is very slow (>10s). Check:"
+            Write-Log -Level DEBUG -Message "   - App Service Plan SKU (needs B1+ for Always On)" -NoLabel
+            Write-Log -Level DEBUG -Message "   - Always On setting (prevents cold starts)" -NoLabel
+            Write-Log -Level DEBUG -Message "   - Azure SQL auto-pause (may need to wake up)" -NoLabel
         }
         elseif ($first -gt 5) {
-            Write-Host "⚠️  Cold start is slow (>5s). Consider:" -ForegroundColor Yellow
-            Write-Host "   - Enabling Always On if not already enabled" -ForegroundColor Gray
+            Write-Log -Level WARN -Message "⚠️  Cold start is slow (>5s). Consider:"
+            Write-Log -Level DEBUG -Message "   - Enabling Always On if not already enabled" -NoLabel
         }
         else {
-            Write-Host "✅ Cold start is acceptable (<5s)" -ForegroundColor Green
+            Write-Log -Level INFO -Message "✅ Cold start is acceptable (<5s)" -NoLabel -ForegroundColor Green
         }
 
         if ($warmAvg -gt 2) {
-            Write-Host "⚠️  Warm requests are slow (>2s avg). Check:" -ForegroundColor Yellow
-            Write-Host "   - Connection pooling in connection string" -ForegroundColor Gray
-            Write-Host "   - Azure SQL tier and capacity" -ForegroundColor Gray
+            Write-Log -Level WARN -Message "⚠️  Warm requests are slow (>2s avg). Check:"
+            Write-Log -Level DEBUG -Message "   - Connection pooling in connection string" -NoLabel
+            Write-Log -Level DEBUG -Message "   - Azure SQL tier and capacity" -NoLabel
         }
         elseif ($warmAvg -gt 1) {
-            Write-Host "⚠️  Warm requests are a bit slow (>1s avg)" -ForegroundColor Yellow
+            Write-Log -Level WARN -Message "⚠️  Warm requests are a bit slow (>1s avg)"
         }
         else {
-            Write-Host "✅ Warm requests are good (<1s avg)" -ForegroundColor Green
+            Write-Log -Level INFO -Message "✅ Warm requests are good (<1s avg)" -NoLabel -ForegroundColor Green
         }
 
         # Check for high variance (indicates connection issues)
         if ($times.Count -gt 2) {
             $variance = $max - $min
             if ($variance -gt 5) {
-                Write-Host "⚠️  High variance detected ({0:N2}s). May indicate:" -f $variance -ForegroundColor Yellow
-                Write-Host "   - Connection pool exhaustion" -ForegroundColor Gray
-                Write-Host "   - Network instability" -ForegroundColor Gray
-                Write-Host "   - Token refresh issues (Managed Identity)" -ForegroundColor Gray
+                Write-Log -Level WARN -Message "⚠️  High variance detected ({0:N2}s). May indicate:" -f $variance
+                Write-Log -Level DEBUG -Message "   - Connection pool exhaustion" -NoLabel
+                Write-Log -Level DEBUG -Message "   - Network instability" -NoLabel
+                Write-Log -Level DEBUG -Message "   - Token refresh issues (Managed Identity)" -NoLabel
             }
         }
     }
     else {
-        Write-Host "  No successful requests - check service health" -ForegroundColor Red
+        Write-Log -Level ERROR -Message "  No successful requests - check service health"
     }
 
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 #endregion
@@ -3446,7 +3446,7 @@ Examples:
     ./catan-azure.ps1 github install            Setup GitHub Actions OIDC
     ./catan-azure.ps1 game-service clean       Delete GameService only
 "@
-    Write-Host $help
+    Write-Log -Level INFO -Message $help -NoLabel
 }
 
 #endregion
@@ -3565,14 +3565,14 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
 
             # Show service URLs
             $baseName = $config.baseName
-            Write-Host ""
-            Write-Host "Service URLs ($envLabel):" -ForegroundColor Cyan
+            Write-Log -Level INFO -Message "" -NoLabel
+            Write-Log -Level INFO -Message "Service URLs ($envLabel):" -NoLabel -ForegroundColor Cyan
             if ($Staging) {
-                Write-Host "  WebUI:       https://$baseName-staging.azurewebsites.net"
-                Write-Host "  GameService: https://$baseName-api-staging.azurewebsites.net"
+                Write-Log -Level INFO -Message "  WebUI:       https://$baseName-staging.azurewebsites.net" -NoLabel
+                Write-Log -Level INFO -Message "  GameService: https://$baseName-api-staging.azurewebsites.net" -NoLabel
             } else {
-                Write-Host "  WebUI:       $($config.ui.url)"
-                Write-Host "  GameService: $($config.gameService.url)"
+                Write-Log -Level INFO -Message "  WebUI:       $($config.ui.url)" -NoLabel
+                Write-Log -Level INFO -Message "  GameService: $($config.gameService.url)" -NoLabel
             }
 
             $success = $allHealthy

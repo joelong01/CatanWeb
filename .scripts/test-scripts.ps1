@@ -155,7 +155,6 @@ Write-Host "8. Dependency Scripts" -ForegroundColor Yellow
 
 Test-Command "install-dependencies -Doctor" { & "$scriptRoot/install-dependencies.ps1" -Doctor }
 Test-Command "dotnet.ps1 -Doctor" { & "$scriptRoot/dotnet.ps1" -Doctor }
-Test-Command "sqlite.ps1 -Doctor" { & "$scriptRoot/sqlite.ps1" -Doctor }
 Test-Command "node.ps1 -Doctor" { & "$scriptRoot/node.ps1" -Doctor }
 Test-Command "claude-cli.ps1 -Doctor" { & "$scriptRoot/claude-cli.ps1" -Doctor }
 

@@ -214,8 +214,32 @@ function Initialize-CosmosSDK {
     }
 
     if (-not (Test-Path $cosmosDll)) {
-        Write-Log -Level "ERROR" -Message "Cosmos SDK DLL not found. Run: pwsh ./catan.ps1 build"
-        return $false
+        Write-Log -Level "INFO" -Message "Cosmos SDK DLL not found. Building project..."
+        Write-Log -Level "DEBUG" -Message "Searched: $(Join-Path $ProjectRoot 'Catan3.GameService/bin/Debug/net9.0/Microsoft.Azure.Cosmos.Client.dll')"
+        Write-Log -Level "DEBUG" -Message "Searched: $(Join-Path $ProjectRoot 'Catan3.GameService/bin/Release/net9.0/Microsoft.Azure.Cosmos.Client.dll')"
+        & "$ProjectRoot\.scripts\build.ps1" -NoTest
+        Write-Log -Level "DEBUG" -Message "Build exit code: $LASTEXITCODE"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log -Level "ERROR" -Message "Build failed (exit code $LASTEXITCODE). Cannot load Cosmos SDK."
+            return $false
+        }
+        # Re-check Debug first, then Release
+        $binDir = Join-Path $ProjectRoot "Catan3.GameService/bin/Debug/net9.0"
+        $cosmosDll   = Join-Path $binDir "Microsoft.Azure.Cosmos.Client.dll"
+        $identityDll = Join-Path $binDir "Azure.Identity.dll"
+        $coreDll     = Join-Path $binDir "Azure.Core.dll"
+        Write-Log -Level "DEBUG" -Message "Post-build check Debug: $(Test-Path $cosmosDll) — $cosmosDll"
+        if (-not (Test-Path $cosmosDll)) {
+            $binDir = Join-Path $ProjectRoot "Catan3.GameService/bin/Release/net9.0"
+            $cosmosDll   = Join-Path $binDir "Microsoft.Azure.Cosmos.Client.dll"
+            $identityDll = Join-Path $binDir "Azure.Identity.dll"
+            $coreDll     = Join-Path $binDir "Azure.Core.dll"
+            Write-Log -Level "DEBUG" -Message "Post-build check Release: $(Test-Path $cosmosDll) — $cosmosDll"
+        }
+        if (-not (Test-Path $cosmosDll)) {
+            Write-Log -Level "ERROR" -Message "Cosmos SDK DLL still not found after build."
+            return $false
+        }
     }
 
     try {
@@ -786,10 +810,10 @@ function Get-LocalDoctorResult {
 function Show-LocalDoctorOutput {
     param([System.Collections.Specialized.OrderedDictionary]$Result)
 
-    Write-Host ""
-    Write-Host "CosmosDB Local Emulator Status" -ForegroundColor Cyan
-    Write-Host "==============================" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "CosmosDB Local Emulator Status" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "==============================" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "" -NoLabel
 
     $color = switch ($Result.Status) {
         "Ready"        { "Green"  }
@@ -797,23 +821,23 @@ function Show-LocalDoctorOutput {
         default        { "Red"    }
     }
 
-    Write-Host ("Docker CLI:       " + ($Result.DockerInstalled ? "OK" : "MISSING"))
-    Write-Host ("Docker Daemon:    " + ($Result.DockerRunning   ? "Running" : "Stopped"))
-    Write-Host ("Emulator:         " + $Result.EmulatorState)
-    Write-Host ("Health Probe:     " + ($Result.EmulatorHealthy ? "OK" : "FAIL"))
-    Write-Host ("Database:         " + ($Result.DatabaseExists  ? "OK ($DatabaseName)" : "Missing"))
+    Write-Log -Level INFO -Message ("Docker CLI:       " + ($Result.DockerInstalled ? "OK" : "MISSING")) -NoLabel
+    Write-Log -Level INFO -Message ("Docker Daemon:    " + ($Result.DockerRunning   ? "Running" : "Stopped")) -NoLabel
+    Write-Log -Level INFO -Message ("Emulator:         " + $Result.EmulatorState) -NoLabel
+    Write-Log -Level INFO -Message ("Health Probe:     " + ($Result.EmulatorHealthy ? "OK" : "FAIL")) -NoLabel
+    Write-Log -Level INFO -Message ("Database:         " + ($Result.DatabaseExists  ? "OK ($DatabaseName)" : "Missing")) -NoLabel
 
     if ($Result.Containers.Count -gt 0) {
-        Write-Host "Containers:"
+        Write-Log -Level INFO -Message "Containers:" -NoLabel
         foreach ($name in $Result.Containers.Keys) {
-            Write-Host ("  $name".PadRight(24) + ($Result.Containers[$name] ? "OK" : "MISSING"))
+            Write-Log -Level INFO -Message ("  $name".PadRight(24) + ($Result.Containers[$name] ? "OK" : "MISSING")) -NoLabel
         }
     }
 
-    Write-Host ""
-    Write-Host ("Status: " + $Result.Status) -ForegroundColor $color
-    Write-Host $Result.Message -ForegroundColor $color
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message ("Status: " + $Result.Status) -ForegroundColor $color -NoLabel
+    Write-Log -Level INFO -Message $Result.Message -ForegroundColor $color -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -1348,10 +1372,10 @@ function Get-AzureDoctorResult {
 function Show-AzureDoctorOutput {
     param([System.Collections.Specialized.OrderedDictionary]$Result)
 
-    Write-Host ""
-    Write-Host "CosmosDB Azure Status" -ForegroundColor Cyan
-    Write-Host "=====================" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "CosmosDB Azure Status" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "=====================" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "" -NoLabel
 
     $color = switch ($Result.Status) {
         "Ready"           { "Green"  }
@@ -1361,25 +1385,25 @@ function Show-AzureDoctorOutput {
         default           { "Red"    }
     }
 
-    Write-Host ("Account:          " + ($Result.AccountExists ? "OK ($($Result.AccountName))" : "Missing"))
-    Write-Host ("Account State:    " + $Result.AccountState)
-    Write-Host ("Database:         " + ($Result.DatabaseExists ? "OK ($DatabaseName)" : "Missing"))
+    Write-Log -Level INFO -Message ("Account:          " + ($Result.AccountExists ? "OK ($($Result.AccountName))" : "Missing")) -NoLabel
+    Write-Log -Level INFO -Message ("Account State:    " + $Result.AccountState) -NoLabel
+    Write-Log -Level INFO -Message ("Database:         " + ($Result.DatabaseExists ? "OK ($DatabaseName)" : "Missing")) -NoLabel
 
     if ($Result.Containers.Count -gt 0) {
-        Write-Host "Containers:"
+        Write-Log -Level INFO -Message "Containers:" -NoLabel
         foreach ($name in $Result.Containers.Keys) {
-            Write-Host ("  $name".PadRight(24) + ($Result.Containers[$name] ? "OK" : "MISSING"))
+            Write-Log -Level INFO -Message ("  $name".PadRight(24) + ($Result.Containers[$name] ? "OK" : "MISSING")) -NoLabel
         }
     }
 
     $fwMsg = if ($Result.FirewallOk) { "OK (publicNetworkAccess=Enabled, no IP restrictions)" } else { "BLOCKED (publicNetworkAccess=Disabled or ipRules restricting access)" }
-    Write-Host ("Firewall:         " + $fwMsg)
-    Write-Host ("App Setting:      " + ($Result.AppSettingSet ? "OK (COSMOS_ENDPOINT)" : "Missing"))
-    Write-Host ("RBAC:             " + ($Result.RbacGranted   ? "OK (Data Contributor)" : "Missing"))
-    Write-Host ""
-    Write-Host ("Status: " + $Result.Status) -ForegroundColor $color
-    Write-Host $Result.Message -ForegroundColor $color
-    Write-Host ""
+    Write-Log -Level INFO -Message ("Firewall:         " + $fwMsg) -NoLabel
+    Write-Log -Level INFO -Message ("App Setting:      " + ($Result.AppSettingSet ? "OK (COSMOS_ENDPOINT)" : "Missing")) -NoLabel
+    Write-Log -Level INFO -Message ("RBAC:             " + ($Result.RbacGranted   ? "OK (Data Contributor)" : "Missing")) -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message ("Status: " + $Result.Status) -ForegroundColor $color -NoLabel
+    Write-Log -Level INFO -Message $Result.Message -ForegroundColor $color -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -1582,7 +1606,7 @@ function Invoke-LocalTests {
         & dotnet test $TestProject `
             --filter "FullyQualifiedName~CatanDb" `
             --logger "console;verbosity=normal" `
-            2>&1 | ForEach-Object { Write-Host $_ }
+            2>&1 | ForEach-Object { Write-Log -Level INFO -Message $_ -NoLabel }
         return $LASTEXITCODE
     } finally {
         Remove-TestParams
@@ -1603,7 +1627,7 @@ function Invoke-AzureTests {
         & dotnet test $TestProject `
             --filter "FullyQualifiedName~CatanDb" `
             --logger "console;verbosity=normal" `
-            2>&1 | ForEach-Object { Write-Host $_ }
+            2>&1 | ForEach-Object { Write-Log -Level INFO -Message $_ -NoLabel }
         return $LASTEXITCODE
     } finally {
         Remove-TestParams
@@ -1661,7 +1685,7 @@ Examples:
     ./database.ps1 test -Azure
     ./database.ps1 clean -Azure -Yes
 "@
-    Write-Host $text
+    Write-Log -Level INFO -Message $text -NoLabel
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
