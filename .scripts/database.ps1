@@ -1762,15 +1762,6 @@ try {
                     Write-Log -Level "INFO" -Message "Database and all containers already exist."
                 }
 
-                # Persist account name and endpoint to config for future commands
-                if (-not $config.cosmosDb) {
-                    $config | Add-Member -NotePropertyName cosmosDb -NotePropertyValue ([pscustomobject]@{}) -Force
-                }
-                $config.cosmosDb | Add-Member -NotePropertyName accountName -NotePropertyValue $accountName -Force
-                $config.cosmosDb | Add-Member -NotePropertyName databaseName -NotePropertyValue $DatabaseName -Force
-                $config.cosmosDb | Add-Member -NotePropertyName endpoint -NotePropertyValue $endpoint -Force
-                Save-AzureConfig -Config $config
-
                 # 3. App Service wiring (COSMOS_ENDPOINT + RBAC for App Service MI AND signed-in developer).
                 # Always run — the doctor only checks App Service RBAC; the developer role is verified here.
                 # Deploy-AzureDatabase is fully idempotent (check-then-set for all operations).
