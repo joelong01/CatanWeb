@@ -77,22 +77,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // HTML pages: never cache at CDN/proxy level — always revalidate.
-        // This prevents stale deployments from being served after a redeploy.
-        // JS/CSS chunks use content-hashed filenames and are safe to cache.
-        source: '/((?!_next/static|_next/image|favicon).*)',
-        headers: [
-          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
-          { key: 'Pragma', value: 'no-cache' },
-        ],
-      },
-      {
         // Theme assets: cache but always revalidate (ETag handles 304s efficiently)
         source: '/themes/:path*',
         headers: [{ key: 'Cache-Control', value: 'public, no-cache' }],
       },
     ];
   },
+  // Note: HTML page cache headers are handled by middleware.ts (overrides
+  // Next.js's internal s-maxage=31536000 on prerendered pages)
 };
 
 export default nextConfig;
