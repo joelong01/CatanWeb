@@ -2498,18 +2498,18 @@ switch ($Verb) {
 
         $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
         if ($Staging) {
-            & pwsh $azureScript game-service deploy -Slot staging -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+            & $azureScript game-service deploy -Slot staging -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
             if ($LASTEXITCODE -ne 0) { exit 1 }
-            & pwsh $azureScript ui deploy-staging -TraceLevel $TraceLevel -Force:$Force
+            & $azureScript ui deploy-staging -TraceLevel $TraceLevel -Force:$Force
             if ($LASTEXITCODE -ne 0) { exit 1 }
         }
         else {
-            & pwsh $azureScript game-service deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+            & $azureScript game-service deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
             if ($LASTEXITCODE -ne 0) {
                 Write-Log -Level ERROR -Message "GameService deploy failed" -NoLabel
                 exit 1
             }
-            & pwsh $azureScript ui deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+            & $azureScript ui deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
             if ($LASTEXITCODE -ne 0) {
                 Write-Log -Level ERROR -Message "UI deploy failed" -NoLabel
                 exit 1
