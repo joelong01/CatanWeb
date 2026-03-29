@@ -2472,15 +2472,18 @@ function Get-UIDoctor {
             if (-not $allDone) { Start-Sleep -Milliseconds 500 }
         }
 
-        # Collect results
-        $runtime = (Receive-Job $jobs[0]).Trim()
+        # Collect results (any job may return $null for staging slots without config)
+        $runtimeRaw = Receive-Job $jobs[0]
+        $runtime = if ($runtimeRaw) { "$runtimeRaw".Trim() } else { "" }
         Write-Log -Level "DEBUG" -Message "$targetLabel runtime: $runtime" -TraceLevel $TraceLevel
         $result.prodRuntime = $runtime
 
-        $identity = (Receive-Job $jobs[1]).Trim()
+        $identityRaw = Receive-Job $jobs[1]
+        $identity = if ($identityRaw) { "$identityRaw".Trim() } else { "" }
         $result.checks.managedIdentity = (-not [string]::IsNullOrWhiteSpace($identity))
 
-        $appSettingsJson = (Receive-Job $jobs[2]) -join "`n"
+        $appSettingsRaw = Receive-Job $jobs[2]
+        $appSettingsJson = if ($appSettingsRaw) { ($appSettingsRaw) -join "`n" } else { "" }
         $appSettings = if ($appSettingsJson) { $appSettingsJson | ConvertFrom-Json -ErrorAction SilentlyContinue } else { $null }
         $configuredUrl = if ($appSettings) { ($appSettings | Where-Object { $_.name -eq $gameServiceSettingName } | Select-Object -First 1).value } else { $null }
         $result.checks.gameServiceUrl = ($configuredUrl -eq $gameServiceUrl)
