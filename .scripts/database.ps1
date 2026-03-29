@@ -1169,7 +1169,8 @@ function Grant-CosmosFirewallAccess {
         return $false
     }
     try {
-        Invoke-AzCommand "resource update --ids $($accountId.Trim()) --set properties.ipRules=[] properties.publicNetworkAccess=Enabled --output none" -SuppressOutput
+        # CosmosDB account-level changes take 2-8 minutes to propagate
+        Invoke-AzCommand "resource update --ids $($accountId.Trim()) --set properties.ipRules=[] properties.publicNetworkAccess=Enabled --output none" -SuppressOutput -TimeoutSeconds 600
     }
     catch {
         Write-Log -Level "ERROR" -Message "Failed to update CosmosDB firewall."
