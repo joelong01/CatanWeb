@@ -2536,6 +2536,25 @@ switch ($Verb) {
         Write-Log -Level INFO -Message "  UI:          $uiUrl" -NoLabel
     }
 
+    # ─── Noun scripts (delegate to .scripts/<noun>.ps1) ─────────────────────
+    "game-service" {
+        $script = Join-Path $PSScriptRoot ".scripts/game-service.ps1"
+        & $script $SubCommand -Azure:$Azure -Staging:$Staging -Force:$Force -NoBuild:$NoBuild -Yes:$Yes -Json:$Json -HashTable:$HashTable -Perf:$Perf -TraceLevel $TraceLevel
+        exit $LASTEXITCODE
+    }
+
+    "ui" {
+        $script = Join-Path $PSScriptRoot ".scripts/ui.ps1"
+        & $script $SubCommand -Azure:$Azure -Staging:$Staging -Force:$Force -NoBuild:$NoBuild -Yes:$Yes -Json:$Json -HashTable:$HashTable -TraceLevel $TraceLevel
+        exit $LASTEXITCODE
+    }
+
+    "github" {
+        $script = Join-Path $PSScriptRoot ".scripts/github.ps1"
+        & $script $SubCommand -Azure:$Azure -Yes:$Yes -Json:$Json -HashTable:$HashTable -TraceLevel $TraceLevel
+        exit $LASTEXITCODE
+    }
+
     default {
         Write-Log -Level INFO -Message "" -NoLabel
         Write-Log -Level ERROR -Message "Invalid command: $Verb" -NoLabel
