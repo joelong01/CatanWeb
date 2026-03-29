@@ -66,9 +66,9 @@ function Write-Log {
         [AllowEmptyString()]
         [string]$Message,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
-        [string]$TraceLevel,
+        [string]$TraceLevel = "INFO",
 
         [Parameter(Mandatory = $false)]
         [switch]$Silent,
@@ -983,20 +983,300 @@ function Get-AzureResourceNames {
     }
 }
 
+# ─── Azure CLI Wrapper ───────────────────────────────────────────────────────
+
+<#
+.SYNOPSIS
+    Runs an Azure CLI command with timeout, structured output, and clean error handling.
+.PARAMETER Command
+    The az CLI command (without the leading "az").
+.PARAMETER Check
+    Existence probe mode. Returns $null on failure instead of throwing.
+    Use when checking if a resource exists (expected 404 is not an error).
+.PARAMETER FailOnError
+    Legacy parameter — use -Check instead. Kept for backward compatibility.
+.PARAMETER SuppressOutput
+    Returns $true on success instead of the command output.
+.PARAMETER JsonOutput
+    Parses output as JSON and returns the parsed object.
+.PARAMETER TimeoutSeconds
+    Maximum seconds to wait before killing the process. Default: 120.
+#>
+function Invoke-AzCommand {
+    param(
+        [Parameter(Mandatory, Position = 0)]
+        [string]$Command,
+
+        [switch]$Check,
+        [bool]$FailOnError = $true,
+        [switch]$SuppressOutput,
+        [switch]$JsonOutput,
+        [int]$TimeoutSeconds = 120
+    )
+
+    $isFatal = $FailOnError -and -not $Check
+
+    Write-Log -Level "DEBUG" -Message "az $Command"
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    try {
+        $azPath = (Get-Command az -ErrorAction Stop).Source
+
+        $psi = [System.Diagnostics.ProcessStartInfo]::new()
+        $psi.FileName = $azPath
+        $psi.Arguments = $Command
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.CreateNoWindow = $true
+        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+        $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $psi
+        $process.Start() | Out-Null
+
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+
+        $completed = $process.WaitForExit($TimeoutSeconds * 1000)
+
+        if (-not $completed) {
+            $stopwatch.Stop()
+            try { $process.Kill($true) } catch { }
+
+            $timeoutMsg = "az command timed out after ${TimeoutSeconds}s: az $Command"
+            if ($isFatal) {
+                Write-Log -Level "ERROR" -Message $timeoutMsg
+                throw $timeoutMsg
+            }
+            Write-Log -Level "DEBUG" -Message $timeoutMsg
+            return $null
+        }
+
+        $process.WaitForExit()
+        $stdout = $stdoutTask.GetAwaiter().GetResult().Trim()
+        $stderr = $stderrTask.GetAwaiter().GetResult().Trim()
+        $exitCode = $process.ExitCode
+
+        $stopwatch.Stop()
+
+        $elapsed = $stopwatch.Elapsed
+        $durationStr = if ($elapsed.TotalMinutes -ge 1) {
+            "{0:N1} min" -f $elapsed.TotalMinutes
+        } elseif ($elapsed.TotalSeconds -ge 1) {
+            "{0:N1}s" -f $elapsed.TotalSeconds
+        } else {
+            "{0:N0}ms" -f $elapsed.TotalMilliseconds
+        }
+
+        $durationLevel = if ($elapsed.TotalSeconds -ge 10) { "INFO" } else { "DEBUG" }
+        Write-Log -Level $durationLevel -Message "  completed in $durationStr"
+
+        if ($exitCode -ne 0) {
+            $errorMsg = if ($stderr) { $stderr } else { "Command failed with exit code $exitCode" }
+            Write-Log -Level "DEBUG" -Message "az exit code: $exitCode"
+
+            if ($isFatal) {
+                Write-Log -Level "ERROR" -Message "az $Command"
+                Write-Log -Level "ERROR" -Message $errorMsg
+                throw "Azure CLI command failed: $errorMsg"
+            }
+            else {
+                Write-Log -Level "DEBUG" -Message "Command failed (non-fatal): $errorMsg"
+                return $null
+            }
+        }
+
+        if ($SuppressOutput) { return $true }
+
+        if ($JsonOutput -and $stdout) {
+            try {
+                return ConvertFrom-Json $stdout
+            }
+            catch {
+                Write-Log -Level "DEBUG" -Message "JSON parse failed, returning raw output: $_"
+                return $stdout
+            }
+        }
+
+        return $stdout
+    }
+    catch {
+        $stopwatch.Stop()
+        if ($isFatal) { throw }
+        return $null
+    }
+    finally {
+        if ($process) { $process.Dispose() }
+    }
+}
+
+# ─── Azure Shared Helpers ────────────────────────────────────────────────────
+
+<#
+.SYNOPSIS
+    Saves Azure configuration to .azure/catan-azure.json.
+.PARAMETER ProjectRoot
+    The root directory of the project.
+.PARAMETER Config
+    Hashtable containing Azure resource configuration.
+#>
+function Save-AzureConfig {
+    param(
+        [Parameter(Mandatory)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory)]
+        [hashtable]$Config
+    )
+
+    $configDir = Join-Path $ProjectRoot ".azure"
+    $configFile = Join-Path $configDir "catan-azure.json"
+
+    if (-not (Test-Path $configDir)) {
+        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    }
+
+    $Config | ConvertTo-Json -Depth 10 | Set-Content $configFile
+    Write-Log -Level "INFO" -Message "Configuration saved to $configFile"
+}
+
+<#
+.SYNOPSIS
+    Verifies Azure CLI login status.
+.OUTPUTS
+    Boolean - $true if logged in, $false otherwise.
+#>
+function Test-AzureLogin {
+    $account = Invoke-AzCommand "account show" -Check -JsonOutput
+    if (-not $account) {
+        Write-Log -Level "ERROR" -Message "Not logged into Azure"
+        Write-Log -Level "INFO" -Message "Please run: az login"
+        return $false
+    }
+    Write-Log -Level "INFO" -Message "Logged in as: $($account.user.name)"
+    Write-Log -Level "INFO" -Message "Subscription: $($account.name)"
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Registers an Azure resource provider if not already registered.
+.PARAMETER Namespace
+    The provider namespace (e.g., "Microsoft.Web", "Microsoft.Storage").
+.OUTPUTS
+    Boolean - $true if registered.
+#>
+function Register-AzureProvider {
+    param([Parameter(Mandatory)][string]$Namespace)
+
+    $state = Invoke-AzCommand "provider show --namespace $Namespace --query registrationState -o tsv" -Check
+    if ($state -eq "Registered") {
+        Write-Log -Level "DEBUG" -Message "Provider $Namespace already registered"
+        return $true
+    }
+
+    Write-Log -Level "INFO" -Message "Registering provider: $Namespace"
+    Invoke-AzCommand "provider register --namespace $Namespace" -SuppressOutput
+
+    $maxWait = 120
+    $waited = 0
+    while ($waited -lt $maxWait) {
+        Start-Sleep -Seconds 5
+        $waited += 5
+        $state = Invoke-AzCommand "provider show --namespace $Namespace --query registrationState -o tsv" -Check
+        if ($state -eq "Registered") {
+            Write-Log -Level "INFO" -Message "Provider $Namespace registered"
+            return $true
+        }
+        Write-Log -Level "DEBUG" -Message "Waiting for $Namespace registration... ($waited s)"
+    }
+
+    throw "Provider $Namespace registration timed out after $maxWait seconds"
+}
+
+<#
+.SYNOPSIS
+    Creates or verifies an Azure resource group.
+.PARAMETER ResourceGroup
+    The resource group name.
+.PARAMETER Location
+    Azure region (e.g., "westus2").
+.OUTPUTS
+    Boolean - $true on success.
+#>
+function Install-AzureResourceGroup {
+    param(
+        [Parameter(Mandatory)][string]$ResourceGroup,
+        [Parameter(Mandatory)][string]$Location
+    )
+
+    Write-Log -Level "INFO" -Message "Checking resource group: $ResourceGroup"
+
+    $existing = Invoke-AzCommand "group show --name $ResourceGroup" -Check -JsonOutput
+    if ($existing) {
+        Write-Log -Level "INFO" -Message "Resource group exists: $ResourceGroup"
+        return $true
+    }
+
+    Write-Log -Level "INFO" -Message "Creating resource group: $ResourceGroup in $Location"
+    Invoke-AzCommand "group create --name $ResourceGroup --location $Location" -SuppressOutput
+    Write-Log -Level "INFO" -Message "Resource group created: $ResourceGroup"
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Deletes an Azure resource group and all resources within it.
+.PARAMETER ResourceGroup
+    The resource group name to delete.
+.OUTPUTS
+    Boolean - $true if deletion started or group doesn't exist.
+#>
+function Remove-AzureResourceGroup {
+    param([Parameter(Mandatory)][string]$ResourceGroup)
+
+    $existing = Invoke-AzCommand "group show --name $ResourceGroup" -Check -JsonOutput
+    if (-not $existing) {
+        Write-Log -Level "INFO" -Message "Resource group does not exist: $ResourceGroup"
+        return $true
+    }
+
+    Write-Log -Level "WARN" -Message "Deleting resource group: $ResourceGroup (this deletes ALL resources)"
+    Invoke-AzCommand "group delete --name $ResourceGroup --yes --no-wait" -SuppressOutput
+    Write-Log -Level "INFO" -Message "Resource group deletion started: $ResourceGroup"
+    return $true
+}
 
 # Export all functions
 Export-ModuleMember -Function @(
+    # Logging
     'Write-Log',
     'Complete-StatusMessage',
+    # Environment
     'Update-EnvironmentVariables',
     'Update-CurrentSessionPath',
+    # User interaction
     'Get-UserConfirmation',
+    'WaitForUser',
+    # Process management
     'Invoke-ElevatedInstance',
     'Invoke-Elevated',
-    'WaitForUser',
     'Stop-RunningProcesses',
-    'Get-PowerShellVersion',
     'Invoke-BackgroundInstaller',
+    # System info
+    'Get-PowerShellVersion',
+    # Azure CLI
+    'Invoke-AzCommand',
+    # Azure configuration
     'Get-AzureConfig',
-    'Get-AzureResourceNames'
+    'Save-AzureConfig',
+    'Get-AzureResourceNames',
+    # Azure shared helpers
+    'Test-AzureLogin',
+    'Register-AzureProvider',
+    'Install-AzureResourceGroup',
+    'Remove-AzureResourceGroup'
 )
