@@ -276,23 +276,11 @@ function Initialize-ConfigFromBaseName {
 # Register-AzureProvider, Install-AzureResourceGroup, Remove-AzureResourceGroup
 # provided by utility-scripts.psm1
 
-# Thin wrappers to preserve -Config interface used by callers in this file
-function Install-ResourceGroup {
-    param([hashtable]$Config)
-    Install-AzureResourceGroup -ResourceGroup $Config.resourceGroup -Location $Config.location
-}
-
 #endregion
 
 #region Application Insights Functions
 
 # Install-AzureAppInsights provided by utility-scripts.psm1
-# Thin wrapper to preserve -Config interface
-function Install-AppInsights {
-    param([hashtable]$Config)
-    Install-AzureResourceGroup -ResourceGroup $Config.resourceGroup -Location $Config.location
-    return Install-AzureAppInsights -ResourceGroup $Config.resourceGroup -AppInsightsName $Config.appInsights.name -Location $Config.location
-}
 
 #endregion
 
@@ -319,7 +307,7 @@ function Install-Database {
     $databaseName = $Config.sqlServer.databaseName
 
     # Ensure resource group exists
-    Install-ResourceGroup -Config $Config | Out-Null
+    Install-AzureResourceGroup -ResourceGroup $Config.resourceGroup -Location $Config.location | Out-Null
 
     # Ensure Microsoft.Sql provider is registered
     Register-AzureProvider -Namespace "Microsoft.Sql"
@@ -1366,10 +1354,6 @@ function Clean-Database {
 #region App Service Functions
 
 # Install-AzureAppServicePlan provided by utility-scripts.psm1
-function Install-AppServicePlan {
-    param([hashtable]$Config)
-    Install-AzureAppServicePlan -ResourceGroup $Config.resourceGroup -PlanName $Config.gameService.appServicePlan -Location $Config.location
-}
 
 <#
 .SYNOPSIS
@@ -1390,8 +1374,8 @@ function Install-GameService {
     $appName = $Config.gameService.appName
 
     # Ensure resource group and plan exist
-    Install-ResourceGroup -Config $Config | Out-Null
-    Install-AppServicePlan -Config $Config | Out-Null
+    Install-AzureResourceGroup -ResourceGroup $Config.resourceGroup -Location $Config.location | Out-Null
+    Install-AzureAppServicePlan -ResourceGroup $Config.resourceGroup -PlanName $Config.gameService.appServicePlan -Location $Config.location | Out-Null
 
     Write-Log -Level "INFO" -Message "Checking GameService App: $appName"
 
@@ -1480,8 +1464,8 @@ function Install-UI {
     $appName = $Config.ui.appName
 
     # Ensure resource group and plan exist
-    Install-ResourceGroup -Config $Config | Out-Null
-    Install-AppServicePlan -Config $Config | Out-Null
+    Install-AzureResourceGroup -ResourceGroup $Config.resourceGroup -Location $Config.location | Out-Null
+    Install-AzureAppServicePlan -ResourceGroup $Config.resourceGroup -PlanName $Config.gameService.appServicePlan -Location $Config.location | Out-Null
 
     Write-Log -Level "INFO" -Message "Checking UI App: $appName"
 
