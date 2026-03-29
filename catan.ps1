@@ -2432,7 +2432,8 @@ switch ($Verb) {
         Write-Log -Level WARN -Message "Setup:" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 doctor           - Check dependencies and database health" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 install          - Install all dependencies and database" -NoLabel
-        Write-Log -Level INFO -Message "  ./catan.ps1 deploy -Azure    - Deploy code to Azure (fast, skips infra checks)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 deploy -Azure    - Deploy code to production (fast, skips infra)" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 deploy -Azure -Staging - Deploy code to staging slot" -NoLabel
         Write-Log -Level INFO -Message "" -NoLabel
         Write-Log -Level WARN -Message "Recording:" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 recording list   - List all recordings (add -Azure for Azure)" -NoLabel
@@ -2491,21 +2492,36 @@ switch ($Verb) {
             exit 1
         }
 
+        $slotLabel = if ($Staging) { "staging" } else { "production" }
+        $slotArg = if ($Staging) { "staging" } else { $null }
+
         Write-Log -Level INFO -Message "" -NoLabel
-        Write-Log -Level INFO -Message "Deploying to Azure..." -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Deploying to Azure ($slotLabel)..." -NoLabel -ForegroundColor Cyan
         Write-Log -Level INFO -Message "" -NoLabel
 
         $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
-        & $azureScript game-service deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
-        if ($LASTEXITCODE -ne 0) { exit 1 }
-        & $azureScript ui deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
-        if ($LASTEXITCODE -ne 0) { exit 1 }
+        if ($Staging) {
+            # Staging: GameService to staging slot, React to staging slot
+            & $azureScript game-service deploy -Slot staging -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            & $azureScript ui deploy-staging -TraceLevel $TraceLevel -Force:$Force
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+        }
+        else {
+            # Production
+            & $azureScript game-service deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            & $azureScript ui deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+        }
 
         $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+        $gsUrl = if ($Staging) { "https://$($az.GameServiceAppName)-staging.azurewebsites.net" } else { $az.GameServiceUrl }
+        $uiUrl = if ($Staging) { "https://$($az.UiAppName)-staging.azurewebsites.net" } else { $az.UiUrl }
         Write-Log -Level INFO -Message "" -NoLabel
-        Write-Log -Level INFO -Message "Deploy complete!" -NoLabel -ForegroundColor Green
-        Write-Log -Level INFO -Message "  GameService: $($az.GameServiceUrl)" -NoLabel
-        Write-Log -Level INFO -Message "  UI:          $($az.UiUrl)" -NoLabel
+        Write-Log -Level INFO -Message "Deploy complete ($slotLabel)!" -NoLabel -ForegroundColor Green
+        Write-Log -Level INFO -Message "  GameService: $gsUrl" -NoLabel
+        Write-Log -Level INFO -Message "  UI:          $uiUrl" -NoLabel
     }
 
     default {
