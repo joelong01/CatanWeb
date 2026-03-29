@@ -1826,18 +1826,12 @@ function Deploy-GameService {
         }
 
         # Always ensure required settings are present (idempotent)
+        # Copy Cosmos settings from production so the staging slot can connect to the same DB
         Write-Log -Level "INFO" -Message "Configuring slot '$Slot' settings..."
-        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot $Slot --settings DATABASE_MODE=azure AZURE_STORAGE_ACCOUNT=$($Config.storageAccount) AZURE_STORAGE_CONTAINER=$($Config.storageContainer) WEBSITES_CONTAINER_START_TIME_LIMIT=600 SCM_DO_BUILD_DURING_DEPLOYMENT=false" -SuppressOutput
-
-        # Copy connection string from production if missing
-        $slotConnStr = Invoke-AzCommand "webapp config connection-string list --name $appName --resource-group $rgName --slot $Slot" -FailOnError $false -JsonOutput
-        if (-not $slotConnStr -or $slotConnStr.Count -eq 0) {
-            Write-Log -Level "INFO" -Message "Copying connection string from production to slot '$Slot'..."
-            $prodConnStr = Invoke-AzCommand "webapp config connection-string list --name $appName --resource-group $rgName" -JsonOutput
-            foreach ($cs in $prodConnStr) {
-                Invoke-AzCommand "webapp config connection-string set --name $appName --resource-group $rgName --slot $Slot --connection-string-type $($cs.type) --settings $($cs.name)=`"$($cs.value)`"" -SuppressOutput
-            }
-        }
+        $prodSettings = Invoke-AzCommand "webapp config appsettings list --name $appName --resource-group $rgName" -Check -JsonOutput
+        $cosmosEndpoint = ($prodSettings | Where-Object { $_.name -eq 'COSMOS_ENDPOINT' } | Select-Object -First 1).value
+        $cosmosDatabase = ($prodSettings | Where-Object { $_.name -eq 'COSMOS_DATABASE' } | Select-Object -First 1).value
+        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot $Slot --settings DATABASE_MODE=azure COSMOS_ENDPOINT=$cosmosEndpoint COSMOS_DATABASE=$cosmosDatabase WEBSITES_CONTAINER_START_TIME_LIMIT=600 SCM_DO_BUILD_DURING_DEPLOYMENT=false" -SuppressOutput
     }
 
     # Check if deployment is needed
