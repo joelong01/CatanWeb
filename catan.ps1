@@ -2495,23 +2495,24 @@ switch ($Verb) {
         $slotLabel = if ($Staging) { "staging" } else { "production" }
         $slotArg = if ($Staging) { "staging" } else { $null }
 
+        # Stop local services to release file locks (e.g., next dev holds lightningcss.node)
+        Stop-Services
+
         Write-Log -Level INFO -Message "" -NoLabel
         Write-Log -Level INFO -Message "Deploying to Azure ($slotLabel)..." -NoLabel -ForegroundColor Cyan
         Write-Log -Level INFO -Message "" -NoLabel
 
         $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
         if ($Staging) {
-            # Staging: GameService to staging slot, React to staging slot
-            & $azureScript game-service deploy -Slot staging -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+            & pwsh $azureScript game-service deploy -Slot staging -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
             if ($LASTEXITCODE -ne 0) { exit 1 }
-            & $azureScript ui deploy-staging -TraceLevel $TraceLevel -Force:$Force
+            & pwsh $azureScript ui deploy-staging -TraceLevel $TraceLevel -Force:$Force
             if ($LASTEXITCODE -ne 0) { exit 1 }
         }
         else {
-            # Production
-            & $azureScript game-service deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+            & pwsh $azureScript game-service deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
             if ($LASTEXITCODE -ne 0) { exit 1 }
-            & $azureScript ui deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+            & pwsh $azureScript ui deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
             if ($LASTEXITCODE -ne 0) { exit 1 }
         }
 
