@@ -1797,12 +1797,12 @@ function Install-GameService {
     Write-Log -Level "INFO" -Message "Setting container startup timeout to 600s..."
     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
 
-    # Install and connect Application Insights
-    $appInsightsConnectionString = Install-AppInsights -Config $Config
-    if ($appInsightsConnectionString) {
-        Write-Log -Level "INFO" -Message "Connecting Application Insights to $appName..."
-        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings APPLICATIONINSIGHTS_CONNECTION_STRING=`"$appInsightsConnectionString`"" -SuppressOutput
-    }
+    # Application Insights — skipped (not currently used; az monitor app-insights can hang)
+    # To re-enable: uncomment and ensure Invoke-AzCommand timeout handles slow responses
+    # $appInsightsConnectionString = Install-AppInsights -Config $Config
+    # if ($appInsightsConnectionString) {
+    #     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings APPLICATIONINSIGHTS_CONNECTION_STRING=`"$appInsightsConnectionString`"" -SuppressOutput
+    # }
 
     # Enable managed identity
     Write-Log -Level "INFO" -Message "Enabling managed identity for $appName..."
@@ -1880,12 +1880,11 @@ function Install-UI {
     Write-Log -Level "INFO" -Message "Enabling Always On for $appName..."
     Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --always-on true" -SuppressOutput
 
-    # Install and connect Application Insights
-    $appInsightsConnectionString = Install-AppInsights -Config $Config
-    if ($appInsightsConnectionString) {
-        Write-Log -Level "INFO" -Message "Connecting Application Insights to $appName..."
-        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings APPLICATIONINSIGHTS_CONNECTION_STRING=`"$appInsightsConnectionString`"" -SuppressOutput
-    }
+    # Application Insights — skipped (not currently used; az monitor app-insights can hang)
+    # $appInsightsConnectionString = Install-AppInsights -Config $Config
+    # if ($appInsightsConnectionString) {
+    #     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings APPLICATIONINSIGHTS_CONNECTION_STRING=`"$appInsightsConnectionString`"" -SuppressOutput
+    # }
 
     # Enable managed identity (for future extensibility)
     Write-Log -Level "INFO" -Message "Enabling managed identity for $appName..."
