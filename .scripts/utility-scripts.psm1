@@ -1250,6 +1250,197 @@ function Remove-AzureResourceGroup {
     return $true
 }
 
+# ─── Azure Resource Helpers ───────────────────────────────────────────────────
+
+<#
+.SYNOPSIS
+    Creates or verifies an App Service Plan.
+.PARAMETER ResourceGroup
+    Azure resource group name.
+.PARAMETER PlanName
+    App Service Plan name.
+.PARAMETER Location
+    Azure region.
+#>
+function Install-AzureAppServicePlan {
+    param(
+        [Parameter(Mandatory)][string]$ResourceGroup,
+        [Parameter(Mandatory)][string]$PlanName,
+        [Parameter(Mandatory)][string]$Location
+    )
+
+    Register-AzureProvider -Namespace "Microsoft.Web"
+
+    Write-Log -Level "INFO" -Message "Checking App Service Plan: $PlanName"
+
+    $existing = Invoke-AzCommand "appservice plan show --name $PlanName --resource-group $ResourceGroup" -Check -JsonOutput
+    if (-not $existing) {
+        Write-Log -Level "INFO" -Message "Creating App Service Plan: $PlanName (B1, single instance)"
+        Invoke-AzCommand "appservice plan create --name $PlanName --resource-group $ResourceGroup --location $Location --sku B1 --is-linux --number-of-workers 1" -SuppressOutput
+        Write-Log -Level "INFO" -Message "App Service Plan created: $PlanName"
+    }
+    else {
+        $currentSku = $existing.sku.name
+        if ($currentSku -in @("F1", "D1")) {
+            Write-Log -Level "INFO" -Message "Upgrading App Service Plan from $currentSku to B1 (required for Always On)"
+            Invoke-AzCommand "appservice plan update --name $PlanName --resource-group $ResourceGroup --sku B1" -SuppressOutput
+        }
+        else {
+            Write-Log -Level "INFO" -Message "App Service Plan exists: $PlanName (SKU: $currentSku)"
+        }
+    }
+
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Creates or verifies Application Insights. Returns connection string.
+#>
+function Install-AzureAppInsights {
+    param(
+        [Parameter(Mandatory)][string]$ResourceGroup,
+        [Parameter(Mandatory)][string]$AppInsightsName,
+        [Parameter(Mandatory)][string]$Location
+    )
+
+    Write-Log -Level "INFO" -Message "Checking Application Insights: $AppInsightsName"
+
+    $existing = Invoke-AzCommand "monitor app-insights component show --app $AppInsightsName --resource-group $ResourceGroup" -Check -JsonOutput
+    if (-not $existing) {
+        Write-Log -Level "INFO" -Message "Creating Application Insights: $AppInsightsName"
+        Invoke-AzCommand "monitor app-insights component create --app $AppInsightsName --resource-group $ResourceGroup --location $Location --kind web --application-type web" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Application Insights created: $AppInsightsName"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Application Insights exists: $AppInsightsName"
+    }
+
+    return Invoke-AzCommand "monitor app-insights component show --app $AppInsightsName --resource-group $ResourceGroup --query connectionString -o tsv"
+}
+
+<#
+.SYNOPSIS
+    Gets the short git commit hash of origin/main.
+#>
+function Get-GitCommitHash {
+    param([string]$ProjectRoot)
+
+    try {
+        $root = if ($ProjectRoot) { $ProjectRoot } else { $PWD.Path }
+        $hash = git -C $root rev-parse --short origin/main 2>$null
+        if ([string]::IsNullOrWhiteSpace($hash)) { return "unknown" }
+        return ($hash | Select-Object -First 1).Trim()
+    }
+    catch {
+        return "unknown"
+    }
+}
+
+<#
+.SYNOPSIS
+    Deploys a zip package via the Kudu ZIP Deploy REST API.
+.DESCRIPTION
+    Uses /api/zipdeploy?isAsync=true which returns 202 immediately, then polls
+    deployment status with a 10-minute timeout.
+#>
+function Deploy-KuduZip {
+    param(
+        [Parameter(Mandatory)][string]$AppName,
+        [Parameter(Mandatory)][string]$ResourceGroup,
+        [Parameter(Mandatory)][string]$ZipPath,
+        [string]$Slot = $null
+    )
+
+    $tokenResult = Invoke-AzCommand "account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv" -Check
+    if (-not $tokenResult) {
+        Write-Log -Level "ERROR" -Message "Failed to get Azure access token"
+        return $false
+    }
+    $headers = @{ Authorization = "Bearer $tokenResult" }
+
+    $scmHost = if ($Slot) { "$AppName-$Slot.scm.azurewebsites.net" } else { "$AppName.scm.azurewebsites.net" }
+    $slotLabel = if ($Slot) { " (slot: $Slot)" } else { "" }
+    Write-Log -Level "INFO" -Message "Deploying via Kudu API to $scmHost$slotLabel..."
+
+    $uri = "https://$scmHost/api/zipdeploy?isAsync=true"
+    try {
+        $response = Invoke-WebRequest -Uri $uri -Method Post -InFile $ZipPath `
+            -ContentType "application/zip" -Headers $headers -UseBasicParsing -TimeoutSec 300
+    }
+    catch {
+        Write-Log -Level "ERROR" -Message "Kudu deploy request failed: $_"
+        return $false
+    }
+
+    if ($response.StatusCode -ne 202) {
+        Write-Log -Level "ERROR" -Message "Kudu deploy returned HTTP $($response.StatusCode) (expected 202)"
+        return $false
+    }
+
+    Write-Log -Level "INFO" -Message "Deploy submitted (HTTP 202). Polling status..."
+
+    $statusUri = "https://$scmHost/api/deployments/latest"
+    for ($i = 1; $i -le 60; $i++) {
+        Start-Sleep -Seconds 10
+        try {
+            $status = Invoke-RestMethod -Uri $statusUri -Headers $headers -TimeoutSec 15
+            $code = $status.status
+            $statusLabel = switch ($code) { 0 { "Pending" } 1 { "Building" } 2 { "Deploying" } 3 { "Failed" } 4 { "Success" } default { "Unknown ($code)" } }
+            $level = if ($i % 6 -eq 0) { "INFO" } else { "DEBUG" }
+            Write-Log -Level $level -Message "  Deploy status ($($i * 10)s): $statusLabel"
+            if ($code -eq 4) { Write-Log -Level "INFO" -Message "Kudu deployment succeeded"; return $true }
+            if ($code -eq 3) { Write-Log -Level "ERROR" -Message "Kudu deployment failed"; return $false }
+        }
+        catch {
+            Write-Log -Level "DEBUG" -Message "  Status poll error: $_"
+        }
+    }
+
+    Write-Log -Level "WARN" -Message "Deploy status polling timed out after 10 min (deploy was submitted)"
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Checks if deployment is needed by comparing git commits.
+#>
+function Test-DeploymentNeeded {
+    param(
+        [Parameter(Mandatory)][string]$AppName,
+        [Parameter(Mandatory)][string]$ResourceGroup,
+        [switch]$Force,
+        [string]$Slot = $null,
+        [string]$ProjectRoot
+    )
+
+    if ($Force) {
+        Write-Log -Level "INFO" -Message "Force deploy requested"
+        return $true
+    }
+
+    $currentHash = Get-GitCommitHash -ProjectRoot $ProjectRoot
+    Write-Log -Level "DEBUG" -Message "Current git commit: $currentHash"
+
+    $slotArgs = if ($Slot) { " --slot $Slot" } else { "" }
+    $deployedHash = Invoke-AzCommand "webapp config appsettings list --name $AppName --resource-group $ResourceGroup$slotArgs --query `"[?name=='DEPLOY_COMMIT'].value | [0]`" -o tsv" -Check
+
+    if (-not $deployedHash) {
+        Write-Log -Level "INFO" -Message "No previous deployment found"
+        return $true
+    }
+
+    Write-Log -Level "DEBUG" -Message "Deployed git commit: $deployedHash"
+
+    if ($currentHash -eq $deployedHash) {
+        Write-Log -Level "INFO" -Message "Already deployed (commit $currentHash). Use -Force to redeploy."
+        return $false
+    }
+
+    Write-Log -Level "INFO" -Message "Changes detected: $deployedHash -> $currentHash"
+    return $true
+}
+
 # Export all functions
 Export-ModuleMember -Function @(
     # Logging
@@ -1278,5 +1469,11 @@ Export-ModuleMember -Function @(
     'Test-AzureLogin',
     'Register-AzureProvider',
     'Install-AzureResourceGroup',
-    'Remove-AzureResourceGroup'
+    'Remove-AzureResourceGroup',
+    'Install-AzureAppServicePlan',
+    'Install-AzureAppInsights',
+    # Azure deploy helpers
+    'Get-GitCommitHash',
+    'Deploy-KuduZip',
+    'Test-DeploymentNeeded'
 )
