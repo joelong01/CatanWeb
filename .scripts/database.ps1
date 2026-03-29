@@ -1244,12 +1244,13 @@ function Grant-CosmosFirewallAccess {
     }
 
     Write-Log -Level "INFO" -Message "Opening CosmosDB to all public IPs (clearing ipRules, enabling public access)..."
-    $null = Invoke-Azure cosmosdb update `
-        --name $AccountName `
-        --resource-group $ResourceGroup `
-        --ip-range-filter "" `
-        --public-network-access Enabled `
-        --output none
+    # az CLI v2.76+ rejects --ip-range-filter "" — use az resource update to clear ipRules
+    $accountId = Invoke-Azure cosmosdb show --name $AccountName --resource-group $ResourceGroup --query id -o tsv
+    if ($LASTEXITCODE -ne 0 -or -not $accountId) {
+        Write-Log -Level "ERROR" -Message "Failed to get CosmosDB account ID."
+        return $false
+    }
+    $null = Invoke-Azure resource update --ids $accountId --set properties.ipRules=[] properties.publicNetworkAccess=Enabled --output none
     if ($LASTEXITCODE -ne 0) {
         Write-Log -Level "ERROR" -Message "Failed to update CosmosDB firewall (exit $LASTEXITCODE)."
         return $false
