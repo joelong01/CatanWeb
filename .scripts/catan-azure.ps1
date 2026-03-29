@@ -2593,7 +2593,7 @@ function Show-DoctorResult {
     Write-Log -Level INFO -Message "" -NoLabel
     Write-Log -Level INFO -Message "$($Result.resource) ($($Result.name))" -NoLabel -ForegroundColor Cyan
     Write-Log -Level INFO -Message ("-" * 60) -NoLabel
-    Write-Log -Level WARN -Message ("Check".PadRight($col1) + "Status".PadRight($col2) + "Details")
+    Write-Log -Level INFO -Message ("Check".PadRight($col1) + "Status".PadRight($col2) + "Details") -NoLabel -ForegroundColor Gray
 
     # Helper to show a check row
     function Show-CheckRow {
@@ -2601,13 +2601,10 @@ function Show-DoctorResult {
         $statusText = if ($Status) { "OK" } else { "MISSING" }
         $statusColor = if ($Status) { "Green" } else { "Red" }
 
-        Write-Log -Level INFO -Message ("  " + $Name).PadRight($col1) -NoLabel -NoNewline
-        Write-Log -Level INFO -Message $statusText.PadRight($col2) -ForegroundColor $statusColor -NoLabel -NoNewline
-        if ($Details) {
-            Write-Log -Level DEBUG -Message $Details -NoLabel
-        } else {
-            Write-Log -Level INFO -Message "" -NoLabel
-        }
+        # Build the full row as one string to avoid -NoNewline issues
+        $row = ("  " + $Name).PadRight($col1) + $statusText.PadRight($col2)
+        if ($Details) { $row += $Details }
+        Write-Log -Level INFO -Message $row -NoLabel -ForegroundColor $statusColor
     }
 
     # Show checks based on resource type
@@ -2680,23 +2677,20 @@ function Show-DoctorResult {
     # Show git commit info if available
     if ($Result.currentCommit -or $Result.deployedCommit) {
         Write-Log -Level INFO -Message "" -NoLabel
-        Write-Log -Level INFO -Message ("  Git Commit").PadRight($col1) -NoLabel -NoNewline
         if ($Result.currentCommit -eq $Result.deployedCommit -and $Result.deployedCommit) {
-            Write-Log -Level INFO -Message "MATCH".PadRight($col2) -NoLabel -NoNewline -ForegroundColor Green
-            Write-Log -Level INFO -Message "$($Result.currentCommit)" -NoLabel
+            $commitRow = ("  Git Commit").PadRight($col1) + "MATCH".PadRight($col2) + $Result.currentCommit
+            Write-Log -Level INFO -Message $commitRow -NoLabel -ForegroundColor Green
         } elseif ($Result.deployedCommit -and $Result.deployedCommit -ne "local") {
             if ($Result.needsDeploy) {
-                # Commits differ and deployable files changed — action required
-                Write-Log -Level WARN -Message "MISMATCH".PadRight($col2) -NoNewline
-                Write-Log -Level INFO -Message "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)" -NoLabel
+                $commitRow = ("  Git Commit").PadRight($col1) + "MISMATCH".PadRight($col2) + "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)"
+                Write-Log -Level INFO -Message $commitRow -NoLabel -ForegroundColor Yellow
             } else {
-                # Commits differ but no deployable files changed — informational only
-                Write-Log -Level INFO -Message "OK".PadRight($col2) -NoLabel -NoNewline -ForegroundColor Green
-                Write-Log -Level INFO -Message "deployed: $($Result.deployedCommit) (current: $($Result.currentCommit), no deployable changes)" -NoLabel
+                $commitRow = ("  Git Commit").PadRight($col1) + "OK".PadRight($col2) + "deployed: $($Result.deployedCommit) (no deployable changes)"
+                Write-Log -Level INFO -Message $commitRow -NoLabel -ForegroundColor Green
             }
         } else {
-            Write-Log -Level WARN -Message "NONE".PadRight($col2) -NoNewline
-            Write-Log -Level INFO -Message "not yet deployed" -NoLabel
+            $commitRow = ("  Git Commit").PadRight($col1) + "NONE".PadRight($col2) + "not yet deployed"
+            Write-Log -Level INFO -Message $commitRow -NoLabel -ForegroundColor Yellow
         }
     }
 
@@ -2743,56 +2737,49 @@ function Show-DoctorResult {
 
     # Summary line
     Write-Log -Level INFO -Message "" -NoLabel
-    Write-Log -Level INFO -Message "Status: " -NoLabel -NoNewline
     if ($Result.needsInstall) {
-        Write-Log -Level ERROR -Message "NEEDS INSTALL"
-        Write-Log -Level INFO -Message "  Recommended: " -NoLabel -NoNewline
-        Write-Log -Level INFO -Message "$script:CmdHintPrefix $($Result.resource) install" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Status: NEEDS INSTALL" -NoLabel -ForegroundColor Red
+        Write-Log -Level INFO -Message "  Recommended: $script:CmdHintPrefix $($Result.resource) install" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.needsFix) {
-        Write-Log -Level WARN -Message "NEEDS FIX"
-        Write-Log -Level INFO -Message "  Recommended: " -NoLabel -NoNewline
-        Write-Log -Level INFO -Message "$script:CmdHintPrefix $($Result.resource) fix" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Status: NEEDS FIX" -NoLabel -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "  Recommended: $script:CmdHintPrefix $($Result.resource) fix" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.needsDeploy) {
-        Write-Log -Level WARN -Message "NEEDS DEPLOY"
+        Write-Log -Level INFO -Message "Status: NEEDS DEPLOY" -NoLabel -ForegroundColor Yellow
         if ($Result.deployReason) {
             Write-Log -Level INFO -Message "  Reason: $($Result.deployReason)" -NoLabel
         }
-        Write-Log -Level INFO -Message "  Recommended: " -NoLabel -NoNewline
-        Write-Log -Level INFO -Message "$script:CmdHintPrefix $($Result.resource) deploy" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "  Recommended: $script:CmdHintPrefix $($Result.resource) deploy" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.healthy -and $Result.coldStart) {
-        Write-Log -Level INFO -Message "HEALTHY " -NoLabel -NoNewline -ForegroundColor Green
-        Write-Log -Level WARN -Message "(site not responding — likely cold start, browse URL to wake)"
+        Write-Log -Level INFO -Message "Status: HEALTHY (site not responding — likely cold start, browse URL to wake)" -NoLabel -ForegroundColor Yellow
     } elseif ($Result.healthy) {
-        Write-Log -Level INFO -Message "HEALTHY" -NoLabel -ForegroundColor Green
+        Write-Log -Level INFO -Message "Status: HEALTHY" -NoLabel -ForegroundColor Green
     } else {
-        Write-Log -Level ERROR -Message "UNKNOWN"
+        Write-Log -Level INFO -Message "Status: UNKNOWN" -NoLabel -ForegroundColor Red
     }
 
-    # Show staging deploy status separately (staging issues don't block production)
+    # Show staging deploy status separately
     if ($Result.needsStagingDeploy) {
-        Write-Log -Level INFO -Message "Staging: " -NoLabel -NoNewline
-        Write-Log -Level WARN -Message "NEEDS DEPLOY"
-        Write-Log -Level INFO -Message "  Recommended: " -NoLabel -NoNewline
-        Write-Log -Level INFO -Message "$script:CmdHintPrefix ui deploy-staging" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Staging: NEEDS DEPLOY" -NoLabel -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "  Recommended: $script:CmdHintPrefix ui deploy-staging" -NoLabel -ForegroundColor Cyan
     }
 
     # Show performance warnings if any
     if ($Result.performanceWarnings) {
         Write-Log -Level INFO -Message "" -NoLabel
-        Write-Log -Level WARN -Message "Performance Warnings:"
+        Write-Log -Level INFO -Message "Performance Warnings:" -NoLabel -ForegroundColor Yellow
         foreach ($warning in $Result.performanceWarnings) {
-            Write-Log -Level WARN -Message "  ⚠️  $warning"
+            Write-Log -Level INFO -Message "  ⚠️  $warning" -NoLabel -ForegroundColor Yellow
         }
     }
 
     # Show note if any
     if ($Result.note) {
-        Write-Log -Level WARN -Message "  Note: $($Result.note)"
+        Write-Log -Level INFO -Message "  Note: $($Result.note)" -NoLabel -ForegroundColor Yellow
     }
 
     # Show error if any
     if ($Result.error) {
-        Write-Log -Level ERROR -Message "  Error: $($Result.error)"
+        Write-Log -Level INFO -Message "  Error: $($Result.error)" -NoLabel -ForegroundColor Red
     }
 }
 
