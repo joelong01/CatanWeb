@@ -2107,15 +2107,10 @@ switch ($Verb) {
                 Write-Log -Level INFO -Message "==========================" -NoLabel -ForegroundColor Cyan
                 Write-Log -Level INFO -Message "" -NoLabel
 
-                # Load config for app name and resource group
-                $azureConfigFile = Join-Path $PSScriptRoot ".azure/catan-azure.json"
-                if (-not (Test-Path $azureConfigFile)) {
-                    Write-Log -Level ERROR -Message "Azure configuration not found. Run './catan.ps1 azure install' first." -NoLabel
-                    exit 1
-                }
-                $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
-                $appName = $azureConfig.ui.appName
-                $rgName = $azureConfig.resourceGroup
+                # Load config via module
+                $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+                $appName = $az.UiAppName
+                $rgName = $az.ResourceGroup
 
                 # Use doctor to get complete picture of the system
                 Write-Log -Level INFO -Message "Running UI health check..." -NoLabel
@@ -2234,14 +2229,9 @@ switch ($Verb) {
                 Write-Log -Level INFO -Message "Starting Azure services..." -NoLabel -ForegroundColor Cyan
                 Write-Log -Level INFO -Message "" -NoLabel
 
-                $azureConfigFile = Join-Path $PSScriptRoot ".azure/catan-azure.json"
-                if (-not (Test-Path $azureConfigFile)) {
-                    Write-Log -Level ERROR -Message "Azure configuration not found. Run './catan.ps1 azure install' first." -NoLabel
-                    exit 1
-                }
-                $azureConfig = Get-Content $azureConfigFile -Raw | ConvertFrom-Json
-                $gsUrl = $azureConfig.gameService.url
-                $uiUrl = $azureConfig.ui.url
+                $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+                $gsUrl = $az.GameServiceUrl
+                $uiUrl = $az.UiUrl
                 $sqlServer = $azureConfig.sqlServer.serverName
                 $sqlDb = $azureConfig.sqlServer.databaseName
                 $rgName = $azureConfig.resourceGroup

@@ -291,7 +291,7 @@ $HealthEndpoint   = "http://localhost:8081"
 
 # ── Azure config path ───────────────────────────────────────────────────────────
 
-$AzureConfigFile = Join-Path $ProjectRoot ".azure/catan-azure.json"
+# Azure config loaded via Get-AzureResourceNames from utility-scripts.psm1
 
 # CosmosDB built-in data-plane RBAC role (Cosmos DB Built-in Data Contributor)
 $CosmosDataContributorRoleId = "00000000-0000-0000-0000-000000000002"
@@ -809,77 +809,8 @@ function Show-LocalDoctorOutput {
 # AZURE HELPERS
 # ════════════════════════════════════════════════════════════════════════════════
 
-<#
-.SYNOPSIS
-    Reads .azure/catan-azure.json and returns it as a PSCustomObject.
-    Throws if the file does not exist.
-    Note: This is a local wrapper around the module's Get-AzureConfig that uses the
-    script-level $AzureConfigFile variable for backward compatibility.
-#>
-function Get-LocalAzureConfig {
-    if (-not (Test-Path $AzureConfigFile)) {
-        throw "Azure config not found at $AzureConfigFile. Run catan-azure.ps1 install first."
-    }
-    return (Get-Content $AzureConfigFile -Raw | ConvertFrom-Json)
-}
-
-<#
-.SYNOPSIS
-    Saves updated config back to .azure/catan-azure.json, preserving existing fields.
-#>
-function Save-AzureConfig {
-    param([psobject]$Config)
-    $Config | ConvertTo-Json -Depth 10 | Set-Content $AzureConfigFile -Encoding UTF8
-    Write-Log -Level "DEBUG" -Message "Saved config to $AzureConfigFile"
-}
-
-<#
-.SYNOPSIS
-    Returns the CosmosDB account name from config, or derives it as "cosmos-{baseName}".
-#>
-function Get-CosmosAccountName {
-    param([psobject]$Config)
-    if ($Config.cosmosDb -and $Config.cosmosDb.accountName) {
-        return $Config.cosmosDb.accountName
-    }
-    return "cosmos-$($Config.baseName)"
-}
-
-<#
-.SYNOPSIS
-    Returns the CosmosDB endpoint URL for the given account name.
-#>
-function Get-CosmosEndpointUrl {
-    param([string]$AccountName)
-    return "https://$AccountName.documents.azure.com:443/"
-}
-
-<#
-.SYNOPSIS
-    Ensures all Azure naming fields are populated on the config object.
-    Derives missing values from baseName using project naming conventions.
-#>
-function Resolve-AzureConfigNames {
-    param([psobject]$Config)
-
-    $base = $Config.baseName
-    if (-not $base) {
-        Write-Log -Level "ERROR" -Message "baseName not set in .azure/catan-azure.json"
-        exit 1
-    }
-
-    if (-not $Config.resourceGroup) { $Config | Add-Member -NotePropertyName resourceGroup -NotePropertyValue "rg-$base" -Force }
-    if (-not $Config.location) { $Config | Add-Member -NotePropertyName location -NotePropertyValue "westus2" -Force }
-    if (-not $Config.gameService) { $Config | Add-Member -NotePropertyName gameService -NotePropertyValue ([PSCustomObject]@{}) -Force }
-    if (-not $Config.gameService.appName) {
-        $Config.gameService | Add-Member -NotePropertyName appName -NotePropertyValue "$base-api" -Force
-    }
-    if (-not $Config.gameService.url) {
-        $Config.gameService | Add-Member -NotePropertyName url -NotePropertyValue "https://$base-api.azurewebsites.net" -Force
-    }
-
-    return $Config
-}
+# Azure config: use Get-AzureConfig / Get-AzureResourceNames from utility-scripts.psm1
+# No local config wrappers — all naming goes through the module.
 
 <#
 .SYNOPSIS
@@ -1394,7 +1325,7 @@ function Invoke-SeedDefaultData {
     param([switch]$IsAzure, [psobject]$Config = $null, [string]$AccountName = "")
 
     if ($IsAzure) {
-        $endpoint = Get-CosmosEndpointUrl -AccountName $AccountName
+        $endpoint = "https://$AccountName.documents.azure.com:443/"
     } else {
         $endpoint = $EmulatorEndpoint
     }
