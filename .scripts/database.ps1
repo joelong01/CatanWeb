@@ -1528,7 +1528,13 @@ function Invoke-SeedDefaultData {
                     }
                     Write-Log -Level "DEBUG" -Message "  Probe → HTTP $($r.StatusCode), waiting..."
                 } catch {
-                    Write-Log -Level "DEBUG" -Message "  Probe → $($_.Exception.Message), waiting..."
+                    # Cosmos SDK exceptions include full HTTP headers — extract just the status
+                    $errMsg = if ($_.Exception.Message -match '(\d{3}).*?Substatus: (\d+)') {
+                        "HTTP $($Matches[1]) (Substatus $($Matches[2]))"
+                    } else {
+                        $_.Exception.Message.Split("`n")[0].Substring(0, [Math]::Min(120, $_.Exception.Message.Length))
+                    }
+                    Write-Log -Level "DEBUG" -Message "  Probe → $errMsg, waiting..."
                 }
                 Start-Sleep -Seconds 10
             }
