@@ -2248,17 +2248,34 @@ function Get-GameServiceDoctor {
             }
         }
 
-        # Code is deployed if health endpoint responds (regardless of commit tracking)
-        $result.checks.codeDeployed = $result.checks.healthEndpoint
+        # Code deployed = health endpoint responds OR DEPLOY_COMMIT is set in app settings
+        # (app may still be starting after a fresh deploy — don't confuse cold start with "not deployed")
+        if (-not $result.checks.healthEndpoint) {
+            $deployCommit = $appSettings | Where-Object { $_.name -eq 'DEPLOY_COMMIT' } | Select-Object -First 1
+            if ($deployCommit -and -not [string]::IsNullOrWhiteSpace($deployCommit.value)) {
+                $result.checks.codeDeployed = $true
+                $result.deployedCommit = $deployCommit.value
+                Write-Log -Level "DEBUG" -Message "Health endpoint down but DEPLOY_COMMIT=$($deployCommit.value) — code is deployed (likely cold start)"
+                $deployBuildTime = $appSettings | Where-Object { $_.name -eq 'DEPLOY_BUILD_TIME' } | Select-Object -First 1
+                if ($deployBuildTime) { $result.deployedBuildTime = $deployBuildTime.value }
+            } else {
+                $result.checks.codeDeployed = $false
+            }
+        } else {
+            $result.checks.codeDeployed = $true
+        }
 
         # Check if deploy is needed:
-        # - Health endpoint doesn't work = needs deploy
+        # - No code deployed at all = needs deploy
         # - Health endpoint works but no version info = old code, needs deploy
-        # - No build time tracking = needs deploy (to enable tracking)
-        # - Commit mismatch = needs deploy (code changed, even if uncommitted)
-        if (-not $result.checks.healthEndpoint) {
+        # - Commit mismatch = needs deploy
+        if (-not $result.checks.codeDeployed) {
             $result.needsDeploy = $true
-            $result.deployReason = "Health endpoint not responding"
+            $result.deployReason = "No code deployed"
+        }
+        elseif (-not $result.checks.healthEndpoint -and $result.checks.codeDeployed) {
+            # Code is deployed but health endpoint not responding — cold start, not a deploy issue
+            $result.coldStart = $true
         }
         elseif ([string]::IsNullOrWhiteSpace($result.deployedCommit) -or $result.deployedCommit -eq "local") {
             # Health endpoint works but no version info in response = old code deployed
@@ -2282,8 +2299,8 @@ function Get-GameServiceDoctor {
         }
         # Note: If commits match but code is uncommitted, -Force flag can be used to redeploy
 
-        # Healthy if endpoint responds
-        $result.healthy = $result.checks.healthEndpoint
+        # Healthy if endpoint responds OR code is deployed but cold-starting
+        $result.healthy = $result.checks.healthEndpoint -or ($result.checks.codeDeployed -and $result.coldStart)
 
         Write-Log -Level "DEBUG" -Message "GameService doctor complete: healthy=$($result.healthy), needsDeploy=$($result.needsDeploy)" -TraceLevel $TraceLevel
     }
