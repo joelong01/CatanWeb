@@ -1336,8 +1336,7 @@ switch ($Verb) {
             # Check GameService
             Write-Log -Level WARN -Message "Checking GameService..." -NoLabel
             $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
-            $stagingArgs = if ($Staging) { @("-Staging") } else { @() }
-            & $azureScript game-service doctor -TraceLevel $TraceLevel @stagingArgs
+            & $azureScript game-service doctor -TraceLevel $TraceLevel -Staging:$Staging
             Write-Log -Level INFO -Message "" -NoLabel
 
             # Check Database (shared between production and staging)
@@ -1348,7 +1347,7 @@ switch ($Verb) {
 
             # Check UI
             Write-Log -Level WARN -Message "Checking UI..." -NoLabel
-            & $azureScript ui doctor -TraceLevel $TraceLevel @stagingArgs
+            & $azureScript ui doctor -TraceLevel $TraceLevel -Staging:$Staging
         }
         else {
             # Local doctor: check dependencies, npm packages, database
