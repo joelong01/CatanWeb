@@ -1313,62 +1313,89 @@ switch ($Verb) {
     }
 
     "doctor" {
-        Write-Log -Level INFO -Message "" -NoLabel
-        Write-Log -Level INFO -Message "Catan3 Health Check" -NoLabel -ForegroundColor Cyan
-        Write-Log -Level INFO -Message "===================" -NoLabel -ForegroundColor Cyan
-        Write-Log -Level INFO -Message "" -NoLabel
+        $target = if ($Azure) { "Azure" } else { "Local" }
 
-        # Check dependencies
-        Write-Log -Level WARN -Message "Checking dependencies..." -NoLabel
-        & "$PSScriptRoot\.scripts\dependencies.ps1" -Doctor
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Catan3 Health Check ($target)" -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message ("=" * (22 + $target.Length)) -NoLabel -ForegroundColor Cyan
         Write-Log -Level INFO -Message "" -NoLabel
 
-        # Check react-ui npm packages (Prettier, ESLint, etc.)
-        $reactUiCheck = Join-Path $PSScriptRoot "react-ui"
-        if (Test-Path $reactUiCheck) {
-            Write-Log -Level WARN -Message "Checking react-ui npm packages..." -NoLabel
-            $nodeModules = Join-Path $reactUiCheck "node_modules"
-            $prettierBin = Join-Path $nodeModules ".bin\prettier"
-            $eslintBin = Join-Path $nodeModules ".bin\eslint"
-
-            if (-not (Test-Path $nodeModules)) {
-                Write-Log -Level WARN -Message "  [WARN] node_modules not found. Run: cd react-ui && npm install" -NoLabel
-            }
-            else {
-                $allGood = $true
-                if (Test-Path $prettierBin) {
-                    $prettierVer = & npx --prefix $reactUiCheck prettier --version 2>$null
-                    Write-Log -Level INFO -Message "  [OK] Prettier v$prettierVer" -NoLabel -ForegroundColor Green
-                }
-                else {
-                    Write-Log -Level WARN -Message "  [WARN] Prettier not found. Run: cd react-ui && npm install" -NoLabel
-                    $allGood = $false
-                }
-                if (Test-Path $eslintBin) {
-                    $eslintVer = & npx --prefix $reactUiCheck eslint --version 2>$null
-                    Write-Log -Level INFO -Message "  [OK] ESLint v$eslintVer" -NoLabel -ForegroundColor Green
-                }
-                else {
-                    Write-Log -Level WARN -Message "  [WARN] ESLint not found. Run: cd react-ui && npm install" -NoLabel
-                    $allGood = $false
-                }
-                if ($allGood) {
-                    Write-Log -Level INFO -Message "  [OK] All react-ui npm packages installed" -NoLabel -ForegroundColor Green
-                }
-            }
+        if ($Azure) {
+            # Azure doctor: show URLs and check all resources
+            $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+            Write-Log -Level INFO -Message "Environment: Azure (production)" -NoLabel -ForegroundColor Cyan
+            Write-Log -Level INFO -Message "  GameService: $($az.GameServiceUrl)" -NoLabel
+            Write-Log -Level INFO -Message "  UI:          $($az.UiUrl)" -NoLabel
+            Write-Log -Level INFO -Message "  CosmosDB:    $($az.CosmosEndpoint)" -NoLabel
             Write-Log -Level INFO -Message "" -NoLabel
+
+            # Check GameService
+            Write-Log -Level WARN -Message "Checking GameService..." -NoLabel
+            $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
+            & $azureScript game-service doctor -TraceLevel $TraceLevel
+            Write-Log -Level INFO -Message "" -NoLabel
+
+            # Check Database
+            Write-Log -Level WARN -Message "Checking Database..." -NoLabel
+            $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+            & $dbScript -Verb doctor -Azure -TraceLevel $TraceLevel
+            Write-Log -Level INFO -Message "" -NoLabel
+
+            # Check UI
+            Write-Log -Level WARN -Message "Checking UI..." -NoLabel
+            & $azureScript ui doctor -TraceLevel $TraceLevel
         }
-
-        # Check database
-        Write-Log -Level WARN -Message "Checking database..." -NoLabel
-        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
-        $dbArgs = @{ TraceLevel = $TraceLevel }
-        if ($Azure) { $dbArgs.Azure = $true }
-        & $dbScript -Verb doctor @dbArgs
-        if ($LASTEXITCODE -ne 0) {
+        else {
+            # Local doctor: check dependencies, npm packages, database
+            Write-Log -Level WARN -Message "Checking dependencies..." -NoLabel
+            & "$PSScriptRoot\.scripts\dependencies.ps1" -Doctor
             Write-Log -Level INFO -Message "" -NoLabel
-            Write-Log -Level WARN -Message "Some issues found. Run './catan.ps1 database install' to fix." -NoLabel
-            exit 1
+
+            # Check react-ui npm packages
+            $reactUiCheck = Join-Path $PSScriptRoot "react-ui"
+            if (Test-Path $reactUiCheck) {
+                Write-Log -Level WARN -Message "Checking react-ui npm packages..." -NoLabel
+                $nodeModules = Join-Path $reactUiCheck "node_modules"
+                $prettierBin = Join-Path $nodeModules ".bin\prettier"
+                $eslintBin = Join-Path $nodeModules ".bin\eslint"
+
+                if (-not (Test-Path $nodeModules)) {
+                    Write-Log -Level WARN -Message "  [WARN] node_modules not found. Run: cd react-ui && npm install" -NoLabel
+                }
+                else {
+                    $allGood = $true
+                    if (Test-Path $prettierBin) {
+                        $prettierVer = & npx --prefix $reactUiCheck prettier --version 2>$null
+                        Write-Log -Level INFO -Message "  [OK] Prettier v$prettierVer" -NoLabel -ForegroundColor Green
+                    }
+                    else {
+                        Write-Log -Level WARN -Message "  [WARN] Prettier not found. Run: cd react-ui && npm install" -NoLabel
+                        $allGood = $false
+                    }
+                    if (Test-Path $eslintBin) {
+                        $eslintVer = & npx --prefix $reactUiCheck eslint --version 2>$null
+                        Write-Log -Level INFO -Message "  [OK] ESLint v$eslintVer" -NoLabel -ForegroundColor Green
+                    }
+                    else {
+                        Write-Log -Level WARN -Message "  [WARN] ESLint not found. Run: cd react-ui && npm install" -NoLabel
+                        $allGood = $false
+                    }
+                    if ($allGood) {
+                        Write-Log -Level INFO -Message "  [OK] All react-ui npm packages installed" -NoLabel -ForegroundColor Green
+                    }
+                }
+                Write-Log -Level INFO -Message "" -NoLabel
+            }
+
+            # Check database
+            Write-Log -Level WARN -Message "Checking database..." -NoLabel
+            $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+            & $dbScript -Verb doctor -TraceLevel $TraceLevel
+            if ($LASTEXITCODE -ne 0) {
+                Write-Log -Level INFO -Message "" -NoLabel
+                Write-Log -Level WARN -Message "Some issues found. Run './catan.ps1 database install' to fix." -NoLabel
+                exit 1
+            }
         }
     }
 
