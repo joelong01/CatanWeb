@@ -1919,8 +1919,18 @@ function Deploy-UI {
     Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings WEBSITE_NODE_DEFAULT_VERSION=~22 SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
 
-    # Install dependencies
+    # Install dependencies — remove node_modules first to break file locks
+    # (VS Code / Claude Code may hold native .node binaries open)
     Write-Log -Level "INFO" -Message "Installing React UI dependencies..."
+    $nodeModulesPath = Join-Path $reactDir "node_modules"
+    if (Test-Path $nodeModulesPath) {
+        Write-Log -Level "DEBUG" -Message "Removing node_modules to break file locks..."
+        Remove-Item $nodeModulesPath -Recurse -Force -ErrorAction SilentlyContinue
+        if (Test-Path $nodeModulesPath) {
+            Write-Log -Level "WARN" -Message "Could not fully remove node_modules — a process may hold a lock."
+            Write-Log -Level "INFO" -Message "  Try closing VS Code or other editors, then retry."
+        }
+    }
     Push-Location $reactDir
     try {
         $npmOutput = npm ci 2>&1

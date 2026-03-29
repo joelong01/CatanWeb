@@ -2511,11 +2511,18 @@ switch ($Verb) {
         }
         else {
             & pwsh $azureScript game-service deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
-            if ($LASTEXITCODE -ne 0) { exit 1 }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Log -Level ERROR -Message "GameService deploy failed" -NoLabel
+                exit 1
+            }
             & pwsh $azureScript ui deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
-            if ($LASTEXITCODE -ne 0) { exit 1 }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Log -Level ERROR -Message "UI deploy failed" -NoLabel
+                exit 1
+            }
         }
 
+        # Only show success if we got here (exit 1 above would have stopped us)
         $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
         $gsUrl = if ($Staging) { "https://$($az.GameServiceAppName)-staging.azurewebsites.net" } else { $az.GameServiceUrl }
         $uiUrl = if ($Staging) { "https://$($az.UiAppName)-staging.azurewebsites.net" } else { $az.UiUrl }
