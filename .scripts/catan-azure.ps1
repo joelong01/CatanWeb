@@ -152,32 +152,89 @@ $DefaultConfig = @{
     Invoke-AzCommand "group create --name rg-test --location westus2" -JsonOutput
 #>
 function Invoke-AzCommand {
+    <#
+    .SYNOPSIS
+        Runs an Azure CLI command with timeout, structured output, and clean error handling.
+    .PARAMETER Command
+        The az CLI command (without the leading "az"). Example: "webapp show --name foo -g rg-foo"
+    .PARAMETER Check
+        Existence probe mode. Returns $null on failure instead of throwing. No error output.
+        Use when checking if a resource exists (expected 404 is not an error).
+        Replaces the old -FailOnError $false pattern.
+    .PARAMETER FailOnError
+        Legacy parameter — use -Check instead. Kept for backward compatibility during migration.
+    .PARAMETER SuppressOutput
+        Returns $true on success instead of the command output.
+    .PARAMETER JsonOutput
+        Parses output as JSON and returns the parsed object.
+    .PARAMETER TimeoutSeconds
+        Maximum seconds to wait before killing the process. Default: 120. Use 300 for deploys.
+    #>
     param(
         [Parameter(Mandatory, Position = 0)]
         [string]$Command,
 
+        [switch]$Check,
         [bool]$FailOnError = $true,
         [switch]$SuppressOutput,
-        [switch]$JsonOutput
+        [switch]$JsonOutput,
+        [int]$TimeoutSeconds = 120
     )
+
+    # -Check implies non-fatal (backward compat: -FailOnError $false also works)
+    $isFatal = $FailOnError -and -not $Check
 
     Write-Log -Level "DEBUG" -Message "az $Command"
 
-    # Execute and capture both stdout and stderr
-    $output = $null
-    $errorOutput = $null
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
     try {
-        # Use Invoke-Expression to run the command
-        $fullCommand = "az $Command 2>&1"
-        $result = Invoke-Expression $fullCommand
-        $exitCode = $LASTEXITCODE
-        $stopwatch.Stop()
+        # Use [System.Diagnostics.Process] for timeout support and clean stdout/stderr capture
+        $azPath = (Get-Command az -ErrorAction Stop).Source
 
-        # Separate stdout from stderr (error records)
-        $output = $result | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }
-        $errorOutput = $result | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] }
+        $psi = [System.Diagnostics.ProcessStartInfo]::new()
+        $psi.FileName = $azPath
+        $psi.Arguments = $Command
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.CreateNoWindow = $true
+
+        # Set encoding to UTF-8 for JSON output
+        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+        $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $psi
+        $process.Start() | Out-Null
+
+        # Read stdout/stderr on background tasks to avoid deadlocks
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+
+        # Wait with timeout
+        $completed = $process.WaitForExit($TimeoutSeconds * 1000)
+
+        if (-not $completed) {
+            # Timeout — kill the process tree
+            $stopwatch.Stop()
+            try { $process.Kill($true) } catch { }
+
+            $timeoutMsg = "az command timed out after ${TimeoutSeconds}s: az $Command"
+            if ($isFatal) {
+                Write-Log -Level "ERROR" -Message $timeoutMsg
+                throw $timeoutMsg
+            }
+            Write-Log -Level "DEBUG" -Message $timeoutMsg
+            return $null
+        }
+
+        # Process exited — collect output
+        $stdout = $stdoutTask.GetAwaiter().GetResult().Trim()
+        $stderr = $stderrTask.GetAwaiter().GetResult().Trim()
+        $exitCode = $process.ExitCode
+
+        $stopwatch.Stop()
 
         # Format duration for logging
         $elapsed = $stopwatch.Elapsed
@@ -189,15 +246,14 @@ function Invoke-AzCommand {
             "{0:N0}ms" -f $elapsed.TotalMilliseconds
         }
 
-        # Log duration on separate line - INFO for slow commands (>10s), DEBUG otherwise
         $durationLevel = if ($elapsed.TotalSeconds -ge 10) { "INFO" } else { "DEBUG" }
         Write-Log -Level $durationLevel -Message "  completed in $durationStr"
 
         if ($exitCode -ne 0) {
-            $errorMsg = if ($errorOutput) { $errorOutput -join "`n" } else { "Command failed with exit code $exitCode" }
+            $errorMsg = if ($stderr) { $stderr } else { "Command failed with exit code $exitCode" }
             Write-Log -Level "DEBUG" -Message "az exit code: $exitCode"
 
-            if ($FailOnError) {
+            if ($isFatal) {
                 Write-Log -Level "ERROR" -Message "az $Command"
                 Write-Log -Level "ERROR" -Message $errorMsg
                 throw "Azure CLI command failed: $errorMsg"
@@ -212,18 +268,25 @@ function Invoke-AzCommand {
             return $true
         }
 
-        if ($JsonOutput -and $output) {
-            return $output | ConvertFrom-Json
+        if ($JsonOutput -and $stdout) {
+            try {
+                return ConvertFrom-Json $stdout
+            }
+            catch {
+                Write-Log -Level "DEBUG" -Message "JSON parse failed, returning raw output: $_"
+                return $stdout
+            }
         }
 
-        return $output
+        return $stdout
     }
     catch {
         $stopwatch.Stop()
-        if ($FailOnError) {
-            throw
-        }
+        if ($isFatal) { throw }
         return $null
+    }
+    finally {
+        if ($process) { $process.Dispose() }
     }
 }
 
@@ -341,8 +404,8 @@ function Get-AvailableBaseName {
 .SYNOPSIS
     Creates a full configuration from a base name.
 .DESCRIPTION
-    Takes a base name and generates all derived resource names following
-    Azure naming conventions (rg-*, st*, asp-*, ai-*, etc.)
+    Delegates to the module's Get-AzureResourceNames for naming conventions,
+    then populates the hashtable config format used by this script.
 .PARAMETER BaseName
     The base name to derive all resource names from
 .OUTPUTS
@@ -351,19 +414,33 @@ function Get-AvailableBaseName {
 function Initialize-ConfigFromBaseName {
     param([string]$BaseName)
 
-    $config = Get-AzureConfig
+    $az = Get-AzureResourceNames -ProjectRoot $ProjectRoot
+
+    # Start from DefaultConfig to ensure all nested hashtables exist,
+    # then overlay with values from the config file and derived names
+    $config = $DefaultConfig.Clone()
+    $fileConfig = Get-AzureConfig
+    # Preserve non-derived fields from the file (e.g., auth)
+    foreach ($key in $fileConfig.Keys) {
+        $config[$key] = $fileConfig[$key]
+    }
+
     $config.baseName = $BaseName
-    $config.resourceGroup = "rg-$BaseName"
-    $config.storageAccount = "st$($BaseName -replace '-', '')"
-    $config.gameService.appServicePlan = "asp-$BaseName"
-    $config.gameService.appName = "$BaseName-api"
-    $config.gameService.url = "https://$BaseName-api.azurewebsites.net"
-    $config.ui.appName = $BaseName
-    $config.ui.url = "https://$BaseName.azurewebsites.net"
-    $config.appInsights.name = "ai-$BaseName"
-    $config.sqlServer.serverName = "sql-$BaseName"
-    $config.sqlServer.databaseName = "catan"
-    $config.sqlServer.fqdn = "sql-$BaseName.database.windows.net"
+    $config.resourceGroup = $az.ResourceGroup
+    $config.location = $az.Location
+    $config.storageAccount = $az.StorageAccount
+    $config.gameService = @{
+        appServicePlan = $az.GameServicePlan
+        appName        = $az.GameServiceAppName
+        url            = $az.GameServiceUrl
+    }
+    $config.ui = @{
+        appName = $az.UiAppName
+        url     = $az.UiUrl
+    }
+    $config.appInsights = @{
+        name = $az.AppInsights
+    }
 
     return $config
 }
@@ -3482,12 +3559,18 @@ if ($Verb -eq "install") {
         Save-AzureConfig -Config $config
     }
     else {
+        # baseName exists — derive all resource names (convention over configuration)
+        $config = Initialize-ConfigFromBaseName -BaseName $config.baseName
         Write-Log -Level "INFO" -Message "Using existing base name: $($config.baseName)"
     }
 }
 elseif (-not $config.baseName) {
     Write-Log -Level "ERROR" -Message "No Azure configuration found. Run 'install' first."
     exit 1
+}
+else {
+    # Non-install verbs: still need derived names populated
+    $config = Initialize-ConfigFromBaseName -BaseName $config.baseName
 }
 
 # Execute operation
