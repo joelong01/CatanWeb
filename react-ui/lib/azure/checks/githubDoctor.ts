@@ -108,11 +108,12 @@ async function checkAppRegistration(
       `/applications?$filter=displayName eq '${displayName}'&$select=id,appId,displayName`
     );
 
-    if (!response.value || response.value.length === 0) {
+    const apps = response.value as Array<Record<string, string>> | undefined;
+    if (!apps || apps.length === 0) {
       return { result: t.fail(`App registration '${displayName}' not found`) };
     }
 
-    const app = response.value[0];
+    const app = apps[0];
     return {
       result: t.ok(`appId=${app.appId}`),
       appObjectId: app.id,
@@ -141,13 +142,14 @@ async function checkServicePrincipal(
       `/servicePrincipals?$filter=appId eq '${appId}'&$select=id,appId`
     );
 
-    if (!response.value || response.value.length === 0) {
+    const sps = response.value as Array<Record<string, string>> | undefined;
+    if (!sps || sps.length === 0) {
       return { result: t.fail('Service principal not found') };
     }
 
     return {
-      result: t.ok(`objectId=${response.value[0].id.substring(0, 8)}...`),
-      spObjectId: response.value[0].id,
+      result: t.ok(`objectId=${sps[0].id.substring(0, 8)}...`),
+      spObjectId: sps[0].id,
     };
   } catch (err) {
     return { result: t.fail(`Failed to check service principal: ${formatError(err)}`) };
@@ -172,8 +174,8 @@ async function checkFederatedCredentials(
       `/applications/${appObjectId}/federatedIdentityCredentials`
     );
 
-    const creds = response.value ?? [];
-    const names = new Set(creds.map((c: { name: string }) => c.name));
+    const creds = (response.value as Array<{ name: string }>) ?? [];
+    const names = new Set(creds.map((c) => c.name));
     const hasMain = names.has('github-actions-main');
     const hasStaging = names.has('github-actions-staging');
 
