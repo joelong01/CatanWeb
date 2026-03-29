@@ -1406,10 +1406,12 @@ switch ($Verb) {
         Write-Log -Level INFO -Message "" -NoLabel
 
         if ($Azure) {
-            # Azure install: redirect to the full azure install path
-            # (creates App Service, CosmosDB, UI, RBAC — the complete stack)
+            # Azure install: create infrastructure + deploy code
+            # Install is idempotent — creates what's missing, deploys if not yet deployed
             $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
             $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+
+            # 1. Create infrastructure
             & $azureScript game-service install -TraceLevel $TraceLevel
             if ($LASTEXITCODE -ne 0) { exit 1 }
             & $dbScript -Verb install -Azure -TraceLevel $TraceLevel
@@ -1418,8 +1420,22 @@ switch ($Verb) {
             if ($LASTEXITCODE -ne 0) { exit 1 }
             & $dbScript -Verb deploy -Azure -TraceLevel $TraceLevel
             if ($LASTEXITCODE -ne 0) { exit 1 }
+
+            # 2. Deploy code (idempotent — skips if already deployed at current commit)
             Write-Log -Level INFO -Message "" -NoLabel
-            Write-Log -Level INFO -Message "All Azure resources installed and configured!" -NoLabel -ForegroundColor Green
+            Write-Log -Level INFO -Message "Deploying code..." -NoLabel -ForegroundColor Cyan
+            & $azureScript game-service deploy -TraceLevel $TraceLevel
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            & $azureScript ui deploy -TraceLevel $TraceLevel
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+
+            Write-Log -Level INFO -Message "" -NoLabel
+            Write-Log -Level INFO -Message "Azure install complete — infrastructure created and code deployed!" -NoLabel -ForegroundColor Green
+
+            # 3. Show final health check
+            $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+            Write-Log -Level INFO -Message "  GameService: $($az.GameServiceUrl)" -NoLabel
+            Write-Log -Level INFO -Message "  UI:          $($az.UiUrl)" -NoLabel
         } else {
             # Local install: dependencies + local Cosmos emulator
             # Install dependencies (dependencies.ps1 already checks if installed)
@@ -2452,8 +2468,8 @@ switch ($Verb) {
         Write-Log -Level WARN -Message "Azure:" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 azure start      - Wake all services (resume DB, warm apps)" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 azure doctor     - Check Azure deployment health" -NoLabel
-        Write-Log -Level INFO -Message "  ./catan.ps1 azure install    - Create all Azure resources" -NoLabel
-        Write-Log -Level INFO -Message "  ./catan.ps1 azure deploy     - Deploy everything to Azure" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 azure install    - Create Azure resources and deploy code" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 azure deploy     - Deploy code only (no infrastructure changes)" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 azure swap-slots - Swap staging <-> production" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 azure clean      - Delete all Azure resources" -NoLabel
         Write-Log -Level INFO -Message "" -NoLabel
