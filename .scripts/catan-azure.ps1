@@ -1465,7 +1465,7 @@ function Install-GameService {
 .SYNOPSIS
     Creates and configures the WebUI Azure Web App.
 .DESCRIPTION
-    Creates the .NET 9.0 web app for the Blazor WebAssembly frontend,
+    Creates the web app for the React UI (Next.js),
     enables managed identity, and configures GameService URL.
 .PARAMETER Config
     Azure configuration hashtable
@@ -1904,47 +1904,83 @@ function Deploy-UI {
 
     $rgName = $Config.resourceGroup
     $appName = $Config.ui.appName
-    # Deploy WebUI.Server (hosts the Blazor WASM client) instead of standalone WebUI
-    $projectPath = Join-Path $ProjectRoot "WebUI.Server"
-    $publishPath = Join-Path $ProjectRoot ".publish/webui"
-    $zipPath = Join-Path $ProjectRoot ".publish/webui.zip"
+    $reactDir = Join-Path $ProjectRoot "react-ui"
+    $deployDir = Join-Path $ProjectRoot ".publish/react-production"
+    $zipPath = Join-Path $ProjectRoot ".publish/react-ui-production.zip"
+    $gameServiceUrl = $Config.gameService.url
 
     # Check if deployment is needed
     if (-not (Test-DeploymentNeeded -AppName $appName -ResourceGroup $rgName -Force $Force)) {
         return $true
     }
 
-    Write-Log -Level "INFO" -Message "Publishing WebUI.Server..."
-    $publishArgs = @($projectPath, "-c", "Release", "-o", $publishPath, "--nologo", "-v", "q")
-    if ($NoBuild) { $publishArgs += "--no-build" }
-    dotnet publish @publishArgs
+    # Ensure production slot is configured for Node.js (idempotent)
+    Write-Log -Level "INFO" -Message "Ensuring production is configured for Node.js..."
+    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings WEBSITE_NODE_DEFAULT_VERSION=~22 SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
 
-    # Remove BlazorDebugProxy (saves ~11 MB, not needed in production)
-    $debugProxyPath = Join-Path $publishPath "BlazorDebugProxy"
-    if (Test-Path $debugProxyPath) {
-        Remove-Item $debugProxyPath -Recurse -Force
-        Write-Log -Level "DEBUG" -Message "Removed BlazorDebugProxy folder"
+    # Install dependencies
+    Write-Log -Level "INFO" -Message "Installing React UI dependencies..."
+    Push-Location $reactDir
+    try {
+        $npmOutput = npm ci 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log -Level "ERROR" -Message "npm ci failed:"
+            $npmOutput | ForEach-Object { Write-Log -Level "ERROR" -Message "  $_" }
+            return $false
+        }
+
+        # Build Next.js standalone with production GameService URL
+        Write-Log -Level "INFO" -Message "Building React UI (standalone)..."
+        $env:NEXT_PUBLIC_GAME_SERVICE_URL = $gameServiceUrl
+        $buildOutput = npm run build 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log -Level "ERROR" -Message "Next.js build failed:"
+            $buildOutput | ForEach-Object { Write-Log -Level "ERROR" -Message "  $_" }
+            return $false
+        }
+        $buildOutput | ForEach-Object { Write-Log -Level "DEBUG" -Message $_ }
+    }
+    finally {
+        Pop-Location
     }
 
-    Write-Log -Level "INFO" -Message "Creating deployment package..."
+    # Assemble deployment package
+    Write-Log -Level "INFO" -Message "Assembling deployment package..."
+    if (Test-Path $deployDir) { Remove-Item $deployDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
+
+    $standalonePath = Join-Path $reactDir ".next/standalone/react-ui"
+    if (-not (Test-Path $standalonePath)) {
+        $standalonePath = Join-Path $reactDir ".next/standalone"
+    }
+    Copy-Item -Path "$standalonePath/*" -Destination $deployDir -Recurse -Force
+    Copy-Item -Path (Join-Path $reactDir ".next/static") -Destination (Join-Path $deployDir ".next/static") -Recurse -Force
+    Copy-Item -Path (Join-Path $reactDir "public") -Destination (Join-Path $deployDir "public") -Recurse -Force
+
+    # Create zip
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-    Compress-Archive -Path "$publishPath/*" -DestinationPath $zipPath
+    $items = Get-ChildItem -Path $deployDir -Force | Where-Object { $_.Name -ne '.' -and $_.Name -ne '..' }
+    Compress-Archive -Path $items.FullName -DestinationPath $zipPath
 
     $zipSize = (Get-Item $zipPath).Length / 1MB
-    Write-Log -Level "INFO" -Message "Deploying to Azure ($([math]::Round($zipSize, 1)) MB)..."
+    Write-Log -Level "INFO" -Message "Deploying React UI to production ($([math]::Round($zipSize, 1)) MB)..."
 
-    # Deploy via Kudu ZIP Deploy API (truly async, unlike az webapp deploy --async true)
+    # Set the GameService URL
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings NEXT_PUBLIC_GAME_SERVICE_URL=$gameServiceUrl" -SuppressOutput
+
+    # Deploy via Kudu ZIP Deploy API
     if (-not (Deploy-KuduZip -AppName $appName -ResourceGroup $rgName -ZipPath $zipPath)) {
         return $false
     }
 
-    # Restart the app after deploy to ensure the new code is loaded
+    # Restart to load new deployment
     Write-Log -Level "INFO" -Message "Restarting app to load new deployment..."
     Invoke-AzCommand "webapp restart --name $appName --resource-group $rgName" -SuppressOutput
 
-    # Store the deployed commit hash and build timestamp
+    # Store deployed commit
     $commitHash = Get-GitCommitHash
-    $buildTime = (Get-Date -Format "o")  # ISO 8601 format
+    $buildTime = (Get-Date -Format "o")
     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings DEPLOY_COMMIT=$commitHash DEPLOY_BUILD_TIME=`"$buildTime`"" -SuppressOutput
 
     Write-Log -Level "INFO" -Message "UI deployed: $($Config.ui.url)"
@@ -2684,7 +2720,7 @@ function Show-DoctorResult {
     if ($Result.prodRuntime) {
         Write-Log -Level INFO -Message "" -NoLabel
         Write-Log -Level INFO -Message ("  Runtime").PadRight($col1) -NoLabel -NoNewline
-        $rtLabel = if ($Result.prodRuntime -like "DOTNETCORE*") { "Blazor ($($Result.prodRuntime))" }
+        $rtLabel = if ($Result.prodRuntime -like "DOTNETCORE*") { ".NET ($($Result.prodRuntime))" }
                    elseif ($Result.prodRuntime -like "NODE*") { "React/Next.js ($($Result.prodRuntime))" }
                    else { $Result.prodRuntime }
         $rtColor = if ($Result.checks.siteResponding) { "Green" } else { "Yellow" }
@@ -2932,7 +2968,7 @@ Usage:
     ./catan-azure.ps1 <noun> <verb>       Run verb on specific resource
 
 Nouns:
-    ui              WebUI Blazor application
+    ui              React UI (Next.js) application
     database        Azure SQL Serverless database
     game-service    GameService ASP.NET Core API
     github          GitHub Actions OIDC authentication
