@@ -2432,6 +2432,7 @@ switch ($Verb) {
         Write-Log -Level WARN -Message "Setup:" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 doctor           - Check dependencies and database health" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 install          - Install all dependencies and database" -NoLabel
+        Write-Log -Level INFO -Message "  ./catan.ps1 deploy -Azure    - Deploy code to Azure (fast, skips infra checks)" -NoLabel
         Write-Log -Level INFO -Message "" -NoLabel
         Write-Log -Level WARN -Message "Recording:" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 recording list   - List all recordings (add -Azure for Azure)" -NoLabel
@@ -2482,6 +2483,29 @@ switch ($Verb) {
         Write-Log -Level INFO -Message "  GameService: $GameServiceUrl" -NoLabel
         Write-Log -Level INFO -Message "  React UI:    $ReactUIUrl" -NoLabel
         Write-Log -Level INFO -Message "" -NoLabel
+    }
+
+    "deploy" {
+        if (-not $Azure) {
+            Write-Log -Level ERROR -Message "deploy requires -Azure. Locally, use './catan.ps1 run' instead." -NoLabel
+            exit 1
+        }
+
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Deploying to Azure..." -NoLabel -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "" -NoLabel
+
+        $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
+        & $azureScript game-service deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+        & $azureScript ui deploy -TraceLevel $TraceLevel -Force:$Force -NoBuild:$NoBuild
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+
+        $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Deploy complete!" -NoLabel -ForegroundColor Green
+        Write-Log -Level INFO -Message "  GameService: $($az.GameServiceUrl)" -NoLabel
+        Write-Log -Level INFO -Message "  UI:          $($az.UiUrl)" -NoLabel
     }
 
     default {
