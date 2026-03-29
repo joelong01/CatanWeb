@@ -1323,19 +1323,24 @@ switch ($Verb) {
         if ($Azure) {
             # Azure doctor: show URLs and check all resources
             $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
-            Write-Log -Level INFO -Message "Environment: Azure (production)" -NoLabel -ForegroundColor Cyan
-            Write-Log -Level INFO -Message "  GameService: $($az.GameServiceUrl)" -NoLabel
-            Write-Log -Level INFO -Message "  UI:          $($az.UiUrl)" -NoLabel
+            $envLabel = if ($Staging) { "staging" } else { "production" }
+            $gsUrl = if ($Staging) { "https://$($az.GameServiceAppName)-staging.azurewebsites.net" } else { $az.GameServiceUrl }
+            $uiUrl = if ($Staging) { "https://$($az.UiAppName)-staging.azurewebsites.net" } else { $az.UiUrl }
+
+            Write-Log -Level INFO -Message "Environment: Azure ($envLabel)" -NoLabel -ForegroundColor Cyan
+            Write-Log -Level INFO -Message "  GameService: $gsUrl" -NoLabel
+            Write-Log -Level INFO -Message "  UI:          $uiUrl" -NoLabel
             Write-Log -Level INFO -Message "  CosmosDB:    $($az.CosmosEndpoint)" -NoLabel
             Write-Log -Level INFO -Message "" -NoLabel
 
             # Check GameService
             Write-Log -Level WARN -Message "Checking GameService..." -NoLabel
             $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
-            & $azureScript game-service doctor -TraceLevel $TraceLevel
+            $stagingArgs = if ($Staging) { @("-Staging") } else { @() }
+            & $azureScript game-service doctor -TraceLevel $TraceLevel @stagingArgs
             Write-Log -Level INFO -Message "" -NoLabel
 
-            # Check Database
+            # Check Database (shared between production and staging)
             Write-Log -Level WARN -Message "Checking Database..." -NoLabel
             $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
             & $dbScript -Verb doctor -Azure -TraceLevel $TraceLevel
@@ -1343,7 +1348,7 @@ switch ($Verb) {
 
             # Check UI
             Write-Log -Level WARN -Message "Checking UI..." -NoLabel
-            & $azureScript ui doctor -TraceLevel $TraceLevel
+            & $azureScript ui doctor -TraceLevel $TraceLevel @stagingArgs
         }
         else {
             # Local doctor: check dependencies, npm packages, database
