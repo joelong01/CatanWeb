@@ -105,6 +105,7 @@ $ErrorActionPreference = "Stop"
 
 # Import shared utility module
 Import-Module "$PSScriptRoot/.scripts/utility-scripts.psm1" -Force
+Set-ModuleTraceLevel -TraceLevel $TraceLevel
 
 $PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
 
@@ -303,7 +304,7 @@ function Start-ReactUI {
 function Initialize-Database {
     Write-Log -Level INFO -Message "Checking Cosmos emulator..." -NoLabel -ForegroundColor Cyan
     $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
-    & pwsh $dbScript install
+    & $dbScript -Verb install -TraceLevel $TraceLevel
     return ($LASTEXITCODE -eq 0)
 }
 
@@ -1358,10 +1359,12 @@ switch ($Verb) {
             Write-Log -Level INFO -Message "" -NoLabel
         }
 
-        # Check database (Cosmos emulator)
+        # Check database
         Write-Log -Level WARN -Message "Checking database..." -NoLabel
         $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
-        & pwsh $dbScript doctor
+        $dbArgs = @{ TraceLevel = $TraceLevel }
+        if ($Azure) { $dbArgs.Azure = $true }
+        & $dbScript -Verb doctor @dbArgs
         if ($LASTEXITCODE -ne 0) {
             Write-Log -Level INFO -Message "" -NoLabel
             Write-Log -Level WARN -Message "Some issues found. Run './catan.ps1 database install' to fix." -NoLabel
@@ -1375,21 +1378,38 @@ switch ($Verb) {
         Write-Log -Level INFO -Message "===================" -NoLabel -ForegroundColor Cyan
         Write-Log -Level INFO -Message "" -NoLabel
 
-        # Install dependencies (dependencies.ps1 already checks if installed)
-        Write-Log -Level WARN -Message "Checking dependencies..." -NoLabel
-        & "$PSScriptRoot\.scripts\dependencies.ps1" -Install -Yes:$Yes
-        Write-Log -Level INFO -Message "" -NoLabel
+        if ($Azure) {
+            # Azure install: redirect to the full azure install path
+            # (creates App Service, CosmosDB, UI, RBAC — the complete stack)
+            $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
+            $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+            & $azureScript game-service install -TraceLevel $TraceLevel
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            & $dbScript -Verb install -Azure -TraceLevel $TraceLevel
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            & $azureScript ui install -TraceLevel $TraceLevel
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            & $dbScript -Verb deploy -Azure -TraceLevel $TraceLevel
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            Write-Log -Level INFO -Message "" -NoLabel
+            Write-Log -Level INFO -Message "All Azure resources installed and configured!" -NoLabel -ForegroundColor Green
+        } else {
+            # Local install: dependencies + local Cosmos emulator
+            # Install dependencies (dependencies.ps1 already checks if installed)
+            Write-Log -Level WARN -Message "Checking dependencies..." -NoLabel
+            & "$PSScriptRoot\.scripts\dependencies.ps1" -Install -Yes:$Yes
+            Write-Log -Level INFO -Message "" -NoLabel
 
-        # Install database (Cosmos emulator)
-        Write-Log -Level WARN -Message "Installing database..." -NoLabel
-        $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
-        & pwsh $dbScript install
-        if ($LASTEXITCODE -ne 0) {
-            Write-Log -Level ERROR -Message "Database installation failed!" -NoLabel
-            exit 1
+            Write-Log -Level WARN -Message "Installing database..." -NoLabel
+            $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
+            & $dbScript -Verb install -TraceLevel $TraceLevel
+            if ($LASTEXITCODE -ne 0) {
+                Write-Log -Level ERROR -Message "Database installation failed!" -NoLabel
+                exit 1
+            }
+            Write-Log -Level INFO -Message "" -NoLabel
+            Write-Log -Level INFO -Message "Installation complete!" -NoLabel -ForegroundColor Green
         }
-        Write-Log -Level INFO -Message "" -NoLabel
-        Write-Log -Level INFO -Message "Installation complete!" -NoLabel -ForegroundColor Green
     }
 
     "run" {
@@ -1512,7 +1532,9 @@ switch ($Verb) {
         # Only clean database if explicitly requested
         if ($cleanDatabase) {
             $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
-            & pwsh $dbScript nuke-containers
+            $dbArgs = @{ TraceLevel = $TraceLevel }
+            if ($Azure) { $dbArgs.Azure = $true }
+            & $dbScript -Verb nuke-containers @dbArgs
         }
 
         # Clean build artifacts
@@ -1633,27 +1655,28 @@ switch ($Verb) {
         # All database commands route through .scripts/database.ps1 (CosmosDB).
         # Pass -Azure for Azure, omit for local emulator.
         $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
-        $modeFlag = if ($Azure) { @("-Azure") } else { @() }
+        $dbArgs = @{ TraceLevel = $TraceLevel }
+        if ($Azure) { $dbArgs.Azure = $true }
 
         switch ($SubCommand) {
             "clean" {
-                & pwsh $dbScript nuke-containers @modeFlag -TraceLevel $TraceLevel
+                & $dbScript -Verb nuke-containers @dbArgs
                 exit $LASTEXITCODE
             }
             "install" {
-                & pwsh $dbScript install @modeFlag -TraceLevel $TraceLevel
+                & $dbScript -Verb install @dbArgs
                 exit $LASTEXITCODE
             }
             "doctor" {
-                & pwsh $dbScript doctor @modeFlag -TraceLevel $TraceLevel
+                & $dbScript -Verb doctor @dbArgs
                 exit $LASTEXITCODE
             }
             "seed-data" {
-                & pwsh $dbScript seed-data @modeFlag -TraceLevel $TraceLevel
+                & $dbScript -Verb seed-data @dbArgs
                 exit $LASTEXITCODE
             }
             "test" {
-                & pwsh $dbScript test @modeFlag -TraceLevel $TraceLevel
+                & $dbScript -Verb test @dbArgs
                 exit $LASTEXITCODE
             }
 
@@ -1866,12 +1889,12 @@ switch ($Verb) {
                 Write-Log -Level INFO -Message "" -NoLabel
                 & $azureScript game-service install -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
-                & pwsh $dbScript install -Azure -TraceLevel $TraceLevel
+                & $dbScript install -Azure -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 & $azureScript ui install -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 # Deploy RBAC and app settings for CosmosDB
-                & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
+                & $dbScript deploy -Azure -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 Write-Log -Level INFO -Message "" -NoLabel
                 Write-Log -Level INFO -Message "All Azure resources installed and configured!" -NoLabel -ForegroundColor Green
@@ -1922,7 +1945,7 @@ switch ($Verb) {
                         $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
                         Write-Log -Level INFO -Message "Deploying database configuration..." -NoLabel -ForegroundColor Cyan
                         Write-Log -Level INFO -Message "" -NoLabel
-                        & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
+                        & $dbScript deploy -Azure -TraceLevel $TraceLevel
                         if ($LASTEXITCODE -ne 0) { exit 1 }
                         Write-Log -Level INFO -Message "" -NoLabel
                         Write-Log -Level INFO -Message "Database deployment complete!" -NoLabel -ForegroundColor Green
@@ -1961,12 +1984,12 @@ switch ($Verb) {
 
                         # Database: use database.ps1 for CosmosDB
                         $dbScript = Join-Path $PSScriptRoot ".scripts/database.ps1"
-                        $dbDoctor = & pwsh $dbScript doctor -Azure -HashTable -TraceLevel $TraceLevel
+                        $dbDoctor = & $dbScript doctor -Azure -HashTable -TraceLevel $TraceLevel
                         if ($dbDoctor.Status -ne "Ready") {
                             Write-Log -Level WARN -Message "  Database: Needs setup" -NoLabel
-                            & pwsh $dbScript install -Azure -TraceLevel $TraceLevel
+                            & $dbScript install -Azure -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
-                            & pwsh $dbScript deploy -Azure -TraceLevel $TraceLevel
+                            & $dbScript deploy -Azure -TraceLevel $TraceLevel
                             if ($LASTEXITCODE -ne 0) { exit 1 }
                         } else {
                             Write-Log -Level INFO -Message "  Database: Ready - skipping" -NoLabel -ForegroundColor Green

@@ -99,6 +99,7 @@ $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "$ScriptDir/utility-scripts.psm1" -Force
+Set-ModuleTraceLevel -TraceLevel $TraceLevel
 
 $PSDefaultParameterValues = @{
     'Write-Log:TraceLevel' = $TraceLevel

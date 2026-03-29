@@ -12,6 +12,30 @@ $script:MinRequiredPowershellVersion = "7.0.0"
 # Add this at the top of the module
 $script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
+# Module-level TraceLevel: callers set this via Set-ModuleTraceLevel or
+# $PSDefaultParameterValues propagation. Defaults to INFO.
+$script:ModuleTraceLevel = "INFO"
+
+<#
+.SYNOPSIS
+    Sets the TraceLevel for all Write-Log calls within this module.
+.DESCRIPTION
+    Module functions can't see the caller's $PSDefaultParameterValues.
+    Call this after Import-Module to propagate your TraceLevel into the module.
+.EXAMPLE
+    Import-Module utility-scripts.psm1 -Force
+    Set-ModuleTraceLevel -TraceLevel "DEBUG"
+#>
+function Set-ModuleTraceLevel {
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel
+    )
+    $script:ModuleTraceLevel = $TraceLevel
+    $script:PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+}
+
 <#
 .SYNOPSIS
     Writes a log message with the specified level and trace level.
@@ -1451,6 +1475,8 @@ function Test-DeploymentNeeded {
 
 # Export all functions
 Export-ModuleMember -Function @(
+    # Module config
+    'Set-ModuleTraceLevel',
     # Logging
     'Write-Log',
     'Complete-StatusMessage',
