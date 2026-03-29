@@ -133,41 +133,22 @@ $DefaultConfig = @{
 # Invoke-AzCommand is provided by utility-scripts.psm1 (no local copy)
 
 #region Configuration Functions
+# Get-AzureConfig, Save-AzureConfig, Test-AzureLogin, Register-AzureProvider,
+# Install-AzureResourceGroup, Remove-AzureResourceGroup, Install-AzureAppServicePlan,
+# Install-AzureAppInsights, Get-GitCommitHash, Deploy-KuduZip, Test-DeploymentNeeded
+# — all provided by utility-scripts.psm1
 
-<#
-.SYNOPSIS
-    Loads Azure configuration from the config file.
-.DESCRIPTION
-    Reads the catan-azure.json config file and returns it as a hashtable.
-    If the file doesn't exist, returns a clone of the default configuration.
-.OUTPUTS
-    Hashtable containing Azure resource configuration (baseName, resourceGroup, etc.)
-#>
-function Get-AzureConfig {
-    if (Test-Path $AzureConfigFile) {
-        return Get-Content $AzureConfigFile -Raw | ConvertFrom-Json -AsHashtable
-    }
+# Thin wrapper: returns config as hashtable (callers use hashtable syntax throughout)
+# Falls back to $DefaultConfig when no config file exists yet (first install)
+function Get-LocalConfig {
+    $config = Get-AzureConfig -ProjectRoot $ProjectRoot -AsHashtable -AllowMissing
+    if ($config) { return $config }
     return $DefaultConfig.Clone()
 }
 
-<#
-.SYNOPSIS
-    Saves Azure configuration to the config file.
-.DESCRIPTION
-    Writes the configuration hashtable to catan-azure.json.
-    Creates the .azure directory if it doesn't exist.
-.PARAMETER Config
-    Hashtable containing Azure resource configuration
-#>
-function Save-AzureConfig {
+function Save-LocalConfig {
     param([hashtable]$Config)
-
-    if (-not (Test-Path $AzureConfigDir)) {
-        New-Item -ItemType Directory -Path $AzureConfigDir -Force | Out-Null
-    }
-
-    $Config | ConvertTo-Json -Depth 10 | Set-Content $AzureConfigFile
-    Write-Log -Level "INFO" -Message "Configuration saved to $AzureConfigFile"
+    Save-AzureConfig -ProjectRoot $ProjectRoot -Config $Config
 }
 
 <#
@@ -259,7 +240,7 @@ function Initialize-ConfigFromBaseName {
     # Start from DefaultConfig to ensure all nested hashtables exist,
     # then overlay with values from the config file and derived names
     $config = $DefaultConfig.Clone()
-    $fileConfig = Get-AzureConfig
+    $fileConfig = Get-LocalConfig
     # Preserve non-derived fields from the file (e.g., auth)
     foreach ($key in $fileConfig.Keys) {
         $config[$key] = $fileConfig[$key]
@@ -289,188 +270,27 @@ function Initialize-ConfigFromBaseName {
 
 #region Azure Auth Functions
 
-<#
-.SYNOPSIS
-    Verifies Azure CLI login status.
-.DESCRIPTION
-    Checks if the user is logged into Azure CLI and displays account info.
-    Returns false with guidance if not logged in.
-.OUTPUTS
-    Boolean - $true if logged in, $false otherwise
-#>
-function Test-AzureLogin {
-    $account = Invoke-AzCommand "account show" -FailOnError $false -JsonOutput
-    if (-not $account) {
-        Write-Log -Level "ERROR" -Message "Not logged into Azure"
-        Write-Log -Level "INFO" -Message "Please run: az login"
-        return $false
-    }
-    Write-Log -Level "INFO" -Message "Logged in as: $($account.user.name)"
-    Write-Log -Level "INFO" -Message "Subscription: $($account.name)"
-    return $true
-}
+# Test-AzureLogin provided by utility-scripts.psm1
 
-<#
-.SYNOPSIS
-    Registers an Azure resource provider.
-.DESCRIPTION
-    Checks if a provider is registered and registers it if needed.
-    Waits up to 2 minutes for registration to complete.
-.PARAMETER Namespace
-    The provider namespace (e.g., "Microsoft.Storage", "Microsoft.Web")
-.OUTPUTS
-    Boolean - $true if registered successfully
-#>
-function Register-AzureProvider {
-    param([string]$Namespace)
+# Register-AzureProvider, Install-AzureResourceGroup, Remove-AzureResourceGroup
+# provided by utility-scripts.psm1
 
-    $state = Invoke-AzCommand "provider show --namespace $Namespace --query registrationState -o tsv" -FailOnError $false
-    if ($state -eq "Registered") {
-        Write-Log -Level "DEBUG" -Message "Provider $Namespace already registered"
-        return $true
-    }
-
-    Write-Log -Level "INFO" -Message "Registering provider: $Namespace"
-    Invoke-AzCommand "provider register --namespace $Namespace" -SuppressOutput
-
-    # Wait for registration to complete (up to 2 minutes)
-    $maxWait = 120
-    $waited = 0
-    while ($waited -lt $maxWait) {
-        Start-Sleep -Seconds 5
-        $waited += 5
-        $state = Invoke-AzCommand "provider show --namespace $Namespace --query registrationState -o tsv" -FailOnError $false
-        if ($state -eq "Registered") {
-            Write-Log -Level "INFO" -Message "Provider $Namespace registered"
-            return $true
-        }
-        Write-Log -Level "DEBUG" -Message "Waiting for $Namespace registration... ($waited s)"
-    }
-
-    throw "Provider $Namespace registration timed out after $maxWait seconds"
-}
-
-#endregion
-
-#region Resource Group Functions
-
-<#
-.SYNOPSIS
-    Creates or verifies the Azure resource group.
-.DESCRIPTION
-    Checks if the resource group exists and creates it if not.
-.PARAMETER Config
-    Azure configuration hashtable containing resourceGroup and location
-.OUTPUTS
-    Boolean - $true on success
-#>
+# Thin wrappers to preserve -Config interface used by callers in this file
 function Install-ResourceGroup {
     param([hashtable]$Config)
-
-    $rgName = $Config.resourceGroup
-    $location = $Config.location
-
-    Write-Log -Level "INFO" -Message "Checking resource group: $rgName"
-
-    $existing = Invoke-AzCommand "group show --name $rgName" -FailOnError $false -JsonOutput
-    if ($existing) {
-        Write-Log -Level "INFO" -Message "Resource group exists: $rgName"
-        return $true
-    }
-
-    Write-Log -Level "INFO" -Message "Creating resource group: $rgName in $location"
-    Invoke-AzCommand "group create --name $rgName --location $location" -SuppressOutput
-    Write-Log -Level "INFO" -Message "Resource group created: $rgName"
-    return $true
-}
-
-<#
-.SYNOPSIS
-    Deletes the Azure resource group and all contained resources.
-.DESCRIPTION
-    Initiates async deletion of the resource group. This deletes ALL resources
-    within the group including storage, web apps, and databases.
-.PARAMETER Config
-    Azure configuration hashtable containing resourceGroup
-.OUTPUTS
-    Boolean - $true if deletion started or group doesn't exist
-#>
-function Remove-ResourceGroup {
-    param([hashtable]$Config)
-
-    $rgName = $Config.resourceGroup
-
-    $existing = Invoke-AzCommand "group show --name $rgName" -FailOnError $false -JsonOutput
-    if (-not $existing) {
-        Write-Log -Level "INFO" -Message "Resource group does not exist: $rgName"
-        return $true
-    }
-
-    Write-Log -Level "WARN" -Message "Deleting resource group: $rgName (this deletes ALL resources)"
-    Invoke-AzCommand "group delete --name $rgName --yes --no-wait" -SuppressOutput
-    Write-Log -Level "INFO" -Message "Resource group deletion started: $rgName"
-    return $true
+    Install-AzureResourceGroup -ResourceGroup $Config.resourceGroup -Location $Config.location
 }
 
 #endregion
 
 #region Application Insights Functions
 
-<#
-.SYNOPSIS
-    Creates Application Insights resource.
-.DESCRIPTION
-    Creates an Application Insights resource for monitoring and telemetry.
-    Returns the connection string for use by web apps.
-.PARAMETER Config
-    Azure configuration hashtable
-.OUTPUTS
-    String - Application Insights connection string
-#>
+# Install-AzureAppInsights provided by utility-scripts.psm1
+# Thin wrapper to preserve -Config interface
 function Install-AppInsights {
     param([hashtable]$Config)
-
-    $rgName = $Config.resourceGroup
-    $location = $Config.location
-    $appInsightsName = $Config.appInsights.name
-
-    # Ensure resource group exists
-    Install-ResourceGroup -Config $Config | Out-Null
-
-    Write-Log -Level "INFO" -Message "Checking Application Insights: $appInsightsName"
-
-    $existing = Invoke-AzCommand "monitor app-insights component show --app $appInsightsName --resource-group $rgName" -FailOnError $false -JsonOutput
-    if (-not $existing) {
-        Write-Log -Level "INFO" -Message "Creating Application Insights: $appInsightsName"
-        Invoke-AzCommand "monitor app-insights component create --app $appInsightsName --resource-group $rgName --location $location --kind web --application-type web" -SuppressOutput
-        Write-Log -Level "INFO" -Message "Application Insights created: $appInsightsName"
-    }
-    else {
-        Write-Log -Level "INFO" -Message "Application Insights exists: $appInsightsName"
-    }
-
-    # Get the connection string
-    $connectionString = Invoke-AzCommand "monitor app-insights component show --app $appInsightsName --resource-group $rgName --query connectionString -o tsv"
-
-    return $connectionString
-}
-
-<#
-.SYNOPSIS
-    Gets Application Insights connection string.
-.PARAMETER Config
-    Azure configuration hashtable
-.OUTPUTS
-    String - Connection string or $null if not found
-#>
-function Get-AppInsightsConnectionString {
-    param([hashtable]$Config)
-
-    $rgName = $Config.resourceGroup
-    $appInsightsName = $Config.appInsights.name
-
-    $connectionString = Invoke-AzCommand "monitor app-insights component show --app $appInsightsName --resource-group $rgName --query connectionString -o tsv" -FailOnError $false
-    return $connectionString
+    Install-AzureResourceGroup -ResourceGroup $Config.resourceGroup -Location $Config.location
+    return Install-AzureAppInsights -ResourceGroup $Config.resourceGroup -AppInsightsName $Config.appInsights.name -Location $Config.location
 }
 
 #endregion
@@ -1544,52 +1364,10 @@ function Clean-Database {
 
 #region App Service Functions
 
-<#
-.SYNOPSIS
-    Creates or verifies the Azure App Service Plan.
-.DESCRIPTION
-    Creates a Linux App Service Plan (B1 SKU) if it doesn't exist.
-    This plan hosts both GameService and WebUI apps.
-.PARAMETER Config
-    Azure configuration hashtable
-.OUTPUTS
-    Boolean - $true on success
-#>
+# Install-AzureAppServicePlan provided by utility-scripts.psm1
 function Install-AppServicePlan {
     param([hashtable]$Config)
-
-    $rgName = $Config.resourceGroup
-    $planName = $Config.gameService.appServicePlan
-    $location = $Config.location
-
-    # Ensure Microsoft.Web provider is registered
-    Register-AzureProvider -Namespace "Microsoft.Web"
-
-    Write-Log -Level "INFO" -Message "Checking App Service Plan: $planName"
-
-    $existing = Invoke-AzCommand "appservice plan show --name $planName --resource-group $rgName" -FailOnError $false -JsonOutput
-    if (-not $existing) {
-        # IMPORTANT: --number-of-workers 1 is required because GameStateMachineRegistry uses
-        # an in-memory dictionary. Multiple instances would have separate dictionaries and
-        # players on different instances couldn't see the same game state.
-        Write-Log -Level "INFO" -Message "Creating App Service Plan: $planName (B1, single instance)"
-        Invoke-AzCommand "appservice plan create --name $planName --resource-group $rgName --location $location --sku B1 --is-linux --number-of-workers 1" -SuppressOutput
-        Write-Log -Level "INFO" -Message "App Service Plan created: $planName"
-    }
-    else {
-        # Check if SKU needs upgrade (F1/D1 don't support Always On)
-        $currentSku = $existing.sku.name
-        if ($currentSku -in @("F1", "D1")) {
-            Write-Log -Level "INFO" -Message "Upgrading App Service Plan from $currentSku to B1 (required for Always On)"
-            Invoke-AzCommand "appservice plan update --name $planName --resource-group $rgName --sku B1" -SuppressOutput
-            Write-Log -Level "INFO" -Message "App Service Plan upgraded to B1"
-        }
-        else {
-            Write-Log -Level "INFO" -Message "App Service Plan exists: $planName (SKU: $currentSku)"
-        }
-    }
-
-    return $true
+    Install-AzureAppServicePlan -ResourceGroup $Config.resourceGroup -PlanName $Config.gameService.appServicePlan -Location $Config.location
 }
 
 <#
@@ -2003,187 +1781,8 @@ function Get-GitHubDoctor {
     return $result
 }
 
-<#
-.SYNOPSIS
-    Gets the current git commit hash for change detection.
-.DESCRIPTION
-    Returns the short git commit hash of HEAD for tracking deployments.
-.OUTPUTS
-    String - The short commit hash (7 chars)
-#>
-function Get-GitCommitHash {
-    try {
-        # Compare against origin/main (what CI/CD deploys) rather than the
-        # checked-out HEAD, so the doctor doesn't report NEEDS DEPLOY when
-        # the user is simply on a feature branch.
-        $hash = git -C $ProjectRoot rev-parse --short origin/main 2>$null
-        if ([string]::IsNullOrWhiteSpace($hash)) { return "unknown" }
-        # rev-parse always returns one line; Select-Object guards against
-        # edge cases where $hash is an array, which would cause .Trim() to throw.
-        return ($hash | Select-Object -First 1).Trim()
-    }
-    catch {
-        return "unknown"
-    }
-}
-
-<#
-.SYNOPSIS
-    Deploys a zip package via the Kudu ZIP Deploy REST API.
-.DESCRIPTION
-    Uses the Kudu /api/zipdeploy?isAsync=true endpoint which genuinely returns
-    202 immediately, unlike 'az webapp deploy --async true' which has a known bug
-    (https://github.com/Azure/azure-cli/issues/29003) that still polls for site startup.
-    After submitting the zip, polls the deployment status endpoint with a controlled timeout.
-.PARAMETER AppName
-    The Azure web app name
-.PARAMETER ResourceGroup
-    The Azure resource group name
-.PARAMETER ZipPath
-    Path to the zip file to deploy
-.PARAMETER Slot
-    Optional deployment slot name (e.g., 'staging'). If omitted, deploys to production.
-.OUTPUTS
-    Boolean - $true on success
-#>
-function Deploy-KuduZip {
-    param(
-        [Parameter(Mandatory)]
-        [string]$AppName,
-        [Parameter(Mandatory)]
-        [string]$ResourceGroup,
-        [Parameter(Mandatory)]
-        [string]$ZipPath,
-        [string]$Slot = $null
-    )
-
-    # Get Azure AD bearer token for Kudu auth (works even when SCM basic auth is disabled)
-    $tokenResult = Invoke-AzCommand "account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv" -FailOnError $false
-    if (-not $tokenResult) {
-        Write-Log -Level "ERROR" -Message "Failed to get Azure access token"
-        return $false
-    }
-    $headers = @{ Authorization = "Bearer $tokenResult" }
-
-    # Determine SCM hostname
-    $scmHost = if ($Slot) {
-        "$AppName-$Slot.scm.azurewebsites.net"
-    } else {
-        "$AppName.scm.azurewebsites.net"
-    }
-
-    $slotLabel = if ($Slot) { " (slot: $Slot)" } else { "" }
-    Write-Log -Level "INFO" -Message "Deploying via Kudu API to $scmHost$slotLabel..."
-
-    # POST zip to Kudu (truly async — returns 202 immediately)
-    $uri = "https://$scmHost/api/zipdeploy?isAsync=true"
-    try {
-        $response = Invoke-WebRequest -Uri $uri -Method Post `
-            -InFile $ZipPath `
-            -ContentType "application/zip" `
-            -Headers $headers `
-            -UseBasicParsing `
-            -TimeoutSec 300
-    }
-    catch {
-        Write-Log -Level "ERROR" -Message "Kudu deploy request failed: $_"
-        return $false
-    }
-
-    if ($response.StatusCode -ne 202) {
-        Write-Log -Level "ERROR" -Message "Kudu deploy returned HTTP $($response.StatusCode) (expected 202)"
-        return $false
-    }
-
-    Write-Log -Level "INFO" -Message "Deploy submitted (HTTP 202). Polling status..."
-
-    # Poll deployment status with timeout (60 x 10s = 10 min max)
-    $statusUri = "https://$scmHost/api/deployments/latest"
-    for ($i = 1; $i -le 60; $i++) {
-        Start-Sleep -Seconds 10
-        try {
-            $status = Invoke-RestMethod -Uri $statusUri -Headers $headers -TimeoutSec 15
-            $code = $status.status
-            # Kudu status codes: 0=Pending, 1=Building, 2=Deploying, 3=Failed, 4=Success
-            $statusLabel = switch ($code) {
-                0 { "Pending" }
-                1 { "Building" }
-                2 { "Deploying" }
-                3 { "Failed" }
-                4 { "Success" }
-                default { "Unknown ($code)" }
-            }
-            $level = if ($i % 6 -eq 0) { "INFO" } else { "DEBUG" }
-            Write-Log -Level $level -Message "  Deploy status ($($i * 10)s): $statusLabel"
-            if ($code -eq 4) {
-                Write-Log -Level "INFO" -Message "Kudu deployment succeeded"
-                return $true
-            }
-            if ($code -eq 3) {
-                Write-Log -Level "ERROR" -Message "Kudu deployment failed"
-                return $false
-            }
-        }
-        catch {
-            Write-Log -Level "DEBUG" -Message "  Status poll error: $_"
-        }
-    }
-
-    # Timed out but the deploy was submitted — the site may still be starting
-    Write-Log -Level "WARN" -Message "Deploy status polling timed out after 10 min (deploy was submitted)"
-    return $true
-}
-
-<#
-.SYNOPSIS
-    Checks if deployment is needed by comparing git commit hashes.
-.DESCRIPTION
-    Compares the current git commit hash with the deployed version stored
-    in Azure app settings. Returns true if deployment is needed.
-.PARAMETER AppName
-    The Azure web app name
-.PARAMETER ResourceGroup
-    The Azure resource group name
-.PARAMETER Force
-    If true, always returns true (skip check)
-.OUTPUTS
-    Boolean - $true if deployment is needed, $false if up-to-date
-#>
-function Test-DeploymentNeeded {
-    param(
-        [string]$AppName,
-        [string]$ResourceGroup,
-        [bool]$Force,
-        [string]$Slot = $null
-    )
-
-    if ($Force) {
-        Write-Log -Level "INFO" -Message "Force deploy requested"
-        return $true
-    }
-
-    $currentHash = Get-GitCommitHash
-    Write-Log -Level "DEBUG" -Message "Current git commit: $currentHash"
-
-    # Get deployed version from app settings
-    $slotArgs = if ($Slot) { " --slot $Slot" } else { "" }
-    $deployedHash = Invoke-AzCommand "webapp config appsettings list --name $AppName --resource-group $ResourceGroup$slotArgs --query `"[?name=='DEPLOY_COMMIT'].value | [0]`" -o tsv" -FailOnError $false
-
-    if (-not $deployedHash) {
-        Write-Log -Level "INFO" -Message "No previous deployment found"
-        return $true
-    }
-
-    Write-Log -Level "DEBUG" -Message "Deployed git commit: $deployedHash"
-
-    if ($currentHash -eq $deployedHash) {
-        Write-Log -Level "INFO" -Message "Already deployed (commit $currentHash). Use -Force to redeploy."
-        return $false
-    }
-
-    Write-Log -Level "INFO" -Message "Changes detected: $deployedHash -> $currentHash"
-    return $true
-}
+# Get-GitCommitHash, Deploy-KuduZip, Test-DeploymentNeeded
+# provided by utility-scripts.psm1
 
 <#
 .SYNOPSIS
@@ -3388,14 +2987,14 @@ if (-not (Test-AzureLogin)) {
 }
 
 # Load or initialize config
-$config = Get-AzureConfig
+$config = Get-LocalConfig
 
 # For install, ensure we have a base name
 if ($Verb -eq "install") {
     if (-not $config.baseName) {
         $baseName = Get-AvailableBaseName
         $config = Initialize-ConfigFromBaseName -BaseName $baseName
-        Save-AzureConfig -Config $config
+        Save-LocalConfig -Config $config
     }
     else {
         # baseName exists — derive all resource names (convention over configuration)

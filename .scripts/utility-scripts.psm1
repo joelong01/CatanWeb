@@ -915,17 +915,25 @@ function Get-PowerShellVersion {
 function Get-AzureConfig {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$ProjectRoot
+        [string]$ProjectRoot,
+
+        [switch]$AsHashtable,
+        [switch]$AllowMissing
     )
 
     $configFile = Join-Path $ProjectRoot ".azure/catan-azure.json"
     if (-not (Test-Path $configFile)) {
-        Write-Log -Level ERROR -Message "Azure configuration not found at $configFile" -TraceLevel ERROR
-        Write-Log -Level WARN -Message "Run './catan.ps1 azure install' first." -TraceLevel ERROR
+        if ($AllowMissing) { return $null }
+        Write-Log -Level ERROR -Message "Azure configuration not found at $configFile"
+        Write-Log -Level WARN -Message "Run './catan.ps1 azure install' first."
         exit 1
     }
 
-    return Get-Content $configFile -Raw | ConvertFrom-Json
+    $raw = Get-Content $configFile -Raw
+    if ($AsHashtable) {
+        return $raw | ConvertFrom-Json -AsHashtable
+    }
+    return $raw | ConvertFrom-Json
 }
 
 <#
