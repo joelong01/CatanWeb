@@ -136,24 +136,27 @@ Write-Log -Level INFO -Message "State: $($state.gameState)" -NoLabel
 Write-Log -Level INFO -Message "Random iterations: $turnCount" -NoLabel
 Write-Log -Level INFO -Message "" -NoLabel
 
-# 4. Count how many undos are possible
-Write-Log -Level INFO -Message "Counting undo depth..." -NoLabel
+# 4. Undo all the way back, measuring each action
+Write-Log -Level INFO -Message "Undoing all actions..." -NoLabel
 $undoCount = 0
 $undoTimes = @()
 
 $countSw = [System.Diagnostics.Stopwatch]::StartNew()
 while ($true) {
-    $stateCheck = Get-GameState -GameId $TestGameId
-    if (-not $stateCheck.actionFlags.undoEnabled) { break }
-    $undoCount++
-    if ($undoCount % 50 -eq 0) {
-        Write-Log -Level DEBUG -Message "  Counted $undoCount undos so far..." -NoLabel
+    try {
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        Invoke-GameAction -GameId $TestGameId -MessageType "UndoMessage" | Out-Null
+        $sw.Stop()
+        $undoCount++
+        $undoTimes += $sw.ElapsedMilliseconds
+        if ($undoCount % 50 -eq 0) {
+            Write-Log -Level INFO -Message "  $undoCount undos... (last: $($sw.ElapsedMilliseconds)ms)" -NoLabel
+        }
     }
-    # Do a single undo to check the next state
-    $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    Invoke-GameAction -GameId $TestGameId -MessageType "UndoMessage" | Out-Null
-    $sw.Stop()
-    $undoTimes += $sw.ElapsedMilliseconds
+    catch {
+        # Undo failed = we've reached the beginning
+        break
+    }
 }
 $countSw.Stop()
 
