@@ -15,18 +15,15 @@ namespace Catan3.GameService.Services
     public class AsyncCommandProcessor
     {
         private readonly SignalRNotificationService _signalRNotification;
-        private readonly IServiceScopeFactory _scopeFactory;
         private readonly RecordingService _recordingService;
         private readonly ILogger<AsyncCommandProcessor> _logger;
 
         public AsyncCommandProcessor(
             SignalRNotificationService signalRNotification,
-            IServiceScopeFactory scopeFactory,
             RecordingService recordingService,
             ILogger<AsyncCommandProcessor> logger)
         {
             _signalRNotification = signalRNotification;
-            _scopeFactory = scopeFactory;
             _recordingService = recordingService;
             _logger = logger;
         }
