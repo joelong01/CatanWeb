@@ -74,6 +74,10 @@ function Test-GameService {
     catch { return $false }
 }
 
+# Reusable HttpClient to avoid TCP port exhaustion on rapid requests
+$script:httpClient = [System.Net.Http.HttpClient]::new()
+$script:httpClient.Timeout = [TimeSpan]::FromSeconds(30)
+
 function Invoke-GameAction {
     param([string]$GameId, [string]$MessageType, [string]$PlayerId = "perf-test")
 
@@ -82,14 +86,18 @@ function Invoke-GameAction {
         playerId = $PlayerId
         messageType = $MessageType
     } | ConvertTo-Json
-    $response = Invoke-RestMethod -Uri "$GameServiceUrl/api/game/action" `
-        -Method Post -Body $body -ContentType "application/json" -TimeoutSec 30
-    return $response
+    $content = [System.Net.Http.StringContent]::new($body, [System.Text.Encoding]::UTF8, "application/json")
+    $response = $script:httpClient.PostAsync("$GameServiceUrl/api/game/action", $content).GetAwaiter().GetResult()
+    if (-not $response.IsSuccessStatusCode) {
+        throw "HTTP $($response.StatusCode): $($response.Content.ReadAsStringAsync().GetAwaiter().GetResult())"
+    }
+    return $response.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
 }
 
 function Get-GameState {
     param([string]$GameId)
-    return Invoke-RestMethod -Uri "$GameServiceUrl/api/gamestate/$GameId" -TimeoutSec 30
+    $response = $script:httpClient.GetStringAsync("$GameServiceUrl/api/gamestate/$GameId").GetAwaiter().GetResult()
+    return $response | ConvertFrom-Json
 }
 
 # ─── Main ────────────────────────────────────────────────────────────────────
