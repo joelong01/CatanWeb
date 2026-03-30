@@ -75,9 +75,13 @@ function Test-GameService {
 }
 
 function Invoke-GameAction {
-    param([string]$GameId, [string]$Action)
+    param([string]$GameId, [string]$MessageType, [string]$PlayerId = "perf-test")
 
-    $body = @{ gameId = $GameId; action = $Action } | ConvertTo-Json
+    $body = @{
+        gameId = $GameId
+        playerId = $PlayerId
+        messageType = $MessageType
+    } | ConvertTo-Json
     $response = Invoke-RestMethod -Uri "$GameServiceUrl/api/game/action" `
         -Method Post -Body $body -ContentType "application/json" -TimeoutSec 30
     return $response
@@ -147,7 +151,7 @@ while ($true) {
     }
     # Do a single undo to check the next state
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    Invoke-GameAction -GameId $TestGameId -Action "undo" | Out-Null
+    Invoke-GameAction -GameId $TestGameId -MessageType "UndoMessage" | Out-Null
     $sw.Stop()
     $undoTimes += $sw.ElapsedMilliseconds
 }
@@ -163,7 +167,7 @@ $redoTimes = @()
 $redoSw = [System.Diagnostics.Stopwatch]::StartNew()
 for ($i = 0; $i -lt $undoCount; $i++) {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    Invoke-GameAction -GameId $TestGameId -Action "redo" | Out-Null
+    Invoke-GameAction -GameId $TestGameId -MessageType "RedoMessage" | Out-Null
     $sw.Stop()
     $redoTimes += $sw.ElapsedMilliseconds
     if (($i + 1) % 50 -eq 0) {
