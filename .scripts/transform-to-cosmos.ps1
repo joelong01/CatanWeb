@@ -6,6 +6,12 @@
 param([string]$TraceLevel = "INFO")
 
 $ErrorActionPreference = "Stop"
+
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+Import-Module "$scriptPath\utility-scripts.psm1" -Force
+
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 $repoRoot   = Split-Path $PSScriptRoot
 $exportDir  = Join-Path $repoRoot "Catan3.GameService/Default Data/sql-export"
 $defaultDir = Join-Path $repoRoot "Catan3.GameService/Default Data"
@@ -20,7 +26,7 @@ function Write-Doc {
 }
 
 # ─── Players ────────────────────────────────────────────────────────────────
-Write-Host "Transforming Players..." -ForegroundColor Cyan
+Write-Log -Level INFO -Message "Transforming Players..." -NoLabel -ForegroundColor Cyan
 $players = Read-Export "players"
 $images  = Read-Export "images"
 
@@ -54,12 +60,12 @@ foreach ($p in $players) {
 
     Write-Doc -Dir $playersDir -FileName "$($p.id).json" -Doc $doc
     $playerCount++
-    if ($TraceLevel -eq "DEBUG") { Write-Host "  $($p.id): $($profile.name)" }
+    if ($TraceLevel -eq "DEBUG") { Write-Log -Level INFO -Message "  $($p.id): $($profile.name)" -NoLabel }
 }
-Write-Host "  $playerCount players written to $playersDir" -ForegroundColor Green
+Write-Log -Level INFO -Message "  $playerCount players written to $playersDir" -NoLabel -ForegroundColor Green
 
 # ─── Games ──────────────────────────────────────────────────────────────────
-Write-Host "`nTransforming Games..." -ForegroundColor Cyan
+Write-Log -Level INFO -Message "`nTransforming Games..." -NoLabel -ForegroundColor Cyan
 $games = Read-Export "games"
 
 $gamesDir = Join-Path $defaultDir "Games"
@@ -88,12 +94,12 @@ foreach ($g in $games) {
     $safeName = $g.gameId -replace '[^a-zA-Z0-9\-]', '_'
     Write-Doc -Dir $gamesDir -FileName "$safeName.json" -Doc $doc
     $gameCount++
-    if ($TraceLevel -eq "DEBUG") { Write-Host "  $($g.gameId): $($g.gameName)" }
+    if ($TraceLevel -eq "DEBUG") { Write-Log -Level INFO -Message "  $($g.gameId): $($g.gameName)" -NoLabel }
 }
-Write-Host "  $gameCount games written to $gamesDir" -ForegroundColor Green
+Write-Log -Level INFO -Message "  $gameCount games written to $gamesDir" -NoLabel -ForegroundColor Green
 
 # ─── Completed Games ────────────────────────────────────────────────────────
-Write-Host "`nTransforming Completed Games..." -ForegroundColor Cyan
+Write-Log -Level INFO -Message "`nTransforming Completed Games..." -NoLabel -ForegroundColor Cyan
 $completed = Read-Export "completed-games"
 
 $completedDir = Join-Path $defaultDir "CompletedGames"
@@ -119,12 +125,12 @@ foreach ($c in $completed) {
     $safeName = $c.gameId -replace '[^a-zA-Z0-9\-]', '_'
     Write-Doc -Dir $completedDir -FileName "$safeName.json" -Doc $doc
     $completedCount++
-    if ($TraceLevel -eq "DEBUG") { Write-Host "  $($c.gameId): $($c.gameName)" }
+    if ($TraceLevel -eq "DEBUG") { Write-Log -Level INFO -Message "  $($c.gameId): $($c.gameName)" -NoLabel }
 }
-Write-Host "  $completedCount completed games written to $completedDir" -ForegroundColor Green
+Write-Log -Level INFO -Message "  $completedCount completed games written to $completedDir" -NoLabel -ForegroundColor Green
 
 # ─── Recordings ─────────────────────────────────────────────────────────────
-Write-Host "`nTransforming Recordings..." -ForegroundColor Cyan
+Write-Log -Level INFO -Message "`nTransforming Recordings..." -NoLabel -ForegroundColor Cyan
 $recordings = Read-Export "recordings"
 
 $recordingsDir = Join-Path $defaultDir "Recordings"
@@ -152,12 +158,12 @@ foreach ($r in $recordings) {
 
     Write-Doc -Dir $recordingsDir -FileName "$($r.id).json" -Doc $doc
     $recordingCount++
-    if ($TraceLevel -eq "DEBUG") { Write-Host "  $($r.id): $($r.name)" }
+    if ($TraceLevel -eq "DEBUG") { Write-Log -Level INFO -Message "  $($r.id): $($r.name)" -NoLabel }
 }
-Write-Host "  $recordingCount recordings written to $recordingsDir" -ForegroundColor Green
+Write-Log -Level INFO -Message "  $recordingCount recordings written to $recordingsDir" -NoLabel -ForegroundColor Green
 
 # ─── Templates ──────────────────────────────────────────────────────────────
-Write-Host "`nTransforming Templates..." -ForegroundColor Cyan
+Write-Log -Level INFO -Message "`nTransforming Templates..." -NoLabel -ForegroundColor Cyan
 $templates = Read-Export "templates"
 
 $templatesDir = Join-Path $defaultDir "Templates"
@@ -192,17 +198,17 @@ foreach ($t in $templates) {
     $safeName = $t.id -replace '[^a-zA-Z0-9\-]', '_'
     Write-Doc -Dir $templatesDir -FileName "$safeName.json" -Doc $doc
     $templateCount++
-    if ($TraceLevel -eq "DEBUG") { Write-Host "  $($t.id): $($t.name)" }
+    if ($TraceLevel -eq "DEBUG") { Write-Log -Level INFO -Message "  $($t.id): $($t.name)" -NoLabel }
 }
-Write-Host "  $templateCount templates written to $templatesDir" -ForegroundColor Green
+Write-Log -Level INFO -Message "  $templateCount templates written to $templatesDir" -NoLabel -ForegroundColor Green
 
 # ─── Summary ────────────────────────────────────────────────────────────────
-Write-Host "`n=== Transform Complete ===" -ForegroundColor Cyan
-Write-Host "  Players:         $playerCount"
-Write-Host "  Games:           $gameCount"
-Write-Host "  Completed Games: $completedCount"
-Write-Host "  Recordings:      $recordingCount"
-Write-Host "  Templates:       $templateCount"
-Write-Host ""
-Write-Host "Inspect the JSON files, then run:" -ForegroundColor Yellow
-Write-Host "  pwsh .scripts/database.ps1 seed-data -Azure" -ForegroundColor Yellow
+Write-Log -Level INFO -Message "`n=== Transform Complete ===" -NoLabel -ForegroundColor Cyan
+Write-Log -Level INFO -Message "  Players:         $playerCount" -NoLabel
+Write-Log -Level INFO -Message "  Games:           $gameCount" -NoLabel
+Write-Log -Level INFO -Message "  Completed Games: $completedCount" -NoLabel
+Write-Log -Level INFO -Message "  Recordings:      $recordingCount" -NoLabel
+Write-Log -Level INFO -Message "  Templates:       $templateCount" -NoLabel
+Write-Log -Level INFO -Message "" -NoLabel
+Write-Log -Level WARN -Message "Inspect the JSON files, then run:"
+Write-Log -Level WARN -Message "  pwsh .scripts/database.ps1 seed-data -Azure"

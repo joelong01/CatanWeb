@@ -25,6 +25,8 @@ param(
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "$scriptPath\utility-scripts.psm1" -Force
 
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 function Doctor-Docker {
     param([ValidateSet("ERROR", "WARN", "INFO", "DEBUG")][string]$TraceLevel = "ERROR")
 
@@ -52,14 +54,14 @@ function Doctor-Docker {
 function Show-DoctorOutput {
     param([hashtable]$Result)
     $color = if ($Result.Status -eq "Installed") { "Green" } else { "Yellow" }
-    Write-Host ""
-    Write-Host "Docker Status" -ForegroundColor Cyan
-    Write-Host "=============" -ForegroundColor Cyan
-    Write-Host "Status:  " -NoNewline
-    Write-Host $Result.Status -ForegroundColor $color
-    if ($Result.Version) { Write-Host "Version: $($Result.Version)" }
-    Write-Host $Result.Message -ForegroundColor $color
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Docker Status" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "=============" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "Status:  " -NoLabel -NoNewline
+    Write-Log -Level INFO -Message $Result.Status -ForegroundColor $color -NoLabel
+    if ($Result.Version) { Write-Log -Level INFO -Message "Version: $($Result.Version)" -NoLabel }
+    Write-Log -Level INFO -Message $Result.Message -ForegroundColor $color -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 $doctorResult = Doctor-Docker -TraceLevel $TraceLevel
@@ -74,12 +76,12 @@ if ($Doctor) {
 }
 
 if ($Install) {
-    Write-Host "Docker must be installed manually from https://www.docker.com/products/docker-desktop/" -ForegroundColor Yellow
+    Write-Log -Level WARN -Message "Docker must be installed manually from https://www.docker.com/products/docker-desktop/"
     exit $(if ($doctorResult.Status -eq "Installed") { 0 } else { 1 })
 }
 
 if ($Help -or (-not $Install -and -not $Clean -and -not $Doctor)) {
-    Write-Host "Docker dependency check for CosmosDB emulator."
-    Write-Host "Usage: docker.ps1 -Doctor | -Install"
+    Write-Log -Level INFO -Message "Docker dependency check for CosmosDB emulator." -NoLabel
+    Write-Log -Level INFO -Message "Usage: docker.ps1 -Doctor | -Install" -NoLabel
     exit 0
 }

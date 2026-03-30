@@ -69,6 +69,8 @@ param(
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "$scriptPath\utility-scripts.psm1" -Force
 
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 # Required .NET version from global.json
 $script:RequiredDotNetVersion = "9.0"
 
@@ -262,10 +264,10 @@ function Install-DotNet {
 function Show-DoctorOutput {
     param([hashtable]$Result)
 
-    Write-Host ""
-    Write-Host ".NET SDK Status" -ForegroundColor Cyan
-    Write-Host "===============" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message ".NET SDK Status" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "===============" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "" -NoLabel
 
     $statusColor = switch ($Result.Status) {
         "Installed" { "Green" }
@@ -274,22 +276,22 @@ function Show-DoctorOutput {
         default { "Red" }
     }
 
-    Write-Host "Status:           " -NoNewline
-    Write-Host $Result.Status -ForegroundColor $statusColor
+    Write-Log -Level INFO -Message "Status:           " -NoLabel -NoNewline
+    Write-Log -Level INFO -Message $Result.Status -ForegroundColor $statusColor -NoLabel
 
-    Write-Host "Required Version: $($Result.RequiredVersion).x"
+    Write-Log -Level INFO -Message "Required Version: $($Result.RequiredVersion).x" -NoLabel
 
     if ($Result.Version) {
-        Write-Host "Current Version:  $($Result.Version)"
+        Write-Log -Level INFO -Message "Current Version:  $($Result.Version)" -NoLabel
     }
 
     if ($Result.InstalledSdks -and $Result.InstalledSdks.Count -gt 0) {
-        Write-Host "Installed SDKs:   $($Result.InstalledSdks -join ', ')"
+        Write-Log -Level INFO -Message "Installed SDKs:   $($Result.InstalledSdks -join ', ')" -NoLabel
     }
 
-    Write-Host ""
-    Write-Host $Result.Message -ForegroundColor $statusColor
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message $Result.Message -ForegroundColor $statusColor -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 <#
@@ -340,7 +342,7 @@ Examples:
     # Install .NET 9 SDK
     dotnet.ps1 -Install -Yes
 "@
-    Write-Host $help
+    Write-Log -Level INFO -Message $help -NoLabel
 }
 
 # Main execution block

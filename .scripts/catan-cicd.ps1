@@ -52,17 +52,21 @@ $ErrorActionPreference = "Stop"
 $scriptDir = $PSScriptRoot
 $repoRoot  = Split-Path $scriptDir
 
+Import-Module "$scriptDir/utility-scripts.psm1" -Force
+
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
 function Write-Step {
     param([int]$Number, [string]$Title)
-    Write-Host ""
-    Write-Host "--- Step $Number`: $Title ---" -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "--- Step $Number`: $Title ---" -NoLabel -ForegroundColor Cyan
 }
 
-function Write-Ok   { param([string]$Msg) Write-Host "  [OK] $Msg" -ForegroundColor Green }
-function Write-Fail { param([string]$Msg) Write-Host "  [FAIL] $Msg" -ForegroundColor Red }
-function Write-Info { param([string]$Msg) Write-Host "  [..] $Msg" -ForegroundColor Gray }
+function Write-Ok   { param([string]$Msg) Write-Log -Level INFO -Message "  [OK] $Msg" -NoLabel -ForegroundColor Green }
+function Write-Fail { param([string]$Msg) Write-Log -Level ERROR -Message "  [FAIL] $Msg" }
+function Write-Info { param([string]$Msg) Write-Log -Level INFO -Message "  [..] $Msg" -NoLabel }
 
 function Invoke-Step {
     param([scriptblock]$Block, [string]$Label)
@@ -221,32 +225,32 @@ function Invoke-Verify {
 }
 
 function Show-Help {
-    Write-Host ""
-    Write-Host "Catan CI/CD Orchestrator" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Usage: pwsh .scripts/catan-cicd.ps1 <action> [-Slot staging|production]"
-    Write-Host ""
-    Write-Host "Actions:"
-    Write-Host "  all              Full deploy: infrastructure → gameservice → verify"
-    Write-Host "  infrastructure   Firewall, app settings, RBAC only"
-    Write-Host "  gameservice      Deploy GameService (runs infrastructure first)"
-    Write-Host "  react            Deploy React UI"
-    Write-Host "  verify           Health checks only"
-    Write-Host "  help             Show this help"
-    Write-Host ""
-    Write-Host "Examples:"
-    Write-Host "  pwsh .scripts/catan-cicd.ps1 all -Slot staging      # Full staging deploy"
-    Write-Host "  pwsh .scripts/catan-cicd.ps1 infrastructure         # Fix prod infra"
-    Write-Host "  pwsh .scripts/catan-cicd.ps1 verify -Slot staging   # Check staging health"
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Catan CI/CD Orchestrator" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Usage: pwsh .scripts/catan-cicd.ps1 <action> [-Slot staging|production]" -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Actions:" -NoLabel
+    Write-Log -Level INFO -Message "  all              Full deploy: infrastructure → gameservice → verify" -NoLabel
+    Write-Log -Level INFO -Message "  infrastructure   Firewall, app settings, RBAC only" -NoLabel
+    Write-Log -Level INFO -Message "  gameservice      Deploy GameService (runs infrastructure first)" -NoLabel
+    Write-Log -Level INFO -Message "  react            Deploy React UI" -NoLabel
+    Write-Log -Level INFO -Message "  verify           Health checks only" -NoLabel
+    Write-Log -Level INFO -Message "  help             Show this help" -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Examples:" -NoLabel
+    Write-Log -Level INFO -Message "  pwsh .scripts/catan-cicd.ps1 all -Slot staging      # Full staging deploy" -NoLabel
+    Write-Log -Level INFO -Message "  pwsh .scripts/catan-cicd.ps1 infrastructure         # Fix prod infra" -NoLabel
+    Write-Log -Level INFO -Message "  pwsh .scripts/catan-cicd.ps1 verify -Slot staging   # Check staging health" -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 # ─── Main ───────────────────────────────────────────────────────────────────
 
-Write-Host ""
-Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "  Catan CI/CD Deploy -- $($Slot.ToUpper())" -ForegroundColor Cyan
-Write-Host "==========================================" -ForegroundColor Cyan
+Write-Log -Level INFO -Message "" -NoLabel
+Write-Log -Level INFO -Message "==========================================" -NoLabel -ForegroundColor Cyan
+Write-Log -Level INFO -Message "  Catan CI/CD Deploy -- $($Slot.ToUpper())" -NoLabel -ForegroundColor Cyan
+Write-Log -Level INFO -Message "==========================================" -NoLabel -ForegroundColor Cyan
 
 switch ($Action) {
     "help" {
@@ -275,4 +279,4 @@ switch ($Action) {
     }
 }
 
-Write-Host ""
+Write-Log -Level INFO -Message "" -NoLabel

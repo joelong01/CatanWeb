@@ -66,6 +66,8 @@ param(
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "$scriptPath\utility-scripts.psm1" -Force
 
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 <#
 .SYNOPSIS
     Checks if running on Windows.
@@ -217,10 +219,10 @@ function Doctor-VcppDebug {
 function Show-DoctorOutput {
     param([hashtable]$Result)
 
-    Write-Host ""
-    Write-Host "VC++ Debug Runtime Status" -ForegroundColor Cyan
-    Write-Host "=========================" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "VC++ Debug Runtime Status" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "=========================" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "" -NoLabel
 
     $statusColor = switch ($Result.Status) {
         "Installed" { "Green" }
@@ -230,19 +232,19 @@ function Show-DoctorOutput {
         default { "Red" }
     }
 
-    Write-Host "Status:              " -NoNewline
-    Write-Host $Result.Status -ForegroundColor $statusColor
+    Write-Log -Level INFO -Message "Status:              " -NoLabel -NoNewline
+    Write-Log -Level INFO -Message $Result.Status -ForegroundColor $statusColor -NoLabel
 
-    Write-Host "Platform:            $(if ($Result.IsWindows) { 'Windows' } else { 'Non-Windows' })"
+    Write-Log -Level INFO -Message "Platform:            $(if ($Result.IsWindows) { 'Windows' } else { 'Non-Windows' })" -NoLabel
 
     if ($Result.IsWindows) {
-        Write-Host "Visual Studio:       $(if ($Result.VisualStudioInstalled) { $Result.VisualStudioEdition } else { 'Not installed' })"
-        Write-Host "Debug Runtime DLLs:  $(if ($Result.DebugRuntimeInstalled) { 'Yes' } else { 'No' })"
+        Write-Log -Level INFO -Message "Visual Studio:       $(if ($Result.VisualStudioInstalled) { $Result.VisualStudioEdition } else { 'Not installed' })" -NoLabel
+        Write-Log -Level INFO -Message "Debug Runtime DLLs:  $(if ($Result.DebugRuntimeInstalled) { 'Yes' } else { 'No' })" -NoLabel
     }
 
-    Write-Host ""
-    Write-Host $Result.Message -ForegroundColor $statusColor
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message $Result.Message -ForegroundColor $statusColor -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 <#
@@ -295,7 +297,7 @@ Examples:
     # Get status as JSON
     vcpp-debug.ps1 -Doctor -Json
 "@
-    Write-Host $help
+    Write-Log -Level INFO -Message $help -NoLabel
 }
 
 # Main execution block

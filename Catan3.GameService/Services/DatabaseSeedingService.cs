@@ -5,8 +5,8 @@ namespace Catan3.GameService.Services;
 
 /// <summary>
 /// Runs database initialization and seeding as a background service so Kestrel starts
-/// listening immediately. For CosmosDB: calls InitializeAsync() to create containers,
-/// then seeds system templates. For SQLite: runs EF Core migrations and seeds default data.
+/// listening immediately. Calls InitializeAsync() to create CosmosDB containers,
+/// then seeds system templates.
 /// </summary>
 public class DatabaseSeedingService : BackgroundService
 {

@@ -99,48 +99,13 @@ $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "$ScriptDir/utility-scripts.psm1" -Force
+Set-ModuleTraceLevel -TraceLevel $TraceLevel
 
 $PSDefaultParameterValues = @{
     'Write-Log:TraceLevel' = $TraceLevel
 }
 
-# ── Azure CLI wrapper ────────────────────────────────────────────────────────────
-
-<#
-.SYNOPSIS
-    Wrapper around the az CLI that logs every invocation at DEBUG level,
-    captures stdout and stderr separately, and returns stdout as a string.
-    Usage: Call-Azure cosmosdb show --name foo ...
-    The function restores $LASTEXITCODE so callers can check it normally.
-#>
-function Invoke-Azure {
-    [CmdletBinding()]
-    param(
-        [Parameter(ValueFromRemainingArguments = $true)]
-        [string[]]$Arguments
-    )
-
-    Write-Log -Level "DEBUG" -Message "az $($Arguments -join ' ')"
-
-    $tmpErr = [System.IO.Path]::GetTempFileName()
-    try {
-        $stdout = & az @Arguments 2>$tmpErr
-        $exitCode = $LASTEXITCODE
-        $stderr = Get-Content $tmpErr -Raw -ErrorAction SilentlyContinue
-        if (-not [string]::IsNullOrWhiteSpace($stderr)) {
-            Write-Log -Level "DEBUG" -Message "az stderr: $($stderr.Trim())"
-        }
-        if (-not [string]::IsNullOrWhiteSpace($stdout)) {
-            Write-Log -Level DEBUG "Success"
-            # Write-Log -Level "DEBUG" -Message "az stdout: $($stdout -join "`n")"
-        }
-    } finally {
-        Remove-Item $tmpErr -Force -ErrorAction SilentlyContinue
-    }
-
-    $global:LASTEXITCODE = $exitCode
-    return $stdout
-}
+# Invoke-AzCommand is provided by utility-scripts.psm1 (no local wrapper needed)
 
 # ── Shared constants ────────────────────────────────────────────────────────────
 
@@ -214,8 +179,32 @@ function Initialize-CosmosSDK {
     }
 
     if (-not (Test-Path $cosmosDll)) {
-        Write-Log -Level "ERROR" -Message "Cosmos SDK DLL not found. Run: pwsh ./catan.ps1 build"
-        return $false
+        Write-Log -Level "INFO" -Message "Cosmos SDK DLL not found. Building project..."
+        Write-Log -Level "DEBUG" -Message "Searched: $(Join-Path $ProjectRoot 'Catan3.GameService/bin/Debug/net9.0/Microsoft.Azure.Cosmos.Client.dll')"
+        Write-Log -Level "DEBUG" -Message "Searched: $(Join-Path $ProjectRoot 'Catan3.GameService/bin/Release/net9.0/Microsoft.Azure.Cosmos.Client.dll')"
+        & "$ProjectRoot\.scripts\build.ps1" -NoTest
+        Write-Log -Level "DEBUG" -Message "Build exit code: $LASTEXITCODE"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log -Level "ERROR" -Message "Build failed (exit code $LASTEXITCODE). Cannot load Cosmos SDK."
+            return $false
+        }
+        # Re-check Debug first, then Release
+        $binDir = Join-Path $ProjectRoot "Catan3.GameService/bin/Debug/net9.0"
+        $cosmosDll   = Join-Path $binDir "Microsoft.Azure.Cosmos.Client.dll"
+        $identityDll = Join-Path $binDir "Azure.Identity.dll"
+        $coreDll     = Join-Path $binDir "Azure.Core.dll"
+        Write-Log -Level "DEBUG" -Message "Post-build check Debug: $(Test-Path $cosmosDll) — $cosmosDll"
+        if (-not (Test-Path $cosmosDll)) {
+            $binDir = Join-Path $ProjectRoot "Catan3.GameService/bin/Release/net9.0"
+            $cosmosDll   = Join-Path $binDir "Microsoft.Azure.Cosmos.Client.dll"
+            $identityDll = Join-Path $binDir "Azure.Identity.dll"
+            $coreDll     = Join-Path $binDir "Azure.Core.dll"
+            Write-Log -Level "DEBUG" -Message "Post-build check Release: $(Test-Path $cosmosDll) — $cosmosDll"
+        }
+        if (-not (Test-Path $cosmosDll)) {
+            Write-Log -Level "ERROR" -Message "Cosmos SDK DLL still not found after build."
+            return $false
+        }
     }
 
     try {
@@ -302,7 +291,7 @@ $HealthEndpoint   = "http://localhost:8081"
 
 # ── Azure config path ───────────────────────────────────────────────────────────
 
-$AzureConfigFile = Join-Path $ProjectRoot ".azure/catan-azure.json"
+# Azure config loaded via Get-AzureResourceNames from utility-scripts.psm1
 
 # CosmosDB built-in data-plane RBAC role (Cosmos DB Built-in Data Contributor)
 $CosmosDataContributorRoleId = "00000000-0000-0000-0000-000000000002"
@@ -786,10 +775,10 @@ function Get-LocalDoctorResult {
 function Show-LocalDoctorOutput {
     param([System.Collections.Specialized.OrderedDictionary]$Result)
 
-    Write-Host ""
-    Write-Host "CosmosDB Local Emulator Status" -ForegroundColor Cyan
-    Write-Host "==============================" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "CosmosDB Local Emulator Status" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "==============================" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "" -NoLabel
 
     $color = switch ($Result.Status) {
         "Ready"        { "Green"  }
@@ -797,71 +786,31 @@ function Show-LocalDoctorOutput {
         default        { "Red"    }
     }
 
-    Write-Host ("Docker CLI:       " + ($Result.DockerInstalled ? "OK" : "MISSING"))
-    Write-Host ("Docker Daemon:    " + ($Result.DockerRunning   ? "Running" : "Stopped"))
-    Write-Host ("Emulator:         " + $Result.EmulatorState)
-    Write-Host ("Health Probe:     " + ($Result.EmulatorHealthy ? "OK" : "FAIL"))
-    Write-Host ("Database:         " + ($Result.DatabaseExists  ? "OK ($DatabaseName)" : "Missing"))
+    Write-Log -Level INFO -Message ("Docker CLI:       " + ($Result.DockerInstalled ? "OK" : "MISSING")) -NoLabel
+    Write-Log -Level INFO -Message ("Docker Daemon:    " + ($Result.DockerRunning   ? "Running" : "Stopped")) -NoLabel
+    Write-Log -Level INFO -Message ("Emulator:         " + $Result.EmulatorState) -NoLabel
+    Write-Log -Level INFO -Message ("Health Probe:     " + ($Result.EmulatorHealthy ? "OK" : "FAIL")) -NoLabel
+    Write-Log -Level INFO -Message ("Database:         " + ($Result.DatabaseExists  ? "OK ($DatabaseName)" : "Missing")) -NoLabel
 
     if ($Result.Containers.Count -gt 0) {
-        Write-Host "Containers:"
+        Write-Log -Level INFO -Message "Containers:" -NoLabel
         foreach ($name in $Result.Containers.Keys) {
-            Write-Host ("  $name".PadRight(24) + ($Result.Containers[$name] ? "OK" : "MISSING"))
+            Write-Log -Level INFO -Message ("  $name".PadRight(24) + ($Result.Containers[$name] ? "OK" : "MISSING")) -NoLabel
         }
     }
 
-    Write-Host ""
-    Write-Host ("Status: " + $Result.Status) -ForegroundColor $color
-    Write-Host $Result.Message -ForegroundColor $color
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message ("Status: " + $Result.Status) -ForegroundColor $color -NoLabel
+    Write-Log -Level INFO -Message $Result.Message -ForegroundColor $color -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
 # AZURE HELPERS
 # ════════════════════════════════════════════════════════════════════════════════
 
-<#
-.SYNOPSIS
-    Reads .azure/catan-azure.json and returns it as a PSCustomObject.
-    Throws if the file does not exist.
-#>
-function Get-AzureConfig {
-    if (-not (Test-Path $AzureConfigFile)) {
-        throw "Azure config not found at $AzureConfigFile. Run catan-azure.ps1 install first."
-    }
-    return (Get-Content $AzureConfigFile -Raw | ConvertFrom-Json)
-}
-
-<#
-.SYNOPSIS
-    Saves updated config back to .azure/catan-azure.json, preserving existing fields.
-#>
-function Save-AzureConfig {
-    param([psobject]$Config)
-    $Config | ConvertTo-Json -Depth 10 | Set-Content $AzureConfigFile -Encoding UTF8
-    Write-Log -Level "DEBUG" -Message "Saved config to $AzureConfigFile"
-}
-
-<#
-.SYNOPSIS
-    Returns the CosmosDB account name from config, or derives it as "cosmos-{baseName}".
-#>
-function Get-CosmosAccountName {
-    param([psobject]$Config)
-    if ($Config.cosmosDb -and $Config.cosmosDb.accountName) {
-        return $Config.cosmosDb.accountName
-    }
-    return "cosmos-$($Config.baseName)"
-}
-
-<#
-.SYNOPSIS
-    Returns the CosmosDB endpoint URL for the given account name.
-#>
-function Get-CosmosEndpointUrl {
-    param([string]$AccountName)
-    return "https://$AccountName.documents.azure.com:443/"
-}
+# Azure config: use Get-AzureConfig / Get-AzureResourceNames from utility-scripts.psm1
+# No local config wrappers — all naming goes through the module.
 
 <#
 .SYNOPSIS
@@ -873,8 +822,8 @@ function Assert-AzCli {
         Write-Log -Level "ERROR" -Message "Azure CLI (az) not found. Install from https://aka.ms/installazurecli"
         return $false
     }
-    $null = Invoke-Azure account show
-    if ($LASTEXITCODE -ne 0) {
+    $acct = Invoke-AzCommand "account show" -Check
+    if (-not $acct) {
         Write-Log -Level "ERROR" -Message "Not logged in to Azure. Run: az login"
         return $false
     }
@@ -895,23 +844,18 @@ function Install-AzureCosmosAccount {
     $rg       = $Config.resourceGroup
     $location = $Config.location
 
-    $null = Invoke-Azure cosmosdb show --name $AccountName --resource-group $rg
-    if ($LASTEXITCODE -eq 0 -and -not $Force) {
+    $existing = Invoke-AzCommand "cosmosdb show --name $AccountName --resource-group $rg" -Check
+    if ($existing -and -not $Force) {
         Write-Log -Level "INFO" -Message "Account '$AccountName' already exists — skipping creation."
         return $true
     }
 
     Write-Log -Level "INFO" -Message "Creating CosmosDB account '$AccountName' with 400 RU/s provisioned throughput (this takes 1-3 minutes)..."
 
-    $null = Invoke-Azure cosmosdb create `
-        --name $AccountName `
-        --resource-group $rg `
-        --kind GlobalDocumentDB `
-        --locations regionName=$location failoverPriority=0 isZoneRedundant=false `
-        --default-consistency-level Session `
-        --output none
-
-    if ($LASTEXITCODE -ne 0) {
+    try {
+        Invoke-AzCommand "cosmosdb create --name $AccountName --resource-group $rg --kind GlobalDocumentDB --locations regionName=$location failoverPriority=0 isZoneRedundant=false --default-consistency-level Session" -SuppressOutput -TimeoutSeconds 300
+    }
+    catch {
         Write-Log -Level "ERROR" -Message "Failed to create CosmosDB account."
         return $false
     }
@@ -932,13 +876,13 @@ function Invoke-AzureSeed {
     $rg = $Config.resourceGroup
 
     # Database: check first (~1s), create only if missing (~30s)
-    $null = Invoke-Azure cosmosdb sql database show `
-        --account-name $AccountName --resource-group $rg --name $DatabaseName
-    if ($LASTEXITCODE -ne 0) {
+    $dbExists = Invoke-AzCommand "cosmosdb sql database show --account-name $AccountName --resource-group $rg --name $DatabaseName" -Check
+    if (-not $dbExists) {
         Write-Log -Level "INFO" -Message "Creating database '$DatabaseName'..."
-        $null = Invoke-Azure cosmosdb sql database create `
-            --account-name $AccountName --resource-group $rg --name $DatabaseName --output none
-        if ($LASTEXITCODE -ne 0) {
+        try {
+            Invoke-AzCommand "cosmosdb sql database create --account-name $AccountName --resource-group $rg --name $DatabaseName" -SuppressOutput
+        }
+        catch {
             Write-Log -Level "ERROR" -Message "Failed to create database '$DatabaseName'."
             return $false
         }
@@ -950,10 +894,8 @@ function Invoke-AzureSeed {
     # --idx JSON written to a temp file to avoid shell quoting issues with nested arrays.
     $anyCreated = $false
     foreach ($name in $Containers.Keys) {
-        $null = Invoke-Azure cosmosdb sql container show `
-            --account-name $AccountName --resource-group $rg `
-            --database-name $DatabaseName --name $name
-        if ($LASTEXITCODE -eq 0) {
+        $containerExists = Invoke-AzCommand "cosmosdb sql container show --account-name $AccountName --resource-group $rg --database-name $DatabaseName --name $name" -Check
+        if ($containerExists) {
             Write-Log -Level "DEBUG" -Message "  Container '$name' already exists — skip."
             continue
         }
@@ -963,16 +905,15 @@ function Invoke-AzureSeed {
         $tmpIdx = [System.IO.Path]::GetTempFileName() + ".json"
         $ContainerIndexPolicies[$name] | ConvertTo-Json -Depth 5 -Compress |
             Set-Content -Path $tmpIdx -Encoding UTF8 -NoNewline
-        $null = Invoke-Azure cosmosdb sql container create `
-            --account-name $AccountName --resource-group $rg `
-            --database-name $DatabaseName --name $name `
-            --partition-key-path $partKey --partition-key-version 1 `
-            --idx "@$tmpIdx" --output none
-        Remove-Item $tmpIdx -Force -ErrorAction SilentlyContinue
-        if ($LASTEXITCODE -ne 0) {
+        try {
+            Invoke-AzCommand "cosmosdb sql container create --account-name $AccountName --resource-group $rg --database-name $DatabaseName --name $name --partition-key-path $partKey --partition-key-version 1 --idx `"@$tmpIdx`"" -SuppressOutput
+        }
+        catch {
+            Remove-Item $tmpIdx -Force -ErrorAction SilentlyContinue
             Write-Log -Level "ERROR" -Message "  Failed to create container '$name'."
             return $false
         }
+        Remove-Item $tmpIdx -Force -ErrorAction SilentlyContinue
         Write-Log -Level "INFO" -Message "  Container '$name' created."
         $anyCreated = $true
     }
@@ -980,10 +921,7 @@ function Invoke-AzureSeed {
     # Log partition keys for any containers just created (verify version=1)
     if ($anyCreated) {
         foreach ($name in $Containers.Keys) {
-            $pk = Invoke-Azure cosmosdb sql container show `
-                --account-name $AccountName --resource-group $rg `
-                --database-name $DatabaseName --name $name `
-                --query "resource.partitionKey" --output json
+            $pk = Invoke-AzCommand "cosmosdb sql container show --account-name $AccountName --resource-group $rg --database-name $DatabaseName --name $name --query resource.partitionKey --output json" -Check
             Write-Log -Level "DEBUG" -Message "  Container '$name' partitionKey: $($pk -replace '\s+', ' ')"
         }
     }
@@ -1008,46 +946,31 @@ function Deploy-AzureDatabase {
 
     # 1. Set COSMOS_ENDPOINT and COSMOS_DATABASE on production slot
     Write-Log -Level "INFO" -Message "Setting Cosmos app settings on '$appName' (production)..."
-    $null = Invoke-Azure webapp config appsettings set `
-        --name $appName `
-        --resource-group $rg `
-        --settings "COSMOS_ENDPOINT=$Endpoint" "COSMOS_DATABASE=$DatabaseName" `
-        --output none
-    if ($LASTEXITCODE -ne 0) {
+    try {
+        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rg --settings COSMOS_ENDPOINT=$Endpoint COSMOS_DATABASE=$DatabaseName --output none" -SuppressOutput
+    }
+    catch {
         Write-Log -Level "ERROR" -Message "Failed to set Cosmos app settings on production."
         return $false
     }
 
     # 2. Set Cosmos app settings on all deployment slots
-    $slotsJson = Invoke-Azure webapp deployment slot list `
-        --name $appName `
-        --resource-group $rg `
-        --query "[].name" `
-        --output json
-    $slots = if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($slotsJson)) {
-        ($slotsJson | ConvertFrom-Json)
-    } else { @() }
+    $slotsResult = Invoke-AzCommand "webapp deployment slot list --name $appName --resource-group $rg --query [].name --output json" -Check -JsonOutput
+    $slots = if ($slotsResult) { $slotsResult } else { @() }
 
     foreach ($slot in $slots) {
         Write-Log -Level "INFO" -Message "Setting Cosmos app settings on slot '$slot'..."
-        $null = Invoke-Azure webapp config appsettings set `
-            --name $appName `
-            --resource-group $rg `
-            --slot $slot `
-            --settings "COSMOS_ENDPOINT=$Endpoint" "COSMOS_DATABASE=$DatabaseName" `
-            --output none
-        if ($LASTEXITCODE -ne 0) {
+        try {
+            Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rg --slot $slot --settings COSMOS_ENDPOINT=$Endpoint COSMOS_DATABASE=$DatabaseName --output none" -SuppressOutput
+        }
+        catch {
             Write-Log -Level "WARN" -Message "Failed to set Cosmos app settings on slot '$slot'."
         }
     }
 
     # 3. Get Cosmos account resource ID (scope for all role assignments)
-    $accountId = Invoke-Azure cosmosdb show `
-        --name $AccountName `
-        --resource-group $rg `
-        --query id `
-        --output tsv
-    if ($LASTEXITCODE -ne 0) {
+    $accountId = Invoke-AzCommand "cosmosdb show --name $AccountName --resource-group $rg --query id --output tsv" -Check
+    if (-not $accountId) {
         Write-Log -Level "ERROR" -Message "Failed to get CosmosDB account resource ID."
         return $false
     }
@@ -1071,8 +994,8 @@ function Deploy-AzureDatabase {
     }
 
     # Signed-in developer
-    $developerOid = (Invoke-Azure ad signed-in-user show --query id --output tsv 2>$null)
-    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($developerOid)) {
+    $developerOid = Invoke-AzCommand "ad signed-in-user show --query id --output tsv" -Check
+    if ($developerOid) {
         $principals += @{ Id = $developerOid.Trim(); Label = "signed-in developer" }
     }
 
@@ -1100,18 +1023,14 @@ function Deploy-AzureDatabase {
 function Get-OrAssignManagedIdentity {
     param([string]$AppName, [string]$ResourceGroup, [string]$Slot)
 
-    $slotArgs = if ($Slot) { @("--slot", $Slot) } else { @() }
+    $slotArg = if ($Slot) { " --slot $Slot" } else { "" }
     $label = if ($Slot) { "'$AppName' slot '$Slot'" } else { "'$AppName'" }
 
-    $principalId = Invoke-Azure webapp identity show `
-        --name $AppName --resource-group $ResourceGroup @slotArgs `
-        --query principalId --output tsv
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($principalId)) {
+    $principalId = Invoke-AzCommand "webapp identity show --name $AppName --resource-group $ResourceGroup$slotArg --query principalId --output tsv" -Check
+    if (-not $principalId -or [string]::IsNullOrWhiteSpace($principalId)) {
         Write-Log -Level "WARN" -Message "Managed identity not found for $label — assigning..."
-        $null = Invoke-Azure webapp identity assign --name $AppName --resource-group $ResourceGroup @slotArgs --output none
-        $principalId = Invoke-Azure webapp identity show `
-            --name $AppName --resource-group $ResourceGroup @slotArgs `
-            --query principalId --output tsv
+        Invoke-AzCommand "webapp identity assign --name $AppName --resource-group $ResourceGroup$slotArg --output none" -SuppressOutput
+        $principalId = Invoke-AzCommand "webapp identity show --name $AppName --resource-group $ResourceGroup$slotArg --query principalId --output tsv" -Check
         if ($LASTEXITCODE -ne 0) {
             Write-Log -Level "ERROR" -Message "Failed to get managed identity for $label."
             return $null
@@ -1130,12 +1049,8 @@ function Grant-CosmosRbac {
     param([string]$AccountName, [string]$ResourceGroup, [string]$PrincipalId, [string]$Scope)
 
     # Check first — avoid creating duplicate assignments
-    $existingJson = Invoke-Azure cosmosdb sql role assignment list `
-        --account-name $AccountName `
-        --resource-group $ResourceGroup `
-        --output json
-    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($existingJson)) {
-        $existing = $existingJson | ConvertFrom-Json
+    $existing = Invoke-AzCommand "cosmosdb sql role assignment list --account-name $AccountName --resource-group $ResourceGroup --output json" -Check -JsonOutput
+    if ($existing) {
         $match = $existing | Where-Object {
             $_.principalId -eq $PrincipalId -and
             $_.roleDefinitionId -match $CosmosDataContributorRoleId
@@ -1147,20 +1062,15 @@ function Grant-CosmosRbac {
     }
 
     # No existing assignment — create one
-    $null = Invoke-Azure cosmosdb sql role assignment create `
-        --account-name $AccountName `
-        --resource-group $ResourceGroup `
-        --role-definition-id $CosmosDataContributorRoleId `
-        --principal-id $PrincipalId `
-        --scope $Scope `
-        --output none
-    if ($LASTEXITCODE -eq 0) {
+    try {
+        Invoke-AzCommand "cosmosdb sql role assignment create --account-name $AccountName --resource-group $ResourceGroup --role-definition-id $CosmosDataContributorRoleId --principal-id $PrincipalId --scope $Scope --output none" -SuppressOutput -TimeoutSeconds 300
         Write-Log -Level "INFO" -Message "  RBAC granted (new assignment)."
         return $true
     }
-
-    Write-Log -Level "ERROR" -Message "Failed to grant Cosmos RBAC role to $PrincipalId."
-    return $false
+    catch {
+        Write-Log -Level "ERROR" -Message "Failed to grant Cosmos RBAC role to $PrincipalId."
+        return $false
+    }
 }
 
 <#
@@ -1175,14 +1085,7 @@ function Grant-CosmosFirewallAccess {
     # Check current state — need publicNetworkAccess=Enabled and empty ipRules.
     # Empty ipRules + Enabled = allow all public IPs. We do NOT add specific IPs because
     # corporate networks egress from unpredictable IPs that differ from what ipify.org reports.
-    $acctJson = Invoke-Azure cosmosdb show `
-        --name $AccountName `
-        --resource-group $ResourceGroup `
-        --query "{pna:publicNetworkAccess, ruleCount:length(ipRules)}" `
-        --output json
-    $acctInfo = if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($acctJson)) {
-        try { $acctJson | ConvertFrom-Json } catch { $null }
-    } else { $null }
+    $acctInfo = Invoke-AzCommand "cosmosdb show --name $AccountName --resource-group $ResourceGroup --query {pna:publicNetworkAccess, ruleCount:length(ipRules)} --output json" -Check -JsonOutput
 
     $alreadyOpen = ($null -ne $acctInfo -and $acctInfo.pna -eq "Enabled" -and $acctInfo.ruleCount -eq 0)
     if ($alreadyOpen) {
@@ -1191,14 +1094,18 @@ function Grant-CosmosFirewallAccess {
     }
 
     Write-Log -Level "INFO" -Message "Opening CosmosDB to all public IPs (clearing ipRules, enabling public access)..."
-    $null = Invoke-Azure cosmosdb update `
-        --name $AccountName `
-        --resource-group $ResourceGroup `
-        --ip-range-filter "" `
-        --public-network-access Enabled `
-        --output none
-    if ($LASTEXITCODE -ne 0) {
-        Write-Log -Level "ERROR" -Message "Failed to update CosmosDB firewall (exit $LASTEXITCODE)."
+    # az CLI v2.76+ rejects --ip-range-filter "" — use az resource update to clear ipRules
+    $accountId = Invoke-AzCommand "cosmosdb show --name $AccountName --resource-group $ResourceGroup --query id --output tsv" -Check
+    if (-not $accountId) {
+        Write-Log -Level "ERROR" -Message "Failed to get CosmosDB account ID."
+        return $false
+    }
+    try {
+        # CosmosDB account-level changes take 2-8 minutes to propagate
+        Invoke-AzCommand "resource update --ids $($accountId.Trim()) --set properties.ipRules=[] properties.publicNetworkAccess=Enabled --output none" -SuppressOutput -TimeoutSeconds 600
+    }
+    catch {
+        Write-Log -Level "ERROR" -Message "Failed to update CosmosDB firewall."
         return $false
     }
     Write-Log -Level "INFO" -Message "Firewall open — all public IPs allowed."
@@ -1237,13 +1144,12 @@ function Get-AzureDoctorResult {
     }
 
     # 1. Cosmos account
-    $acctJson = Invoke-Azure cosmosdb show --name $AccountName --resource-group $rg --output json
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($acctJson)) {
+    $acct = Invoke-AzCommand "cosmosdb show --name $AccountName --resource-group $rg --output json" -Check -JsonOutput
+    if (-not $acct) {
         $result.Status  = "NoAccount"
         $result.Message = "CosmosDB account '$AccountName' not found in '$rg'. Run: database.ps1 install -Azure"
         return $result
     }
-    $acct = $acctJson | ConvertFrom-Json
     $result.AccountExists = $true
     $result.AccountState  = $acct.provisioningState
 
@@ -1262,22 +1168,15 @@ function Get-AzureDoctorResult {
     $result.FirewallOk    = $publicNetworkEnabled -and $ipRulesEmpty
 
     # 3. Database
-    $null = Invoke-Azure cosmosdb sql database show `
-        --account-name $AccountName `
-        --resource-group $rg `
-        --name $DatabaseName
-    $result.DatabaseExists = ($LASTEXITCODE -eq 0)
+    $dbCheck = Invoke-AzCommand "cosmosdb sql database show --account-name $AccountName --resource-group $rg --name $DatabaseName" -Check
+    $result.DatabaseExists = ($null -ne $dbCheck)
 
     # 4. Containers (only checkable if DB exists)
     $allOk = $result.DatabaseExists
     if ($result.DatabaseExists) {
         foreach ($name in $Containers.Keys) {
-            $null = Invoke-Azure cosmosdb sql container show `
-                --account-name $AccountName `
-                --resource-group $rg `
-                --database-name $DatabaseName `
-                --name $name
-            $exists = ($LASTEXITCODE -eq 0)
+            $cCheck = Invoke-AzCommand "cosmosdb sql container show --account-name $AccountName --resource-group $rg --database-name $DatabaseName --name $name" -Check
+            $exists = ($null -ne $cCheck)
             $result.Containers[$name] = $exists
             if (-not $exists) { $allOk = $false }
         }
@@ -1287,32 +1186,17 @@ function Get-AzureDoctorResult {
     $result.AllContainersOk = $allOk
 
     # 5. App Service COSMOS_ENDPOINT setting
-    $settingsJson = Invoke-Azure webapp config appsettings list `
-        --name $appName `
-        --resource-group $rg `
-        --output json
-    $settings = if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($settingsJson)) {
-        $settingsJson | ConvertFrom-Json
-    } else { @() }
+    $settings = Invoke-AzCommand "webapp config appsettings list --name $appName --resource-group $rg --output json" -Check -JsonOutput
+    if (-not $settings) { $settings = @() }
     $cosmosSettingEntry = $settings | Where-Object { $_.name -eq "COSMOS_ENDPOINT" }
     $result.AppSettingSet = ($null -ne $cosmosSettingEntry -and -not [string]::IsNullOrWhiteSpace($cosmosSettingEntry.value))
 
     # 6. RBAC: managed identity has data contributor role
-    $principalId = Invoke-Azure webapp identity show `
-        --name $appName `
-        --resource-group $rg `
-        --query principalId `
-        --output tsv
-    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($principalId)) {
+    $principalId = Invoke-AzCommand "webapp identity show --name $appName --resource-group $rg --query principalId --output tsv" -Check
+    if ($principalId) {
         $principalId = $principalId.Trim()
-        $assignmentsJson = Invoke-Azure cosmosdb sql role assignment list `
-            --account-name $AccountName `
-            --resource-group $rg `
-            --query "[?principalId=='$principalId' && contains(roleDefinitionId, '$CosmosDataContributorRoleId')]" `
-            --output json
-        $assignments = if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($assignmentsJson)) {
-            $assignmentsJson | ConvertFrom-Json
-        } else { @() }
+        $assignments = Invoke-AzCommand "cosmosdb sql role assignment list --account-name $AccountName --resource-group $rg --query `"[?principalId=='$principalId' && contains(roleDefinitionId, '$CosmosDataContributorRoleId')]`" --output json" -Check -JsonOutput
+        if (-not $assignments) { $assignments = @() }
         $result.RbacGranted = ($assignments.Count -gt 0)
     }
 
@@ -1348,10 +1232,10 @@ function Get-AzureDoctorResult {
 function Show-AzureDoctorOutput {
     param([System.Collections.Specialized.OrderedDictionary]$Result)
 
-    Write-Host ""
-    Write-Host "CosmosDB Azure Status" -ForegroundColor Cyan
-    Write-Host "=====================" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "CosmosDB Azure Status" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "=====================" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "" -NoLabel
 
     $color = switch ($Result.Status) {
         "Ready"           { "Green"  }
@@ -1361,25 +1245,25 @@ function Show-AzureDoctorOutput {
         default           { "Red"    }
     }
 
-    Write-Host ("Account:          " + ($Result.AccountExists ? "OK ($($Result.AccountName))" : "Missing"))
-    Write-Host ("Account State:    " + $Result.AccountState)
-    Write-Host ("Database:         " + ($Result.DatabaseExists ? "OK ($DatabaseName)" : "Missing"))
+    Write-Log -Level INFO -Message ("Account:          " + ($Result.AccountExists ? "OK ($($Result.AccountName))" : "Missing")) -NoLabel
+    Write-Log -Level INFO -Message ("Account State:    " + $Result.AccountState) -NoLabel
+    Write-Log -Level INFO -Message ("Database:         " + ($Result.DatabaseExists ? "OK ($DatabaseName)" : "Missing")) -NoLabel
 
     if ($Result.Containers.Count -gt 0) {
-        Write-Host "Containers:"
+        Write-Log -Level INFO -Message "Containers:" -NoLabel
         foreach ($name in $Result.Containers.Keys) {
-            Write-Host ("  $name".PadRight(24) + ($Result.Containers[$name] ? "OK" : "MISSING"))
+            Write-Log -Level INFO -Message ("  $name".PadRight(24) + ($Result.Containers[$name] ? "OK" : "MISSING")) -NoLabel
         }
     }
 
     $fwMsg = if ($Result.FirewallOk) { "OK (publicNetworkAccess=Enabled, no IP restrictions)" } else { "BLOCKED (publicNetworkAccess=Disabled or ipRules restricting access)" }
-    Write-Host ("Firewall:         " + $fwMsg)
-    Write-Host ("App Setting:      " + ($Result.AppSettingSet ? "OK (COSMOS_ENDPOINT)" : "Missing"))
-    Write-Host ("RBAC:             " + ($Result.RbacGranted   ? "OK (Data Contributor)" : "Missing"))
-    Write-Host ""
-    Write-Host ("Status: " + $Result.Status) -ForegroundColor $color
-    Write-Host $Result.Message -ForegroundColor $color
-    Write-Host ""
+    Write-Log -Level INFO -Message ("Firewall:         " + $fwMsg) -NoLabel
+    Write-Log -Level INFO -Message ("App Setting:      " + ($Result.AppSettingSet ? "OK (COSMOS_ENDPOINT)" : "Missing")) -NoLabel
+    Write-Log -Level INFO -Message ("RBAC:             " + ($Result.RbacGranted   ? "OK (Data Contributor)" : "Missing")) -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message ("Status: " + $Result.Status) -ForegroundColor $color -NoLabel
+    Write-Log -Level INFO -Message $Result.Message -ForegroundColor $color -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -1441,7 +1325,7 @@ function Invoke-SeedDefaultData {
     param([switch]$IsAzure, [psobject]$Config = $null, [string]$AccountName = "")
 
     if ($IsAzure) {
-        $endpoint = Get-CosmosEndpointUrl -AccountName $AccountName
+        $endpoint = "https://$AccountName.documents.azure.com:443/"
     } else {
         $endpoint = $EmulatorEndpoint
     }
@@ -1475,7 +1359,13 @@ function Invoke-SeedDefaultData {
                     }
                     Write-Log -Level "DEBUG" -Message "  Probe → HTTP $($r.StatusCode), waiting..."
                 } catch {
-                    Write-Log -Level "DEBUG" -Message "  Probe → $($_.Exception.Message), waiting..."
+                    # Cosmos SDK exceptions include full HTTP headers — extract just the status
+                    $errMsg = if ($_.Exception.Message -match '(\d{3}).*?Substatus: (\d+)') {
+                        "HTTP $($Matches[1]) (Substatus $($Matches[2]))"
+                    } else {
+                        $_.Exception.Message.Split("`n")[0].Substring(0, [Math]::Min(120, $_.Exception.Message.Length))
+                    }
+                    Write-Log -Level "DEBUG" -Message "  Probe → $errMsg, waiting..."
                 }
                 Start-Sleep -Seconds 10
             }
@@ -1582,7 +1472,7 @@ function Invoke-LocalTests {
         & dotnet test $TestProject `
             --filter "FullyQualifiedName~CatanDb" `
             --logger "console;verbosity=normal" `
-            2>&1 | ForEach-Object { Write-Host $_ }
+            2>&1 | ForEach-Object { Write-Log -Level INFO -Message $_ -NoLabel }
         return $LASTEXITCODE
     } finally {
         Remove-TestParams
@@ -1603,7 +1493,7 @@ function Invoke-AzureTests {
         & dotnet test $TestProject `
             --filter "FullyQualifiedName~CatanDb" `
             --logger "console;verbosity=normal" `
-            2>&1 | ForEach-Object { Write-Host $_ }
+            2>&1 | ForEach-Object { Write-Log -Level INFO -Message $_ -NoLabel }
         return $LASTEXITCODE
     } finally {
         Remove-TestParams
@@ -1661,7 +1551,7 @@ Examples:
     ./database.ps1 test -Azure
     ./database.ps1 clean -Azure -Yes
 "@
-    Write-Host $text
+    Write-Log -Level INFO -Message $text -NoLabel
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -1675,9 +1565,16 @@ try {
     if ($Azure) {
         if (-not (Assert-AzCli)) { exit 1 }
 
-        $config      = Get-AzureConfig
-        $accountName = Get-CosmosAccountName -Config $config
-        $endpoint    = Get-CosmosEndpointUrl  -AccountName $accountName
+        $az          = Get-AzureResourceNames -ProjectRoot $ProjectRoot
+        $config      = $az.Config
+        # Ensure config object has all derived names for functions that read $Config directly
+        $config | Add-Member -NotePropertyName resourceGroup -NotePropertyValue $az.ResourceGroup -Force
+        $config | Add-Member -NotePropertyName location -NotePropertyValue $az.Location -Force
+        if (-not $config.gameService) { $config | Add-Member -NotePropertyName gameService -NotePropertyValue ([PSCustomObject]@{}) -Force }
+        $config.gameService | Add-Member -NotePropertyName appName -NotePropertyValue $az.GameServiceAppName -Force
+        $config.gameService | Add-Member -NotePropertyName url -NotePropertyValue $az.GameServiceUrl -Force
+        $accountName = $az.CosmosAccount
+        $endpoint    = $az.CosmosEndpoint
 
         switch ($Verb) {
 
@@ -1701,15 +1598,6 @@ try {
                 } else {
                     Write-Log -Level "INFO" -Message "Database and all containers already exist."
                 }
-
-                # Persist account name and endpoint to config for future commands
-                if (-not $config.cosmosDb) {
-                    $config | Add-Member -NotePropertyName cosmosDb -NotePropertyValue ([pscustomobject]@{}) -Force
-                }
-                $config.cosmosDb | Add-Member -NotePropertyName accountName -NotePropertyValue $accountName -Force
-                $config.cosmosDb | Add-Member -NotePropertyName databaseName -NotePropertyValue $DatabaseName -Force
-                $config.cosmosDb | Add-Member -NotePropertyName endpoint -NotePropertyValue $endpoint -Force
-                Save-AzureConfig -Config $config
 
                 # 3. App Service wiring (COSMOS_ENDPOINT + RBAC for App Service MI AND signed-in developer).
                 # Always run — the doctor only checks App Service RBAC; the developer role is verified here.
@@ -1763,10 +1651,10 @@ try {
                 $rg = $config.resourceGroup
                 foreach ($name in $Containers.Keys) {
                     Write-Log -Level "INFO" -Message "  Deleting container '$name'..."
-                    $null = Invoke-Azure cosmosdb sql container delete `
-                        --account-name $accountName --resource-group $rg `
-                        --database-name $DatabaseName --name $name --yes
-                    if ($LASTEXITCODE -ne 0) {
+                    try {
+                        Invoke-AzCommand "cosmosdb sql container delete --account-name $accountName --resource-group $rg --database-name $DatabaseName --name $name --yes" -SuppressOutput
+                    }
+                    catch {
                         Write-Log -Level "WARN" -Message "  Delete failed (may not exist) — continuing."
                     }
                 }
@@ -1774,19 +1662,14 @@ try {
                 foreach ($name in $Containers.Keys) {
                     $partKey = $Containers[$name]
                     Write-Log -Level "INFO" -Message "  Creating '$name' ($partKey) — ~30s..."
-                    $null = Invoke-Azure cosmosdb sql container create `
-                        --account-name $accountName --resource-group $rg `
-                        --database-name $DatabaseName --name $name `
-                        --partition-key-path $partKey --output none
-                    if ($LASTEXITCODE -ne 0) {
+                    try {
+                        Invoke-AzCommand "cosmosdb sql container create --account-name $accountName --resource-group $rg --database-name $DatabaseName --name $name --partition-key-path $partKey --output none" -SuppressOutput
+                    }
+                    catch {
                         Write-Log -Level "ERROR" -Message "  Failed to create '$name'."
                         exit 1
                     }
-                    # Dump full partition key from management plane
-                    $full = Invoke-Azure cosmosdb sql container show `
-                        --account-name $accountName --resource-group $rg `
-                        --database-name $DatabaseName --name $name `
-                        --query "resource.partitionKey" --output json
+                    $full = Invoke-AzCommand "cosmosdb sql container show --account-name $accountName --resource-group $rg --database-name $DatabaseName --name $name --query resource.partitionKey --output json" -Check
                     Write-Log -Level "INFO" -Message "  '$name' partitionKey: $($full -replace '\s+', ' ')"
                 }
                 Write-Log -Level "INFO" -Message "Done. Run 'seed-data -Azure' to test writing."
@@ -1815,13 +1698,11 @@ try {
                     }
                 }
                 Write-Log -Level "INFO" -Message "Deleting CosmosDB account '$accountName' (this takes 2-5 minutes)..."
-                $null = Invoke-Azure cosmosdb delete `
-                    --name $accountName `
-                    --resource-group $config.resourceGroup `
-                    --yes `
-                    --output none
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Log -Level "ERROR" -Message "Failed to delete account (exit $LASTEXITCODE)."
+                try {
+                    Invoke-AzCommand "cosmosdb delete --name $accountName --resource-group $($config.resourceGroup) --yes --output none" -SuppressOutput -TimeoutSeconds 600
+                }
+                catch {
+                    Write-Log -Level "ERROR" -Message "Failed to delete account."
                     exit 1
                 }
                 Write-Log -Level "INFO" -Message "Account '$accountName' deleted."

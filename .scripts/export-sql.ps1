@@ -6,6 +6,12 @@
 param([string]$TraceLevel = "INFO")
 
 $ErrorActionPreference = "Stop"
+
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+Import-Module "$scriptPath\utility-scripts.psm1" -Force
+
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 $repoRoot = Split-Path $PSScriptRoot
 $outDir = Join-Path $repoRoot "Catan3.GameService/Default Data/sql-export"
 
@@ -13,7 +19,7 @@ if (Test-Path $outDir) { Remove-Item $outDir -Recurse -Force }
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
 # Get AAD token for Azure SQL
-Write-Host "Getting AAD token for Azure SQL..." -ForegroundColor Cyan
+Write-Log -Level INFO -Message "Getting AAD token for Azure SQL..." -NoLabel -ForegroundColor Cyan
 $token = az account get-access-token --resource "https://database.windows.net/" --query accessToken --output tsv
 if ($LASTEXITCODE -ne 0) { throw "Failed to get AAD token" }
 
@@ -23,14 +29,14 @@ Import-Module SqlServer -ErrorAction Stop
 
 function Run-Query {
     param([string]$Query, [string]$Label)
-    Write-Host "  Exporting $Label..." -ForegroundColor Gray
+    Write-Log -Level DEBUG -Message "  Exporting $Label..." -NoLabel
     $result = Invoke-Sqlcmd -ConnectionString $connStr -AccessToken $token -Query $Query -OutputAs DataRows -MaxBinaryLength 10485760 -MaxCharLength 10485760
-    Write-Host "    $($result.Count) rows" -ForegroundColor Green
+    Write-Log -Level INFO -Message "    $($result.Count) rows" -NoLabel -ForegroundColor Green
     return $result
 }
 
 # --- Players ---
-Write-Host "`nPlayers:" -ForegroundColor Cyan
+Write-Log -Level INFO -Message "`nPlayers:" -NoLabel -ForegroundColor Cyan
 $players = Run-Query -Label "players" -Query "SELECT Id, Data FROM Players"
 $playersOut = @()
 foreach ($row in $players) {
@@ -39,7 +45,7 @@ foreach ($row in $players) {
 $playersOut | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $outDir "players.json") -Encoding UTF8
 
 # --- Images ---
-Write-Host "`nImages:" -ForegroundColor Cyan
+Write-Log -Level INFO -Message "`nImages:" -NoLabel -ForegroundColor Cyan
 $images = Run-Query -Label "images" -Query "SELECT Id, ContentType, Data FROM Images"
 $imagesOut = @()
 foreach ($row in $images) {
@@ -49,7 +55,7 @@ foreach ($row in $images) {
 $imagesOut | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $outDir "images.json") -Encoding UTF8
 
 # --- Game Saves (metadata + data joined) ---
-Write-Host "`nGame Saves:" -ForegroundColor Cyan
+Write-Log -Level INFO -Message "`nGame Saves:" -NoLabel -ForegroundColor Cyan
 $games = Run-Query -Label "game saves" -Query @"
 SELECT m.Id AS MetaId, m.GameId, m.GameName, m.GameState, m.GameType,
        m.StartedBy, m.PlayerCount, m.PlayerNames, m.TurnCount,
@@ -80,7 +86,7 @@ foreach ($row in $games) {
 $gamesOut | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $outDir "games.json") -Encoding UTF8
 
 # --- Completed Games ---
-Write-Host "`nCompleted Games:" -ForegroundColor Cyan
+Write-Log -Level INFO -Message "`nCompleted Games:" -NoLabel -ForegroundColor Cyan
 $completed = Run-Query -Label "completed games" -Query @"
 SELECT Id, GameId, GameName, WinnerId, WinnerName, PlayerCount, PlayerNames,
        TurnCount, CompletedAt, StartedAt, CompressedData, Size
@@ -107,7 +113,7 @@ foreach ($row in $completed) {
 $completedOut | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $outDir "completed-games.json") -Encoding UTF8
 
 # --- Recordings ---
-Write-Host "`nRecordings:" -ForegroundColor Cyan
+Write-Log -Level INFO -Message "`nRecordings:" -NoLabel -ForegroundColor Cyan
 $recordings = Run-Query -Label "recordings" -Query @"
 SELECT Id, Name, GameType, PlayerCount, PlayerIds, ActionCount, CreatedAt, Data
 FROM Recordings
@@ -128,7 +134,7 @@ foreach ($row in $recordings) {
 $recordingsOut | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $outDir "recordings.json") -Encoding UTF8
 
 # --- Templates ---
-Write-Host "`nTemplates:" -ForegroundColor Cyan
+Write-Log -Level INFO -Message "`nTemplates:" -NoLabel -ForegroundColor Cyan
 $templates = Run-Query -Label "templates" -Query @"
 SELECT Id, Name, Category, IsSystemTemplate, Version, Data, CreatedAt, UpdatedAt
 FROM GameTemplates
@@ -149,11 +155,11 @@ foreach ($row in $templates) {
 $templatesOut | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $outDir "templates.json") -Encoding UTF8
 
 # --- Summary ---
-Write-Host "`n=== Export Complete ===" -ForegroundColor Cyan
-Write-Host "  Players:         $($playersOut.Count)"
-Write-Host "  Images:          $($imagesOut.Count)"
-Write-Host "  Game Saves:      $($gamesOut.Count)"
-Write-Host "  Completed Games: $($completedOut.Count)"
-Write-Host "  Recordings:      $($recordingsOut.Count)"
-Write-Host "  Templates:       $($templatesOut.Count)"
-Write-Host "  Output:          $outDir"
+Write-Log -Level INFO -Message "`n=== Export Complete ===" -NoLabel -ForegroundColor Cyan
+Write-Log -Level INFO -Message "  Players:         $($playersOut.Count)" -NoLabel
+Write-Log -Level INFO -Message "  Images:          $($imagesOut.Count)" -NoLabel
+Write-Log -Level INFO -Message "  Game Saves:      $($gamesOut.Count)" -NoLabel
+Write-Log -Level INFO -Message "  Completed Games: $($completedOut.Count)" -NoLabel
+Write-Log -Level INFO -Message "  Recordings:      $($recordingsOut.Count)" -NoLabel
+Write-Log -Level INFO -Message "  Templates:       $($templatesOut.Count)" -NoLabel
+Write-Log -Level INFO -Message "  Output:          $outDir" -NoLabel
