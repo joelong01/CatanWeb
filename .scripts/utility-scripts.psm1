@@ -1076,7 +1076,7 @@ function Invoke-AzCommand {
 
         if (-not $completed) {
             $stopwatch.Stop()
-            try { $process.Kill($true) } catch { }
+            try { $process.Kill() } catch { Write-Log -Level "DEBUG" -Message "Failed to kill timed-out process: $_" }
 
             $timeoutMsg = "az command timed out after ${TimeoutSeconds}s: az $Command"
             if ($isFatal) {
