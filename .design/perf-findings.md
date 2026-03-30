@@ -92,6 +92,14 @@ after each action. This is the **only** persistence path for game state.
 when a new request arrives, the request is noted and the save loop runs again with
 the latest state. Rapid actions produce at most one save per save-cycle duration (~35ms).
 
+## Note: HandlePersistGameAsync
+
+`GameStateMachine.HandlePersistGameAsync` provides an explicit save path for
+user-initiated Save/SaveAs operations. This calls `Log.SaveAsync()` directly
+(not `RequestSave`), which is correct — explicit saves should be synchronous
+and guaranteed. This is the only other code that triggers persistence, and it's
+user-initiated (not per-action).
+
 ## Remaining Items
 
 - **Linear growth:** At turn 500, serialize+compress will be ~70ms per save. Still

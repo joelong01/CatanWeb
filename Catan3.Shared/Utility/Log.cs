@@ -40,6 +40,12 @@ namespace Catan3.Shared.Utility
         /// Save coalescing: rapid calls to RequestSave() are coalesced so only
         /// the latest state is persisted. This prevents O(N) serialize+compress
         /// from running on every action in a fast sequence.
+        ///
+        /// Thread safety: The DoneStack/RedoStack are ObservableCollection (not thread-safe).
+        /// This is safe because game actions are processed sequentially by the GameStateMachine —
+        /// only one action modifies the stacks at a time. The background save reads the stacks
+        /// via GetSerializableLog() which iterates them, but new actions don't arrive until
+        /// the current action's Done() + RequestSave() completes.
         /// </summary>
         private int _saveRequested = 0; // 0 = no pending save, 1 = save requested
         private int _saveRunning = 0;   // 0 = idle, 1 = save in progress
@@ -616,7 +622,7 @@ namespace Catan3.Shared.Utility
                 Interlocked.Exchange(ref _saveRunning, 0);
 
                 // Check if another request arrived while we were finishing
-                if (_saveRequested == 1)
+                if (Volatile.Read(ref _saveRequested) == 1)
                 {
                     if (Interlocked.CompareExchange(ref _saveRunning, 1, 0) == 0)
                     {
@@ -653,7 +659,7 @@ namespace Catan3.Shared.Utility
             }
             catch (Exception ex)
             {
-                _logger?.TraceMessage($"Failed SaveAsync: {ex.Message}");
+                _logger?.Trace(GameTraceLevel.Warning, $"Failed SaveAsync: {ex.Message}");
             }
         }
 
