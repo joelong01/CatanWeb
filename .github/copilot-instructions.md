@@ -75,7 +75,7 @@ pwsh ./catan.ps1 azure deploy
 
 - .NET 9.0 (pinned in `global.json`)
 - Blazor WebAssembly + ASP.NET Core + SignalR
-- SQLite via Entity Framework Core
+- CosmosDB for NoSQL
 - xUnit for testing
 
 For comprehensive details, see `.ai/ai-rules.md`.

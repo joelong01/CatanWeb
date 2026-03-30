@@ -78,6 +78,7 @@ $ErrorActionPreference = "Stop"
 # Import utility module for logging
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "$ScriptDir/utility-scripts.psm1" -Force
+Set-ModuleTraceLevel -TraceLevel $TraceLevel
 
 # Set default TraceLevel for all Write-Log calls in this script
 $PSDefaultParameterValues = @{
@@ -130,141 +131,25 @@ $DefaultConfig = @{
     }
 }
 
-#region Azure CLI Wrapper
-
-<#
-.SYNOPSIS
-    Executes an Azure CLI command with logging and error handling.
-.DESCRIPTION
-    Wraps az CLI calls to provide consistent logging, error handling, and debugging.
-    Logs the command being executed, captures output, and optionally fails on errors.
-.PARAMETER Command
-    The az CLI command arguments (without 'az' prefix)
-.PARAMETER FailOnError
-    If true (default), throws an error when az returns non-zero exit code
-.PARAMETER SuppressOutput
-    If true, doesn't return the command output (for commands where we don't need results)
-.PARAMETER JsonOutput
-    If true, parses the output as JSON and returns as object
-.EXAMPLE
-    Invoke-AzCommand "account show --query name -o tsv"
-.EXAMPLE
-    Invoke-AzCommand "group create --name rg-test --location westus2" -JsonOutput
-#>
-function Invoke-AzCommand {
-    param(
-        [Parameter(Mandatory, Position = 0)]
-        [string]$Command,
-
-        [bool]$FailOnError = $true,
-        [switch]$SuppressOutput,
-        [switch]$JsonOutput
-    )
-
-    Write-Log -Level "DEBUG" -Message "az $Command"
-
-    # Execute and capture both stdout and stderr
-    $output = $null
-    $errorOutput = $null
-    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
-    try {
-        # Use Invoke-Expression to run the command
-        $fullCommand = "az $Command 2>&1"
-        $result = Invoke-Expression $fullCommand
-        $exitCode = $LASTEXITCODE
-        $stopwatch.Stop()
-
-        # Separate stdout from stderr (error records)
-        $output = $result | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }
-        $errorOutput = $result | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] }
-
-        # Format duration for logging
-        $elapsed = $stopwatch.Elapsed
-        $durationStr = if ($elapsed.TotalMinutes -ge 1) {
-            "{0:N1} min" -f $elapsed.TotalMinutes
-        } elseif ($elapsed.TotalSeconds -ge 1) {
-            "{0:N1}s" -f $elapsed.TotalSeconds
-        } else {
-            "{0:N0}ms" -f $elapsed.TotalMilliseconds
-        }
-
-        # Log duration on separate line - INFO for slow commands (>10s), DEBUG otherwise
-        $durationLevel = if ($elapsed.TotalSeconds -ge 10) { "INFO" } else { "DEBUG" }
-        Write-Log -Level $durationLevel -Message "  completed in $durationStr"
-
-        if ($exitCode -ne 0) {
-            $errorMsg = if ($errorOutput) { $errorOutput -join "`n" } else { "Command failed with exit code $exitCode" }
-            Write-Log -Level "DEBUG" -Message "az exit code: $exitCode"
-
-            if ($FailOnError) {
-                Write-Log -Level "ERROR" -Message "az $Command"
-                Write-Log -Level "ERROR" -Message $errorMsg
-                throw "Azure CLI command failed: $errorMsg"
-            }
-            else {
-                Write-Log -Level "DEBUG" -Message "Command failed (non-fatal): $errorMsg"
-                return $null
-            }
-        }
-
-        if ($SuppressOutput) {
-            return $true
-        }
-
-        if ($JsonOutput -and $output) {
-            return $output | ConvertFrom-Json
-        }
-
-        return $output
-    }
-    catch {
-        $stopwatch.Stop()
-        if ($FailOnError) {
-            throw
-        }
-        return $null
-    }
-}
-
-#endregion
+# Invoke-AzCommand is provided by utility-scripts.psm1 (no local copy)
 
 #region Configuration Functions
+# Get-AzureConfig, Save-AzureConfig, Test-AzureLogin, Register-AzureProvider,
+# Install-AzureResourceGroup, Remove-AzureResourceGroup, Install-AzureAppServicePlan,
+# Install-AzureAppInsights, Get-GitCommitHash, Deploy-KuduZip, Test-DeploymentNeeded
+# — all provided by utility-scripts.psm1
 
-<#
-.SYNOPSIS
-    Loads Azure configuration from the config file.
-.DESCRIPTION
-    Reads the catan-azure.json config file and returns it as a hashtable.
-    If the file doesn't exist, returns a clone of the default configuration.
-.OUTPUTS
-    Hashtable containing Azure resource configuration (baseName, resourceGroup, etc.)
-#>
-function Get-AzureConfig {
-    if (Test-Path $AzureConfigFile) {
-        return Get-Content $AzureConfigFile -Raw | ConvertFrom-Json -AsHashtable
-    }
+# Thin wrapper: returns config as hashtable (callers use hashtable syntax throughout)
+# Falls back to $DefaultConfig when no config file exists yet (first install)
+function Get-LocalConfig {
+    $config = Get-AzureConfig -ProjectRoot $ProjectRoot -AsHashtable -AllowMissing
+    if ($config) { return $config }
     return $DefaultConfig.Clone()
 }
 
-<#
-.SYNOPSIS
-    Saves Azure configuration to the config file.
-.DESCRIPTION
-    Writes the configuration hashtable to catan-azure.json.
-    Creates the .azure directory if it doesn't exist.
-.PARAMETER Config
-    Hashtable containing Azure resource configuration
-#>
-function Save-AzureConfig {
+function Save-LocalConfig {
     param([hashtable]$Config)
-
-    if (-not (Test-Path $AzureConfigDir)) {
-        New-Item -ItemType Directory -Path $AzureConfigDir -Force | Out-Null
-    }
-
-    $Config | ConvertTo-Json -Depth 10 | Set-Content $AzureConfigFile
-    Write-Log -Level "INFO" -Message "Configuration saved to $AzureConfigFile"
+    Save-AzureConfig -ProjectRoot $ProjectRoot -Config $Config
 }
 
 <#
@@ -341,8 +226,8 @@ function Get-AvailableBaseName {
 .SYNOPSIS
     Creates a full configuration from a base name.
 .DESCRIPTION
-    Takes a base name and generates all derived resource names following
-    Azure naming conventions (rg-*, st*, asp-*, ai-*, etc.)
+    Delegates to the module's Get-AzureResourceNames for naming conventions,
+    then populates the hashtable config format used by this script.
 .PARAMETER BaseName
     The base name to derive all resource names from
 .OUTPUTS
@@ -351,19 +236,33 @@ function Get-AvailableBaseName {
 function Initialize-ConfigFromBaseName {
     param([string]$BaseName)
 
-    $config = Get-AzureConfig
+    $az = Get-AzureResourceNames -ProjectRoot $ProjectRoot
+
+    # Start from DefaultConfig to ensure all nested hashtables exist,
+    # then overlay with values from the config file and derived names
+    $config = $DefaultConfig.Clone()
+    $fileConfig = Get-LocalConfig
+    # Preserve non-derived fields from the file (e.g., auth)
+    foreach ($key in $fileConfig.Keys) {
+        $config[$key] = $fileConfig[$key]
+    }
+
     $config.baseName = $BaseName
-    $config.resourceGroup = "rg-$BaseName"
-    $config.storageAccount = "st$($BaseName -replace '-', '')"
-    $config.gameService.appServicePlan = "asp-$BaseName"
-    $config.gameService.appName = "$BaseName-api"
-    $config.gameService.url = "https://$BaseName-api.azurewebsites.net"
-    $config.ui.appName = $BaseName
-    $config.ui.url = "https://$BaseName.azurewebsites.net"
-    $config.appInsights.name = "ai-$BaseName"
-    $config.sqlServer.serverName = "sql-$BaseName"
-    $config.sqlServer.databaseName = "catan"
-    $config.sqlServer.fqdn = "sql-$BaseName.database.windows.net"
+    $config.resourceGroup = $az.ResourceGroup
+    $config.location = $az.Location
+    $config.storageAccount = $az.StorageAccount
+    $config.gameService = @{
+        appServicePlan = $az.GameServicePlan
+        appName        = $az.GameServiceAppName
+        url            = $az.GameServiceUrl
+    }
+    $config.ui = @{
+        appName = $az.UiAppName
+        url     = $az.UiUrl
+    }
+    $config.appInsights = @{
+        name = $az.AppInsights
+    }
 
     return $config
 }
@@ -372,189 +271,16 @@ function Initialize-ConfigFromBaseName {
 
 #region Azure Auth Functions
 
-<#
-.SYNOPSIS
-    Verifies Azure CLI login status.
-.DESCRIPTION
-    Checks if the user is logged into Azure CLI and displays account info.
-    Returns false with guidance if not logged in.
-.OUTPUTS
-    Boolean - $true if logged in, $false otherwise
-#>
-function Test-AzureLogin {
-    $account = Invoke-AzCommand "account show" -FailOnError $false -JsonOutput
-    if (-not $account) {
-        Write-Log -Level "ERROR" -Message "Not logged into Azure"
-        Write-Log -Level "INFO" -Message "Please run: az login"
-        return $false
-    }
-    Write-Log -Level "INFO" -Message "Logged in as: $($account.user.name)"
-    Write-Log -Level "INFO" -Message "Subscription: $($account.name)"
-    return $true
-}
+# Test-AzureLogin provided by utility-scripts.psm1
 
-<#
-.SYNOPSIS
-    Registers an Azure resource provider.
-.DESCRIPTION
-    Checks if a provider is registered and registers it if needed.
-    Waits up to 2 minutes for registration to complete.
-.PARAMETER Namespace
-    The provider namespace (e.g., "Microsoft.Storage", "Microsoft.Web")
-.OUTPUTS
-    Boolean - $true if registered successfully
-#>
-function Register-AzureProvider {
-    param([string]$Namespace)
-
-    $state = Invoke-AzCommand "provider show --namespace $Namespace --query registrationState -o tsv" -FailOnError $false
-    if ($state -eq "Registered") {
-        Write-Log -Level "DEBUG" -Message "Provider $Namespace already registered"
-        return $true
-    }
-
-    Write-Log -Level "INFO" -Message "Registering provider: $Namespace"
-    Invoke-AzCommand "provider register --namespace $Namespace" -SuppressOutput
-
-    # Wait for registration to complete (up to 2 minutes)
-    $maxWait = 120
-    $waited = 0
-    while ($waited -lt $maxWait) {
-        Start-Sleep -Seconds 5
-        $waited += 5
-        $state = Invoke-AzCommand "provider show --namespace $Namespace --query registrationState -o tsv" -FailOnError $false
-        if ($state -eq "Registered") {
-            Write-Log -Level "INFO" -Message "Provider $Namespace registered"
-            return $true
-        }
-        Write-Log -Level "DEBUG" -Message "Waiting for $Namespace registration... ($waited s)"
-    }
-
-    throw "Provider $Namespace registration timed out after $maxWait seconds"
-}
-
-#endregion
-
-#region Resource Group Functions
-
-<#
-.SYNOPSIS
-    Creates or verifies the Azure resource group.
-.DESCRIPTION
-    Checks if the resource group exists and creates it if not.
-.PARAMETER Config
-    Azure configuration hashtable containing resourceGroup and location
-.OUTPUTS
-    Boolean - $true on success
-#>
-function Install-ResourceGroup {
-    param([hashtable]$Config)
-
-    $rgName = $Config.resourceGroup
-    $location = $Config.location
-
-    Write-Log -Level "INFO" -Message "Checking resource group: $rgName"
-
-    $existing = Invoke-AzCommand "group show --name $rgName" -FailOnError $false -JsonOutput
-    if ($existing) {
-        Write-Log -Level "INFO" -Message "Resource group exists: $rgName"
-        return $true
-    }
-
-    Write-Log -Level "INFO" -Message "Creating resource group: $rgName in $location"
-    Invoke-AzCommand "group create --name $rgName --location $location" -SuppressOutput
-    Write-Log -Level "INFO" -Message "Resource group created: $rgName"
-    return $true
-}
-
-<#
-.SYNOPSIS
-    Deletes the Azure resource group and all contained resources.
-.DESCRIPTION
-    Initiates async deletion of the resource group. This deletes ALL resources
-    within the group including storage, web apps, and databases.
-.PARAMETER Config
-    Azure configuration hashtable containing resourceGroup
-.OUTPUTS
-    Boolean - $true if deletion started or group doesn't exist
-#>
-function Remove-ResourceGroup {
-    param([hashtable]$Config)
-
-    $rgName = $Config.resourceGroup
-
-    $existing = Invoke-AzCommand "group show --name $rgName" -FailOnError $false -JsonOutput
-    if (-not $existing) {
-        Write-Log -Level "INFO" -Message "Resource group does not exist: $rgName"
-        return $true
-    }
-
-    Write-Log -Level "WARN" -Message "Deleting resource group: $rgName (this deletes ALL resources)"
-    Invoke-AzCommand "group delete --name $rgName --yes --no-wait" -SuppressOutput
-    Write-Log -Level "INFO" -Message "Resource group deletion started: $rgName"
-    return $true
-}
+# Register-AzureProvider, Install-AzureResourceGroup, Remove-AzureResourceGroup
+# provided by utility-scripts.psm1
 
 #endregion
 
 #region Application Insights Functions
 
-<#
-.SYNOPSIS
-    Creates Application Insights resource.
-.DESCRIPTION
-    Creates an Application Insights resource for monitoring and telemetry.
-    Returns the connection string for use by web apps.
-.PARAMETER Config
-    Azure configuration hashtable
-.OUTPUTS
-    String - Application Insights connection string
-#>
-function Install-AppInsights {
-    param([hashtable]$Config)
-
-    $rgName = $Config.resourceGroup
-    $location = $Config.location
-    $appInsightsName = $Config.appInsights.name
-
-    # Ensure resource group exists
-    Install-ResourceGroup -Config $Config | Out-Null
-
-    Write-Log -Level "INFO" -Message "Checking Application Insights: $appInsightsName"
-
-    $existing = Invoke-AzCommand "monitor app-insights component show --app $appInsightsName --resource-group $rgName" -FailOnError $false -JsonOutput
-    if (-not $existing) {
-        Write-Log -Level "INFO" -Message "Creating Application Insights: $appInsightsName"
-        Invoke-AzCommand "monitor app-insights component create --app $appInsightsName --resource-group $rgName --location $location --kind web --application-type web" -SuppressOutput
-        Write-Log -Level "INFO" -Message "Application Insights created: $appInsightsName"
-    }
-    else {
-        Write-Log -Level "INFO" -Message "Application Insights exists: $appInsightsName"
-    }
-
-    # Get the connection string
-    $connectionString = Invoke-AzCommand "monitor app-insights component show --app $appInsightsName --resource-group $rgName --query connectionString -o tsv"
-
-    return $connectionString
-}
-
-<#
-.SYNOPSIS
-    Gets Application Insights connection string.
-.PARAMETER Config
-    Azure configuration hashtable
-.OUTPUTS
-    String - Connection string or $null if not found
-#>
-function Get-AppInsightsConnectionString {
-    param([hashtable]$Config)
-
-    $rgName = $Config.resourceGroup
-    $appInsightsName = $Config.appInsights.name
-
-    $connectionString = Invoke-AzCommand "monitor app-insights component show --app $appInsightsName --resource-group $rgName --query connectionString -o tsv" -FailOnError $false
-    return $connectionString
-}
+# Install-AzureAppInsights provided by utility-scripts.psm1
 
 #endregion
 
@@ -581,7 +307,7 @@ function Install-Database {
     $databaseName = $Config.sqlServer.databaseName
 
     # Ensure resource group exists
-    Install-ResourceGroup -Config $Config | Out-Null
+    Install-AzureResourceGroup -ResourceGroup $Config.resourceGroup -Location $Config.location | Out-Null
 
     # Ensure Microsoft.Sql provider is registered
     Register-AzureProvider -Namespace "Microsoft.Sql"
@@ -1627,53 +1353,7 @@ function Clean-Database {
 
 #region App Service Functions
 
-<#
-.SYNOPSIS
-    Creates or verifies the Azure App Service Plan.
-.DESCRIPTION
-    Creates a Linux App Service Plan (B1 SKU) if it doesn't exist.
-    This plan hosts both GameService and WebUI apps.
-.PARAMETER Config
-    Azure configuration hashtable
-.OUTPUTS
-    Boolean - $true on success
-#>
-function Install-AppServicePlan {
-    param([hashtable]$Config)
-
-    $rgName = $Config.resourceGroup
-    $planName = $Config.gameService.appServicePlan
-    $location = $Config.location
-
-    # Ensure Microsoft.Web provider is registered
-    Register-AzureProvider -Namespace "Microsoft.Web"
-
-    Write-Log -Level "INFO" -Message "Checking App Service Plan: $planName"
-
-    $existing = Invoke-AzCommand "appservice plan show --name $planName --resource-group $rgName" -FailOnError $false -JsonOutput
-    if (-not $existing) {
-        # IMPORTANT: --number-of-workers 1 is required because GameStateMachineRegistry uses
-        # an in-memory dictionary. Multiple instances would have separate dictionaries and
-        # players on different instances couldn't see the same game state.
-        Write-Log -Level "INFO" -Message "Creating App Service Plan: $planName (B1, single instance)"
-        Invoke-AzCommand "appservice plan create --name $planName --resource-group $rgName --location $location --sku B1 --is-linux --number-of-workers 1" -SuppressOutput
-        Write-Log -Level "INFO" -Message "App Service Plan created: $planName"
-    }
-    else {
-        # Check if SKU needs upgrade (F1/D1 don't support Always On)
-        $currentSku = $existing.sku.name
-        if ($currentSku -in @("F1", "D1")) {
-            Write-Log -Level "INFO" -Message "Upgrading App Service Plan from $currentSku to B1 (required for Always On)"
-            Invoke-AzCommand "appservice plan update --name $planName --resource-group $rgName --sku B1" -SuppressOutput
-            Write-Log -Level "INFO" -Message "App Service Plan upgraded to B1"
-        }
-        else {
-            Write-Log -Level "INFO" -Message "App Service Plan exists: $planName (SKU: $currentSku)"
-        }
-    }
-
-    return $true
-}
+# Install-AzureAppServicePlan provided by utility-scripts.psm1
 
 <#
 .SYNOPSIS
@@ -1694,8 +1374,8 @@ function Install-GameService {
     $appName = $Config.gameService.appName
 
     # Ensure resource group and plan exist
-    Install-ResourceGroup -Config $Config | Out-Null
-    Install-AppServicePlan -Config $Config | Out-Null
+    Install-AzureResourceGroup -ResourceGroup $Config.resourceGroup -Location $Config.location | Out-Null
+    Install-AzureAppServicePlan -ResourceGroup $Config.resourceGroup -PlanName $Config.gameService.appServicePlan -Location $Config.location | Out-Null
 
     Write-Log -Level "INFO" -Message "Checking GameService App: $appName"
 
@@ -1720,12 +1400,12 @@ function Install-GameService {
     Write-Log -Level "INFO" -Message "Setting container startup timeout to 600s..."
     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
 
-    # Install and connect Application Insights
-    $appInsightsConnectionString = Install-AppInsights -Config $Config
-    if ($appInsightsConnectionString) {
-        Write-Log -Level "INFO" -Message "Connecting Application Insights to $appName..."
-        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings APPLICATIONINSIGHTS_CONNECTION_STRING=`"$appInsightsConnectionString`"" -SuppressOutput
-    }
+    # Application Insights — skipped (not currently used; az monitor app-insights can hang)
+    # To re-enable: uncomment and ensure Invoke-AzCommand timeout handles slow responses
+    # $appInsightsConnectionString = Install-AppInsights -Config $Config
+    # if ($appInsightsConnectionString) {
+    #     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings APPLICATIONINSIGHTS_CONNECTION_STRING=`"$appInsightsConnectionString`"" -SuppressOutput
+    # }
 
     # Enable managed identity
     Write-Log -Level "INFO" -Message "Enabling managed identity for $appName..."
@@ -1769,7 +1449,7 @@ function Install-GameService {
 .SYNOPSIS
     Creates and configures the WebUI Azure Web App.
 .DESCRIPTION
-    Creates the .NET 9.0 web app for the Blazor WebAssembly frontend,
+    Creates the web app for the React UI (Next.js),
     enables managed identity, and configures GameService URL.
 .PARAMETER Config
     Azure configuration hashtable
@@ -1784,8 +1464,8 @@ function Install-UI {
     $appName = $Config.ui.appName
 
     # Ensure resource group and plan exist
-    Install-ResourceGroup -Config $Config | Out-Null
-    Install-AppServicePlan -Config $Config | Out-Null
+    Install-AzureResourceGroup -ResourceGroup $Config.resourceGroup -Location $Config.location | Out-Null
+    Install-AzureAppServicePlan -ResourceGroup $Config.resourceGroup -PlanName $Config.gameService.appServicePlan -Location $Config.location | Out-Null
 
     Write-Log -Level "INFO" -Message "Checking UI App: $appName"
 
@@ -1803,12 +1483,11 @@ function Install-UI {
     Write-Log -Level "INFO" -Message "Enabling Always On for $appName..."
     Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --always-on true" -SuppressOutput
 
-    # Install and connect Application Insights
-    $appInsightsConnectionString = Install-AppInsights -Config $Config
-    if ($appInsightsConnectionString) {
-        Write-Log -Level "INFO" -Message "Connecting Application Insights to $appName..."
-        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings APPLICATIONINSIGHTS_CONNECTION_STRING=`"$appInsightsConnectionString`"" -SuppressOutput
-    }
+    # Application Insights — skipped (not currently used; az monitor app-insights can hang)
+    # $appInsightsConnectionString = Install-AppInsights -Config $Config
+    # if ($appInsightsConnectionString) {
+    #     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings APPLICATIONINSIGHTS_CONNECTION_STRING=`"$appInsightsConnectionString`"" -SuppressOutput
+    # }
 
     # Enable managed identity (for future extensibility)
     Write-Log -Level "INFO" -Message "Enabling managed identity for $appName..."
@@ -2087,187 +1766,8 @@ function Get-GitHubDoctor {
     return $result
 }
 
-<#
-.SYNOPSIS
-    Gets the current git commit hash for change detection.
-.DESCRIPTION
-    Returns the short git commit hash of HEAD for tracking deployments.
-.OUTPUTS
-    String - The short commit hash (7 chars)
-#>
-function Get-GitCommitHash {
-    try {
-        # Compare against origin/main (what CI/CD deploys) rather than the
-        # checked-out HEAD, so the doctor doesn't report NEEDS DEPLOY when
-        # the user is simply on a feature branch.
-        $hash = git -C $ProjectRoot rev-parse --short origin/main 2>$null
-        if ([string]::IsNullOrWhiteSpace($hash)) { return "unknown" }
-        # rev-parse always returns one line; Select-Object guards against
-        # edge cases where $hash is an array, which would cause .Trim() to throw.
-        return ($hash | Select-Object -First 1).Trim()
-    }
-    catch {
-        return "unknown"
-    }
-}
-
-<#
-.SYNOPSIS
-    Deploys a zip package via the Kudu ZIP Deploy REST API.
-.DESCRIPTION
-    Uses the Kudu /api/zipdeploy?isAsync=true endpoint which genuinely returns
-    202 immediately, unlike 'az webapp deploy --async true' which has a known bug
-    (https://github.com/Azure/azure-cli/issues/29003) that still polls for site startup.
-    After submitting the zip, polls the deployment status endpoint with a controlled timeout.
-.PARAMETER AppName
-    The Azure web app name
-.PARAMETER ResourceGroup
-    The Azure resource group name
-.PARAMETER ZipPath
-    Path to the zip file to deploy
-.PARAMETER Slot
-    Optional deployment slot name (e.g., 'staging'). If omitted, deploys to production.
-.OUTPUTS
-    Boolean - $true on success
-#>
-function Deploy-KuduZip {
-    param(
-        [Parameter(Mandatory)]
-        [string]$AppName,
-        [Parameter(Mandatory)]
-        [string]$ResourceGroup,
-        [Parameter(Mandatory)]
-        [string]$ZipPath,
-        [string]$Slot = $null
-    )
-
-    # Get Azure AD bearer token for Kudu auth (works even when SCM basic auth is disabled)
-    $tokenResult = Invoke-AzCommand "account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv" -FailOnError $false
-    if (-not $tokenResult) {
-        Write-Log -Level "ERROR" -Message "Failed to get Azure access token"
-        return $false
-    }
-    $headers = @{ Authorization = "Bearer $tokenResult" }
-
-    # Determine SCM hostname
-    $scmHost = if ($Slot) {
-        "$AppName-$Slot.scm.azurewebsites.net"
-    } else {
-        "$AppName.scm.azurewebsites.net"
-    }
-
-    $slotLabel = if ($Slot) { " (slot: $Slot)" } else { "" }
-    Write-Log -Level "INFO" -Message "Deploying via Kudu API to $scmHost$slotLabel..."
-
-    # POST zip to Kudu (truly async — returns 202 immediately)
-    $uri = "https://$scmHost/api/zipdeploy?isAsync=true"
-    try {
-        $response = Invoke-WebRequest -Uri $uri -Method Post `
-            -InFile $ZipPath `
-            -ContentType "application/zip" `
-            -Headers $headers `
-            -UseBasicParsing `
-            -TimeoutSec 300
-    }
-    catch {
-        Write-Log -Level "ERROR" -Message "Kudu deploy request failed: $_"
-        return $false
-    }
-
-    if ($response.StatusCode -ne 202) {
-        Write-Log -Level "ERROR" -Message "Kudu deploy returned HTTP $($response.StatusCode) (expected 202)"
-        return $false
-    }
-
-    Write-Log -Level "INFO" -Message "Deploy submitted (HTTP 202). Polling status..."
-
-    # Poll deployment status with timeout (60 x 10s = 10 min max)
-    $statusUri = "https://$scmHost/api/deployments/latest"
-    for ($i = 1; $i -le 60; $i++) {
-        Start-Sleep -Seconds 10
-        try {
-            $status = Invoke-RestMethod -Uri $statusUri -Headers $headers -TimeoutSec 15
-            $code = $status.status
-            # Kudu status codes: 0=Pending, 1=Building, 2=Deploying, 3=Failed, 4=Success
-            $statusLabel = switch ($code) {
-                0 { "Pending" }
-                1 { "Building" }
-                2 { "Deploying" }
-                3 { "Failed" }
-                4 { "Success" }
-                default { "Unknown ($code)" }
-            }
-            $level = if ($i % 6 -eq 0) { "INFO" } else { "DEBUG" }
-            Write-Log -Level $level -Message "  Deploy status ($($i * 10)s): $statusLabel"
-            if ($code -eq 4) {
-                Write-Log -Level "INFO" -Message "Kudu deployment succeeded"
-                return $true
-            }
-            if ($code -eq 3) {
-                Write-Log -Level "ERROR" -Message "Kudu deployment failed"
-                return $false
-            }
-        }
-        catch {
-            Write-Log -Level "DEBUG" -Message "  Status poll error: $_"
-        }
-    }
-
-    # Timed out but the deploy was submitted — the site may still be starting
-    Write-Log -Level "WARN" -Message "Deploy status polling timed out after 10 min (deploy was submitted)"
-    return $true
-}
-
-<#
-.SYNOPSIS
-    Checks if deployment is needed by comparing git commit hashes.
-.DESCRIPTION
-    Compares the current git commit hash with the deployed version stored
-    in Azure app settings. Returns true if deployment is needed.
-.PARAMETER AppName
-    The Azure web app name
-.PARAMETER ResourceGroup
-    The Azure resource group name
-.PARAMETER Force
-    If true, always returns true (skip check)
-.OUTPUTS
-    Boolean - $true if deployment is needed, $false if up-to-date
-#>
-function Test-DeploymentNeeded {
-    param(
-        [string]$AppName,
-        [string]$ResourceGroup,
-        [bool]$Force,
-        [string]$Slot = $null
-    )
-
-    if ($Force) {
-        Write-Log -Level "INFO" -Message "Force deploy requested"
-        return $true
-    }
-
-    $currentHash = Get-GitCommitHash
-    Write-Log -Level "DEBUG" -Message "Current git commit: $currentHash"
-
-    # Get deployed version from app settings
-    $slotArgs = if ($Slot) { " --slot $Slot" } else { "" }
-    $deployedHash = Invoke-AzCommand "webapp config appsettings list --name $AppName --resource-group $ResourceGroup$slotArgs --query `"[?name=='DEPLOY_COMMIT'].value | [0]`" -o tsv" -FailOnError $false
-
-    if (-not $deployedHash) {
-        Write-Log -Level "INFO" -Message "No previous deployment found"
-        return $true
-    }
-
-    Write-Log -Level "DEBUG" -Message "Deployed git commit: $deployedHash"
-
-    if ($currentHash -eq $deployedHash) {
-        Write-Log -Level "INFO" -Message "Already deployed (commit $currentHash). Use -Force to redeploy."
-        return $false
-    }
-
-    Write-Log -Level "INFO" -Message "Changes detected: $deployedHash -> $currentHash"
-    return $true
-}
+# Get-GitCommitHash, Deploy-KuduZip, Test-DeploymentNeeded
+# provided by utility-scripts.psm1
 
 <#
 .SYNOPSIS
@@ -2310,18 +1810,12 @@ function Deploy-GameService {
         }
 
         # Always ensure required settings are present (idempotent)
+        # Copy Cosmos settings from production so the staging slot can connect to the same DB
         Write-Log -Level "INFO" -Message "Configuring slot '$Slot' settings..."
-        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot $Slot --settings DATABASE_MODE=azure AZURE_STORAGE_ACCOUNT=$($Config.storageAccount) AZURE_STORAGE_CONTAINER=$($Config.storageContainer) WEBSITES_CONTAINER_START_TIME_LIMIT=600 SCM_DO_BUILD_DURING_DEPLOYMENT=false" -SuppressOutput
-
-        # Copy connection string from production if missing
-        $slotConnStr = Invoke-AzCommand "webapp config connection-string list --name $appName --resource-group $rgName --slot $Slot" -FailOnError $false -JsonOutput
-        if (-not $slotConnStr -or $slotConnStr.Count -eq 0) {
-            Write-Log -Level "INFO" -Message "Copying connection string from production to slot '$Slot'..."
-            $prodConnStr = Invoke-AzCommand "webapp config connection-string list --name $appName --resource-group $rgName" -JsonOutput
-            foreach ($cs in $prodConnStr) {
-                Invoke-AzCommand "webapp config connection-string set --name $appName --resource-group $rgName --slot $Slot --connection-string-type $($cs.type) --settings $($cs.name)=`"$($cs.value)`"" -SuppressOutput
-            }
-        }
+        $prodSettings = Invoke-AzCommand "webapp config appsettings list --name $appName --resource-group $rgName" -Check -JsonOutput
+        $cosmosEndpoint = ($prodSettings | Where-Object { $_.name -eq 'COSMOS_ENDPOINT' } | Select-Object -First 1).value
+        $cosmosDatabase = ($prodSettings | Where-Object { $_.name -eq 'COSMOS_DATABASE' } | Select-Object -First 1).value
+        Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot $Slot --settings DATABASE_MODE=azure COSMOS_ENDPOINT=$cosmosEndpoint COSMOS_DATABASE=$cosmosDatabase WEBSITES_CONTAINER_START_TIME_LIMIT=600 SCM_DO_BUILD_DURING_DEPLOYMENT=false" -SuppressOutput
     }
 
     # Check if deployment is needed
@@ -2388,47 +1882,93 @@ function Deploy-UI {
 
     $rgName = $Config.resourceGroup
     $appName = $Config.ui.appName
-    # Deploy WebUI.Server (hosts the Blazor WASM client) instead of standalone WebUI
-    $projectPath = Join-Path $ProjectRoot "WebUI.Server"
-    $publishPath = Join-Path $ProjectRoot ".publish/webui"
-    $zipPath = Join-Path $ProjectRoot ".publish/webui.zip"
+    $reactDir = Join-Path $ProjectRoot "react-ui"
+    $deployDir = Join-Path $ProjectRoot ".publish/react-production"
+    $zipPath = Join-Path $ProjectRoot ".publish/react-ui-production.zip"
+    $gameServiceUrl = $Config.gameService.url
 
     # Check if deployment is needed
     if (-not (Test-DeploymentNeeded -AppName $appName -ResourceGroup $rgName -Force $Force)) {
         return $true
     }
 
-    Write-Log -Level "INFO" -Message "Publishing WebUI.Server..."
-    $publishArgs = @($projectPath, "-c", "Release", "-o", $publishPath, "--nologo", "-v", "q")
-    if ($NoBuild) { $publishArgs += "--no-build" }
-    dotnet publish @publishArgs
+    # Ensure production slot is configured for Node.js (idempotent)
+    Write-Log -Level "INFO" -Message "Ensuring production is configured for Node.js..."
+    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings WEBSITE_NODE_DEFAULT_VERSION=~22 SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
 
-    # Remove BlazorDebugProxy (saves ~11 MB, not needed in production)
-    $debugProxyPath = Join-Path $publishPath "BlazorDebugProxy"
-    if (Test-Path $debugProxyPath) {
-        Remove-Item $debugProxyPath -Recurse -Force
-        Write-Log -Level "DEBUG" -Message "Removed BlazorDebugProxy folder"
+    # Install dependencies — remove node_modules first to break file locks
+    # (VS Code / Claude Code may hold native .node binaries open)
+    Write-Log -Level "INFO" -Message "Installing React UI dependencies..."
+    $nodeModulesPath = Join-Path $reactDir "node_modules"
+    if (Test-Path $nodeModulesPath) {
+        Write-Log -Level "DEBUG" -Message "Removing node_modules to break file locks..."
+        Remove-Item $nodeModulesPath -Recurse -Force -ErrorAction SilentlyContinue
+        if (Test-Path $nodeModulesPath) {
+            Write-Log -Level "WARN" -Message "Could not fully remove node_modules — a process may hold a lock."
+            Write-Log -Level "INFO" -Message "  Try closing VS Code or other editors, then retry."
+        }
+    }
+    Push-Location $reactDir
+    try {
+        $npmOutput = npm ci 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log -Level "ERROR" -Message "npm ci failed:"
+            $npmOutput | ForEach-Object { Write-Log -Level "ERROR" -Message "  $_" }
+            return $false
+        }
+
+        # Build Next.js standalone with production GameService URL
+        Write-Log -Level "INFO" -Message "Building React UI (standalone)..."
+        $env:NEXT_PUBLIC_GAME_SERVICE_URL = $gameServiceUrl
+        $buildOutput = npm run build 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Log -Level "ERROR" -Message "Next.js build failed:"
+            $buildOutput | ForEach-Object { Write-Log -Level "ERROR" -Message "  $_" }
+            return $false
+        }
+        $buildOutput | ForEach-Object { Write-Log -Level "DEBUG" -Message $_ }
+    }
+    finally {
+        Pop-Location
     }
 
-    Write-Log -Level "INFO" -Message "Creating deployment package..."
+    # Assemble deployment package
+    Write-Log -Level "INFO" -Message "Assembling deployment package..."
+    if (Test-Path $deployDir) { Remove-Item $deployDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
+
+    $standalonePath = Join-Path $reactDir ".next/standalone/react-ui"
+    if (-not (Test-Path $standalonePath)) {
+        $standalonePath = Join-Path $reactDir ".next/standalone"
+    }
+    Copy-Item -Path "$standalonePath/*" -Destination $deployDir -Recurse -Force
+    Copy-Item -Path (Join-Path $reactDir ".next/static") -Destination (Join-Path $deployDir ".next/static") -Recurse -Force
+    Copy-Item -Path (Join-Path $reactDir "public") -Destination (Join-Path $deployDir "public") -Recurse -Force
+
+    # Create zip
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-    Compress-Archive -Path "$publishPath/*" -DestinationPath $zipPath
+    $items = Get-ChildItem -Path $deployDir -Force | Where-Object { $_.Name -ne '.' -and $_.Name -ne '..' }
+    Compress-Archive -Path $items.FullName -DestinationPath $zipPath
 
     $zipSize = (Get-Item $zipPath).Length / 1MB
-    Write-Log -Level "INFO" -Message "Deploying to Azure ($([math]::Round($zipSize, 1)) MB)..."
+    Write-Log -Level "INFO" -Message "Deploying React UI to production ($([math]::Round($zipSize, 1)) MB)..."
 
-    # Deploy via Kudu ZIP Deploy API (truly async, unlike az webapp deploy --async true)
+    # Set the GameService URL
+    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings NEXT_PUBLIC_GAME_SERVICE_URL=$gameServiceUrl" -SuppressOutput
+
+    # Deploy via Kudu ZIP Deploy API
     if (-not (Deploy-KuduZip -AppName $appName -ResourceGroup $rgName -ZipPath $zipPath)) {
         return $false
     }
 
-    # Restart the app after deploy to ensure the new code is loaded
+    # Restart to load new deployment
     Write-Log -Level "INFO" -Message "Restarting app to load new deployment..."
     Invoke-AzCommand "webapp restart --name $appName --resource-group $rgName" -SuppressOutput
 
-    # Store the deployed commit hash and build timestamp
+    # Store deployed commit
     $commitHash = Get-GitCommitHash
-    $buildTime = (Get-Date -Format "o")  # ISO 8601 format
+    $buildTime = (Get-Date -Format "o")
     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings DEPLOY_COMMIT=$commitHash DEPLOY_BUILD_TIME=`"$buildTime`"" -SuppressOutput
 
     Write-Log -Level "INFO" -Message "UI deployed: $($Config.ui.url)"
@@ -2732,17 +2272,34 @@ function Get-GameServiceDoctor {
             }
         }
 
-        # Code is deployed if health endpoint responds (regardless of commit tracking)
-        $result.checks.codeDeployed = $result.checks.healthEndpoint
+        # Code deployed = health endpoint responds OR DEPLOY_COMMIT is set in app settings
+        # (app may still be starting after a fresh deploy — don't confuse cold start with "not deployed")
+        if (-not $result.checks.healthEndpoint) {
+            $deployCommit = $appSettings | Where-Object { $_.name -eq 'DEPLOY_COMMIT' } | Select-Object -First 1
+            if ($deployCommit -and -not [string]::IsNullOrWhiteSpace($deployCommit.value)) {
+                $result.checks.codeDeployed = $true
+                $result.deployedCommit = $deployCommit.value
+                Write-Log -Level "DEBUG" -Message "Health endpoint down but DEPLOY_COMMIT=$($deployCommit.value) — code is deployed (likely cold start)"
+                $deployBuildTime = $appSettings | Where-Object { $_.name -eq 'DEPLOY_BUILD_TIME' } | Select-Object -First 1
+                if ($deployBuildTime) { $result.deployedBuildTime = $deployBuildTime.value }
+            } else {
+                $result.checks.codeDeployed = $false
+            }
+        } else {
+            $result.checks.codeDeployed = $true
+        }
 
         # Check if deploy is needed:
-        # - Health endpoint doesn't work = needs deploy
+        # - No code deployed at all = needs deploy
         # - Health endpoint works but no version info = old code, needs deploy
-        # - No build time tracking = needs deploy (to enable tracking)
-        # - Commit mismatch = needs deploy (code changed, even if uncommitted)
-        if (-not $result.checks.healthEndpoint) {
+        # - Commit mismatch = needs deploy
+        if (-not $result.checks.codeDeployed) {
             $result.needsDeploy = $true
-            $result.deployReason = "Health endpoint not responding"
+            $result.deployReason = "No code deployed"
+        }
+        elseif (-not $result.checks.healthEndpoint -and $result.checks.codeDeployed) {
+            # Code is deployed but health endpoint not responding — cold start, not a deploy issue
+            $result.coldStart = $true
         }
         elseif ([string]::IsNullOrWhiteSpace($result.deployedCommit) -or $result.deployedCommit -eq "local") {
             # Health endpoint works but no version info in response = old code deployed
@@ -2766,8 +2323,8 @@ function Get-GameServiceDoctor {
         }
         # Note: If commits match but code is uncommitted, -Force flag can be used to redeploy
 
-        # Healthy if endpoint responds
-        $result.healthy = $result.checks.healthEndpoint
+        # Healthy if endpoint responds OR code is deployed but cold-starting
+        $result.healthy = $result.checks.healthEndpoint -or ($result.checks.codeDeployed -and $result.coldStart)
 
         Write-Log -Level "DEBUG" -Message "GameService doctor complete: healthy=$($result.healthy), needsDeploy=$($result.needsDeploy)" -TraceLevel $TraceLevel
     }
@@ -2893,15 +2450,18 @@ function Get-UIDoctor {
             if (-not $allDone) { Start-Sleep -Milliseconds 500 }
         }
 
-        # Collect results
-        $runtime = (Receive-Job $jobs[0]).Trim()
+        # Collect results (any job may return $null for staging slots without config)
+        $runtimeRaw = Receive-Job $jobs[0]
+        $runtime = if ($runtimeRaw) { "$runtimeRaw".Trim() } else { "" }
         Write-Log -Level "DEBUG" -Message "$targetLabel runtime: $runtime" -TraceLevel $TraceLevel
         $result.prodRuntime = $runtime
 
-        $identity = (Receive-Job $jobs[1]).Trim()
+        $identityRaw = Receive-Job $jobs[1]
+        $identity = if ($identityRaw) { "$identityRaw".Trim() } else { "" }
         $result.checks.managedIdentity = (-not [string]::IsNullOrWhiteSpace($identity))
 
-        $appSettingsJson = (Receive-Job $jobs[2]) -join "`n"
+        $appSettingsRaw = Receive-Job $jobs[2]
+        $appSettingsJson = if ($appSettingsRaw) { ($appSettingsRaw) -join "`n" } else { "" }
         $appSettings = if ($appSettingsJson) { $appSettingsJson | ConvertFrom-Json -ErrorAction SilentlyContinue } else { $null }
         $configuredUrl = if ($appSettings) { ($appSettings | Where-Object { $_.name -eq $gameServiceSettingName } | Select-Object -First 1).value } else { $null }
         $result.checks.gameServiceUrl = ($configuredUrl -eq $gameServiceUrl)
@@ -3074,10 +2634,10 @@ function Show-DoctorResult {
     $col2 = 12  # Status
 
     # Header
-    Write-Host ""
-    Write-Host "$($Result.resource) ($($Result.name))" -ForegroundColor Cyan
-    Write-Host ("-" * 60)
-    Write-Host ("Check".PadRight($col1) + "Status".PadRight($col2) + "Details") -ForegroundColor Yellow
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "$($Result.resource) ($($Result.name))" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message ("-" * 60) -NoLabel
+    Write-Log -Level INFO -Message ("Check".PadRight($col1) + "Status".PadRight($col2) + "Details") -NoLabel -ForegroundColor Gray
 
     # Helper to show a check row
     function Show-CheckRow {
@@ -3085,13 +2645,10 @@ function Show-DoctorResult {
         $statusText = if ($Status) { "OK" } else { "MISSING" }
         $statusColor = if ($Status) { "Green" } else { "Red" }
 
-        Write-Host -NoNewline ("  " + $Name).PadRight($col1)
-        Write-Host -NoNewline $statusText.PadRight($col2) -ForegroundColor $statusColor
-        if ($Details) {
-            Write-Host $Details -ForegroundColor Gray
-        } else {
-            Write-Host ""
-        }
+        # Build the full row as one string to avoid -NoNewline issues
+        $row = ("  " + $Name).PadRight($col1) + $statusText.PadRight($col2)
+        if ($Details) { $row += $Details }
+        Write-Log -Level INFO -Message $row -NoLabel -ForegroundColor $statusColor
     }
 
     # Show checks based on resource type
@@ -3152,131 +2709,121 @@ function Show-DoctorResult {
 
     # Show runtime info if available
     if ($Result.prodRuntime) {
-        Write-Host ""
-        Write-Host -NoNewline ("  Runtime").PadRight($col1)
-        $rtLabel = if ($Result.prodRuntime -like "DOTNETCORE*") { "Blazor ($($Result.prodRuntime))" }
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message ("  Runtime").PadRight($col1) -NoLabel -NoNewline
+        $rtLabel = if ($Result.prodRuntime -like "DOTNETCORE*") { ".NET ($($Result.prodRuntime))" }
                    elseif ($Result.prodRuntime -like "NODE*") { "React/Next.js ($($Result.prodRuntime))" }
                    else { $Result.prodRuntime }
         $rtColor = if ($Result.checks.siteResponding) { "Green" } else { "Yellow" }
-        Write-Host $rtLabel -ForegroundColor $rtColor
+        Write-Log -Level INFO -Message $rtLabel -ForegroundColor $rtColor -NoLabel
     }
 
     # Show git commit info if available
     if ($Result.currentCommit -or $Result.deployedCommit) {
-        Write-Host ""
-        Write-Host -NoNewline ("  Git Commit").PadRight($col1)
+        Write-Log -Level INFO -Message "" -NoLabel
         if ($Result.currentCommit -eq $Result.deployedCommit -and $Result.deployedCommit) {
-            Write-Host -NoNewline "MATCH".PadRight($col2) -ForegroundColor Green
-            Write-Host "$($Result.currentCommit)" -ForegroundColor Gray
+            $commitRow = ("  Git Commit").PadRight($col1) + "MATCH".PadRight($col2) + $Result.currentCommit
+            Write-Log -Level INFO -Message $commitRow -NoLabel -ForegroundColor Green
         } elseif ($Result.deployedCommit -and $Result.deployedCommit -ne "local") {
             if ($Result.needsDeploy) {
-                # Commits differ and deployable files changed — action required
-                Write-Host -NoNewline "MISMATCH".PadRight($col2) -ForegroundColor Yellow
-                Write-Host "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)" -ForegroundColor Gray
+                $commitRow = ("  Git Commit").PadRight($col1) + "MISMATCH".PadRight($col2) + "deployed: $($Result.deployedCommit) -> current: $($Result.currentCommit)"
+                Write-Log -Level INFO -Message $commitRow -NoLabel -ForegroundColor Yellow
             } else {
-                # Commits differ but no deployable files changed — informational only
-                Write-Host -NoNewline "OK".PadRight($col2) -ForegroundColor Green
-                Write-Host "deployed: $($Result.deployedCommit) (current: $($Result.currentCommit), no deployable changes)" -ForegroundColor Gray
+                $commitRow = ("  Git Commit").PadRight($col1) + "OK".PadRight($col2) + "deployed: $($Result.deployedCommit) (no deployable changes)"
+                Write-Log -Level INFO -Message $commitRow -NoLabel -ForegroundColor Green
             }
         } else {
-            Write-Host -NoNewline "NONE".PadRight($col2) -ForegroundColor Yellow
-            Write-Host "not yet deployed" -ForegroundColor Gray
+            $commitRow = ("  Git Commit").PadRight($col1) + "NONE".PadRight($col2) + "not yet deployed"
+            Write-Log -Level INFO -Message $commitRow -NoLabel -ForegroundColor Yellow
         }
     }
 
     # Show build time if available
     if ($Result.deployedBuildTime -and $Result.deployedBuildTime -ne "unknown") {
-        Write-Host -NoNewline ("  Build Time").PadRight($col1)
-        Write-Host -NoNewline "DEPLOYED".PadRight($col2) -ForegroundColor Green
-        Write-Host "$($Result.deployedBuildTime)" -ForegroundColor Gray
+        Write-Log -Level INFO -Message ("  Build Time").PadRight($col1) -NoLabel -NoNewline
+        Write-Log -Level INFO -Message "DEPLOYED".PadRight($col2) -NoLabel -NoNewline -ForegroundColor Green
+        Write-Log -Level INFO -Message "$($Result.deployedBuildTime)" -NoLabel
     }
 
     # Show database status if available
     if ($Result.dbStatus) {
-        Write-Host -NoNewline ("  Database Status").PadRight($col1)
+        Write-Log -Level INFO -Message ("  Database Status").PadRight($col1) -NoLabel -NoNewline
         $dbColor = switch ($Result.dbStatus) {
             "Online" { "Green" }
             "Paused" { "Yellow" }
             default { "Red" }
         }
-        Write-Host $Result.dbStatus -ForegroundColor $dbColor
+        Write-Log -Level INFO -Message $Result.dbStatus -ForegroundColor $dbColor -NoLabel
     }
 
     # Show diagnostic issue from health endpoint if available
     if ($Result.diagnosticIssue) {
-        Write-Host -NoNewline ("  Diagnostic Issue").PadRight($col1)
+        Write-Log -Level INFO -Message ("  Diagnostic Issue").PadRight($col1) -NoLabel -NoNewline
         $issueColor = switch ($Result.diagnosticIssue) {
             "None" { "Green" }
             "DatabasePaused" { "Yellow" }
             "ConnectionTimeout" { "Yellow" }
             default { "Red" }
         }
-        Write-Host $Result.diagnosticIssue -ForegroundColor $issueColor
+        Write-Log -Level INFO -Message $Result.diagnosticIssue -ForegroundColor $issueColor -NoLabel
     }
 
     # Show Azure database status from diagnostics if different from local check
     if ($Result.azureDatabaseStatus -and $Result.azureDatabaseStatus -ne $Result.dbStatus) {
-        Write-Host -NoNewline ("  Azure DB Status").PadRight($col1)
+        Write-Log -Level INFO -Message ("  Azure DB Status").PadRight($col1) -NoLabel -NoNewline
         $azureDbColor = switch ($Result.azureDatabaseStatus) {
             "Online" { "Green" }
             "Paused" { "Yellow" }
             default { "Red" }
         }
-        Write-Host $Result.azureDatabaseStatus -ForegroundColor $azureDbColor
+        Write-Log -Level INFO -Message $Result.azureDatabaseStatus -ForegroundColor $azureDbColor -NoLabel
     }
 
     # Summary line
-    Write-Host ""
-    Write-Host -NoNewline "Status: "
+    Write-Log -Level INFO -Message "" -NoLabel
     if ($Result.needsInstall) {
-        Write-Host "NEEDS INSTALL" -ForegroundColor Red
-        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "$script:CmdHintPrefix $($Result.resource) install" -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Status: NEEDS INSTALL" -NoLabel -ForegroundColor Red
+        Write-Log -Level INFO -Message "  Recommended: $script:CmdHintPrefix $($Result.resource) install" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.needsFix) {
-        Write-Host "NEEDS FIX" -ForegroundColor Yellow
-        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "$script:CmdHintPrefix $($Result.resource) fix" -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Status: NEEDS FIX" -NoLabel -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "  Recommended: $script:CmdHintPrefix $($Result.resource) fix" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.needsDeploy) {
-        Write-Host "NEEDS DEPLOY" -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "Status: NEEDS DEPLOY" -NoLabel -ForegroundColor Yellow
         if ($Result.deployReason) {
-            Write-Host "  Reason: $($Result.deployReason)" -ForegroundColor Gray
+            Write-Log -Level INFO -Message "  Reason: $($Result.deployReason)" -NoLabel
         }
-        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "$script:CmdHintPrefix $($Result.resource) deploy" -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "  Recommended: $script:CmdHintPrefix $($Result.resource) deploy" -NoLabel -ForegroundColor Cyan
     } elseif ($Result.healthy -and $Result.coldStart) {
-        Write-Host "HEALTHY " -ForegroundColor Green -NoNewline
-        Write-Host "(site not responding — likely cold start, browse URL to wake)" -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "Status: HEALTHY (site not responding — likely cold start, browse URL to wake)" -NoLabel -ForegroundColor Yellow
     } elseif ($Result.healthy) {
-        Write-Host "HEALTHY" -ForegroundColor Green
+        Write-Log -Level INFO -Message "Status: HEALTHY" -NoLabel -ForegroundColor Green
     } else {
-        Write-Host "UNKNOWN" -ForegroundColor Red
+        Write-Log -Level INFO -Message "Status: UNKNOWN" -NoLabel -ForegroundColor Red
     }
 
-    # Show staging deploy status separately (staging issues don't block production)
+    # Show staging deploy status separately
     if ($Result.needsStagingDeploy) {
-        Write-Host -NoNewline "Staging: "
-        Write-Host "NEEDS DEPLOY" -ForegroundColor Yellow
-        Write-Host "  Recommended: " -NoNewline -ForegroundColor Gray
-        Write-Host "$script:CmdHintPrefix ui deploy-staging" -ForegroundColor Cyan
+        Write-Log -Level INFO -Message "Staging: NEEDS DEPLOY" -NoLabel -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "  Recommended: $script:CmdHintPrefix ui deploy-staging" -NoLabel -ForegroundColor Cyan
     }
 
     # Show performance warnings if any
     if ($Result.performanceWarnings) {
-        Write-Host ""
-        Write-Host "Performance Warnings:" -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "" -NoLabel
+        Write-Log -Level INFO -Message "Performance Warnings:" -NoLabel -ForegroundColor Yellow
         foreach ($warning in $Result.performanceWarnings) {
-            Write-Host "  ⚠️  $warning" -ForegroundColor Yellow
+            Write-Log -Level INFO -Message "  ⚠️  $warning" -NoLabel -ForegroundColor Yellow
         }
     }
 
     # Show note if any
     if ($Result.note) {
-        Write-Host "  Note: $($Result.note)" -ForegroundColor Yellow
+        Write-Log -Level INFO -Message "  Note: $($Result.note)" -NoLabel -ForegroundColor Yellow
     }
 
     # Show error if any
     if ($Result.error) {
-        Write-Host "  Error: $($Result.error)" -ForegroundColor Red
+        Write-Log -Level INFO -Message "  Error: $($Result.error)" -NoLabel -ForegroundColor Red
     }
 }
 
@@ -3299,12 +2846,12 @@ function Test-GameServicePerformance {
     $testCount = 5
     $times = @()
 
-    Write-Host ""
-    Write-Host "Performance Test: $url" -ForegroundColor Cyan
-    Write-Host "=" * 50
-    Write-Host ""
-    Write-Host "Running $testCount sequential requests to /api/players..."
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Performance Test: $url" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "=" * 50 -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Running $testCount sequential requests to /api/players..." -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 
     for ($i = 1; $i -le $testCount; $i++) {
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -3317,21 +2864,21 @@ function Test-GameServicePerformance {
             $color = if ($elapsed -lt 1) { "Green" } elseif ($elapsed -lt 3) { "Yellow" } else { "Red" }
             $status = if ($elapsed -lt 1) { "FAST" } elseif ($elapsed -lt 3) { "SLOW" } else { "VERY SLOW" }
 
-            Write-Host ("  Request {0}: {1,6:N2}s  " -f $i, $elapsed) -NoNewline
-            Write-Host $status -ForegroundColor $color
+            Write-Log -Level INFO -Message ("  Request {0}: {1,6:N2}s  " -f $i, $elapsed) -NoLabel -NoNewline
+            Write-Log -Level INFO -Message $status -ForegroundColor $color -NoLabel
         }
         catch {
             $stopwatch.Stop()
-            Write-Host ("  Request {0}: FAILED - {1}" -f $i, $_.Exception.Message) -ForegroundColor Red
+            Write-Log -Level ERROR -Message ("  Request {0}: FAILED - {1}" -f $i, $_.Exception.Message)
         }
 
         # Small delay between requests
         Start-Sleep -Milliseconds 200
     }
 
-    Write-Host ""
-    Write-Host "Summary:" -ForegroundColor Cyan
-    Write-Host "-" * 30
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Summary:" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "-" * 30 -NoLabel
 
     if ($times.Count -gt 0) {
         $min = ($times | Measure-Object -Minimum).Minimum
@@ -3340,54 +2887,54 @@ function Test-GameServicePerformance {
         $first = $times[0]
         $warmAvg = if ($times.Count -gt 1) { ($times[1..($times.Count-1)] | Measure-Object -Average).Average } else { $first }
 
-        Write-Host ("  First request (cold):  {0,6:N2}s" -f $first)
-        Write-Host ("  Warm average:          {0,6:N2}s" -f $warmAvg)
-        Write-Host ("  Min / Max:             {0,6:N2}s / {1:N2}s" -f $min, $max)
-        Write-Host ""
+        Write-Log -Level INFO -Message ("  First request (cold):  {0,6:N2}s" -f $first) -NoLabel
+        Write-Log -Level INFO -Message ("  Warm average:          {0,6:N2}s" -f $warmAvg) -NoLabel
+        Write-Log -Level INFO -Message ("  Min / Max:             {0,6:N2}s / {1:N2}s" -f $min, $max) -NoLabel
+        Write-Log -Level INFO -Message "" -NoLabel
 
         # Performance assessment
         if ($first -gt 10) {
-            Write-Host "⚠️  Cold start is very slow (>10s). Check:" -ForegroundColor Yellow
-            Write-Host "   - App Service Plan SKU (needs B1+ for Always On)" -ForegroundColor Gray
-            Write-Host "   - Always On setting (prevents cold starts)" -ForegroundColor Gray
-            Write-Host "   - Azure SQL auto-pause (may need to wake up)" -ForegroundColor Gray
+            Write-Log -Level WARN -Message "⚠️  Cold start is very slow (>10s). Check:"
+            Write-Log -Level INFO -Message "   - App Service Plan SKU (needs B1+ for Always On)" -NoLabel
+            Write-Log -Level INFO -Message "   - Always On setting (prevents cold starts)" -NoLabel
+            Write-Log -Level INFO -Message "   - Azure SQL auto-pause (may need to wake up)" -NoLabel
         }
         elseif ($first -gt 5) {
-            Write-Host "⚠️  Cold start is slow (>5s). Consider:" -ForegroundColor Yellow
-            Write-Host "   - Enabling Always On if not already enabled" -ForegroundColor Gray
+            Write-Log -Level WARN -Message "⚠️  Cold start is slow (>5s). Consider:"
+            Write-Log -Level INFO -Message "   - Enabling Always On if not already enabled" -NoLabel
         }
         else {
-            Write-Host "✅ Cold start is acceptable (<5s)" -ForegroundColor Green
+            Write-Log -Level INFO -Message "✅ Cold start is acceptable (<5s)" -NoLabel -ForegroundColor Green
         }
 
         if ($warmAvg -gt 2) {
-            Write-Host "⚠️  Warm requests are slow (>2s avg). Check:" -ForegroundColor Yellow
-            Write-Host "   - Connection pooling in connection string" -ForegroundColor Gray
-            Write-Host "   - Azure SQL tier and capacity" -ForegroundColor Gray
+            Write-Log -Level WARN -Message "⚠️  Warm requests are slow (>2s avg). Check:"
+            Write-Log -Level INFO -Message "   - Connection pooling in connection string" -NoLabel
+            Write-Log -Level INFO -Message "   - Azure SQL tier and capacity" -NoLabel
         }
         elseif ($warmAvg -gt 1) {
-            Write-Host "⚠️  Warm requests are a bit slow (>1s avg)" -ForegroundColor Yellow
+            Write-Log -Level WARN -Message "⚠️  Warm requests are a bit slow (>1s avg)"
         }
         else {
-            Write-Host "✅ Warm requests are good (<1s avg)" -ForegroundColor Green
+            Write-Log -Level INFO -Message "✅ Warm requests are good (<1s avg)" -NoLabel -ForegroundColor Green
         }
 
         # Check for high variance (indicates connection issues)
         if ($times.Count -gt 2) {
             $variance = $max - $min
             if ($variance -gt 5) {
-                Write-Host "⚠️  High variance detected ({0:N2}s). May indicate:" -f $variance -ForegroundColor Yellow
-                Write-Host "   - Connection pool exhaustion" -ForegroundColor Gray
-                Write-Host "   - Network instability" -ForegroundColor Gray
-                Write-Host "   - Token refresh issues (Managed Identity)" -ForegroundColor Gray
+                Write-Log -Level WARN -Message ("⚠️  High variance detected ({0:N2}s). May indicate:" -f $variance)
+                Write-Log -Level INFO -Message "   - Connection pool exhaustion" -NoLabel
+                Write-Log -Level INFO -Message "   - Network instability" -NoLabel
+                Write-Log -Level INFO -Message "   - Token refresh issues (Managed Identity)" -NoLabel
             }
         }
     }
     else {
-        Write-Host "  No successful requests - check service health" -ForegroundColor Red
+        Write-Log -Level ERROR -Message "  No successful requests - check service health"
     }
 
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 #endregion
@@ -3412,7 +2959,7 @@ Usage:
     ./catan-azure.ps1 <noun> <verb>       Run verb on specific resource
 
 Nouns:
-    ui              WebUI Blazor application
+    ui              React UI (Next.js) application
     database        Azure SQL Serverless database
     game-service    GameService ASP.NET Core API
     github          GitHub Actions OIDC authentication
@@ -3446,7 +2993,7 @@ Examples:
     ./catan-azure.ps1 github install            Setup GitHub Actions OIDC
     ./catan-azure.ps1 game-service clean       Delete GameService only
 "@
-    Write-Host $help
+    Write-Log -Level INFO -Message $help -NoLabel
 }
 
 #endregion
@@ -3472,22 +3019,31 @@ if (-not (Test-AzureLogin)) {
 }
 
 # Load or initialize config
-$config = Get-AzureConfig
+$config = Get-LocalConfig
 
 # For install, ensure we have a base name
 if ($Verb -eq "install") {
     if (-not $config.baseName) {
         $baseName = Get-AvailableBaseName
         $config = Initialize-ConfigFromBaseName -BaseName $baseName
-        Save-AzureConfig -Config $config
+        # Only persist baseName (+ auth if present) — all other names are derived
+        $persistConfig = @{ baseName = $baseName }
+        if ($config.auth) { $persistConfig.auth = $config.auth }
+        Save-LocalConfig -Config $persistConfig
     }
     else {
+        # baseName exists — derive all resource names (convention over configuration)
+        $config = Initialize-ConfigFromBaseName -BaseName $config.baseName
         Write-Log -Level "INFO" -Message "Using existing base name: $($config.baseName)"
     }
 }
 elseif (-not $config.baseName) {
     Write-Log -Level "ERROR" -Message "No Azure configuration found. Run 'install' first."
     exit 1
+}
+else {
+    # Non-install verbs: still need derived names populated
+    $config = Initialize-ConfigFromBaseName -BaseName $config.baseName
 }
 
 # Execute operation
@@ -3565,14 +3121,14 @@ if ($Noun -in @("doctor", "install", "deploy", "clean") -and -not $Verb) {
 
             # Show service URLs
             $baseName = $config.baseName
-            Write-Host ""
-            Write-Host "Service URLs ($envLabel):" -ForegroundColor Cyan
+            Write-Log -Level INFO -Message "" -NoLabel
+            Write-Log -Level INFO -Message "Service URLs ($envLabel):" -NoLabel -ForegroundColor Cyan
             if ($Staging) {
-                Write-Host "  WebUI:       https://$baseName-staging.azurewebsites.net"
-                Write-Host "  GameService: https://$baseName-api-staging.azurewebsites.net"
+                Write-Log -Level INFO -Message "  WebUI:       https://$baseName-staging.azurewebsites.net" -NoLabel
+                Write-Log -Level INFO -Message "  GameService: https://$baseName-api-staging.azurewebsites.net" -NoLabel
             } else {
-                Write-Host "  WebUI:       $($config.ui.url)"
-                Write-Host "  GameService: $($config.gameService.url)"
+                Write-Log -Level INFO -Message "  WebUI:       $($config.ui.url)" -NoLabel
+                Write-Log -Level INFO -Message "  GameService: $($config.gameService.url)" -NoLabel
             }
 
             $success = $allHealthy

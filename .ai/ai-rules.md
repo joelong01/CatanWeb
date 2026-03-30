@@ -332,7 +332,7 @@ Check `.gitignore` for excluded files:
 
 - `.webui-pids.json` - WebUI process tracking
 - `code-reviews/` - AI-generated code reviews
-- `*.db`, `*.db-shm`, `*.db-wal` - SQLite database files
+- `*.db`, `*.db-shm`, `*.db-wal` - Database files
 - `.test-images/` - Test images for AI analysis (see Image Analysis section)
 
 ### Image Analysis
@@ -551,7 +551,7 @@ This creates a traceable chain: **Issue → PR → Commit → Code**.
 - **.NET 9.0**: Core framework (pinned via `global.json`)
 - **Blazor WebAssembly**: WebUI frontend
 - **ASP.NET Core**: GameService backend with SignalR
-- **SQLite**: Local database (mirrors future CosmosDB schema)
+- **CosmosDB**: Database (local emulator + Azure)
 - **SVG**: Dynamic board rendering
 - **PowerShell 7+**: Build and automation scripts (use `pwsh` command, not `powershell`)
 
@@ -573,7 +573,7 @@ This creates a traceable chain: **Issue → PR → Commit → Code**.
 ### Security Notes
 
 - **No credentials in code**: Use configuration files (not committed)
-- **Database location**: SQLite files in user profile (not repository)
+- **Database location**: CosmosDB emulator (local) or Azure CosmosDB (production)
 - **API keys**: Document where needed, never commit actual keys
 
 ## Design, Planning, and Review Workflow

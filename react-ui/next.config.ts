@@ -67,6 +67,9 @@ const buildEnv = getBuildVersionEnv();
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  turbopack: {
+    root: __dirname,
+  },
   images: {
     unoptimized: true,
   },

@@ -12,6 +12,30 @@ $script:MinRequiredPowershellVersion = "7.0.0"
 # Add this at the top of the module
 $script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
+# Module-level TraceLevel: callers set this via Set-ModuleTraceLevel or
+# $PSDefaultParameterValues propagation. Defaults to INFO.
+$script:ModuleTraceLevel = "INFO"
+
+<#
+.SYNOPSIS
+    Sets the TraceLevel for all Write-Log calls within this module.
+.DESCRIPTION
+    Module functions can't see the caller's $PSDefaultParameterValues.
+    Call this after Import-Module to propagate your TraceLevel into the module.
+.EXAMPLE
+    Import-Module utility-scripts.psm1 -Force
+    Set-ModuleTraceLevel -TraceLevel "DEBUG"
+#>
+function Set-ModuleTraceLevel {
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
+        [string]$TraceLevel
+    )
+    $script:ModuleTraceLevel = $TraceLevel
+    $script:PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+}
+
 <#
 .SYNOPSIS
     Writes a log message with the specified level and trace level.
@@ -66,15 +90,21 @@ function Write-Log {
         [AllowEmptyString()]
         [string]$Message,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet("ERROR", "WARN", "INFO", "DEBUG")]
-        [string]$TraceLevel,
+        [string]$TraceLevel = "INFO",
 
         [Parameter(Mandatory = $false)]
         [switch]$Silent,
 
         [Parameter(Mandatory = $false)]
-        [switch]$NoLabel
+        [switch]$NoLabel,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$NoNewline,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ForegroundColor
     )
 
     # If Silent is set, only show DEBUG and STATUS messages
@@ -91,7 +121,7 @@ function Write-Log {
     }
 
     # Define colors for each level
-    $colors = @{
+    $defaultColors = @{
         "HEADER" = "Blue"
         "ERROR" = "Red"
         "WARN" = "Yellow"
@@ -105,6 +135,8 @@ function Write-Log {
 
     if ($Level -eq "HEADER" -or $Level -eq "STATUS" -or $messageLevelWeight -le $traceLevelWeight) {
         $indent = if ($Level -ne "HEADER") { "     " } else { "" }
+        # Use caller-specified color, or fall back to level default
+        $color = if ($ForegroundColor) { $ForegroundColor } else { $defaultColors[$Level] }
 
         # Add timestamp for all messages except STATUS
         if ($Level -eq "STATUS") {
@@ -126,11 +158,11 @@ function Write-Log {
             # For STATUS messages, clear the current line and rewrite
             try {
                 # Use carriage return approach for better compatibility
-                Write-Host "`r$(" " * 120)`r$logMessage" -ForegroundColor $colors[$Level] -NoNewline
+                Write-Host "`r$(" " * 120)`r$logMessage" -ForegroundColor $color -NoNewline
                 [Console]::Out.Flush()
             } catch {
                 # Fallback for environments where formatting fails
-                Write-Host "`r$logMessage" -ForegroundColor $colors[$Level] -NoNewline
+                Write-Host "`r$logMessage" -ForegroundColor $color -NoNewline
                 [Console]::Out.Flush()
             }
         } else {
@@ -147,7 +179,11 @@ function Write-Log {
             }
 
             # For all other message types, use regular output
-            Write-Host $logMessage -ForegroundColor $colors[$Level]
+            if ($NoNewline) {
+                Write-Host $logMessage -ForegroundColor $color -NoNewline
+            } else {
+                Write-Host $logMessage -ForegroundColor $color
+            }
         }
     }
 }
@@ -891,19 +927,587 @@ function Get-PowerShellVersion {
     return $PSVersionTable
 }
 
+<#
+.SYNOPSIS
+    Loads the Azure configuration from .azure/catan-azure.json.
+.DESCRIPTION
+    Reads and parses the Azure configuration file from the project root.
+    Exits with error if the file is not found.
+.PARAMETER ProjectRoot
+    The root directory of the project (where .azure/ lives).
+#>
+function Get-AzureConfig {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
 
+        [switch]$AsHashtable,
+        [switch]$AllowMissing
+    )
+
+    $configFile = Join-Path $ProjectRoot ".azure/catan-azure.json"
+    if (-not (Test-Path $configFile)) {
+        if ($AllowMissing) { return $null }
+        Write-Log -Level ERROR -Message "Azure configuration not found at $configFile"
+        Write-Log -Level WARN -Message "Run './catan.ps1 azure install' first."
+        exit 1
+    }
+
+    $raw = Get-Content $configFile -Raw
+    if ($AsHashtable) {
+        return $raw | ConvertFrom-Json -AsHashtable
+    }
+    return $raw | ConvertFrom-Json
+}
+
+<#
+.SYNOPSIS
+    Returns a hashtable of all Azure resource names derived from the config file.
+.DESCRIPTION
+    Loads the Azure config and resolves all resource names. For each name, uses
+    the explicit value from the config if present, otherwise derives it from baseName
+    using the project's naming conventions. This is the single source of truth for
+    Azure resource naming across all scripts.
+.PARAMETER ProjectRoot
+    The root directory of the project (where .azure/ lives).
+.OUTPUTS
+    Ordered hashtable with keys: BaseName, ResourceGroup, Location,
+    GameServiceAppName, GameServiceUrl, GameServicePlan,
+    UiAppName, UiUrl, StorageAccount, AppInsights,
+    CosmosAccount, CosmosEndpoint, CosmosDatabase
+.EXAMPLE
+    $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+    az cosmosdb show --name $az.CosmosAccount --resource-group $az.ResourceGroup
+#>
+function Get-AzureResourceNames {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $config = Get-AzureConfig -ProjectRoot $ProjectRoot
+    $base = $config.baseName
+    if (-not $base) {
+        Write-Log -Level ERROR -Message "baseName not set in .azure/catan-azure.json" -TraceLevel ERROR
+        exit 1
+    }
+
+    # Helper: return explicit config value if set, otherwise the derived default
+    function Resolve { param($obj, $prop, $default) if ($obj -and $obj.$prop) { $obj.$prop } else { $default } }
+
+    $cosmosAccount = Resolve $config.cosmosDb 'accountName' "cosmos-$base"
+
+    return [ordered]@{
+        BaseName           = $base
+        ResourceGroup      = Resolve $config 'resourceGroup'      "rg-$base"
+        Location           = Resolve $config 'location'            "westus2"
+        GameServiceAppName = Resolve $config.gameService 'appName' "$base-api"
+        GameServiceUrl     = Resolve $config.gameService 'url'     "https://$base-api.azurewebsites.net"
+        GameServicePlan    = Resolve $config.gameService 'appServicePlan' "asp-$base"
+        UiAppName          = Resolve $config.ui 'appName'          $base
+        UiUrl              = Resolve $config.ui 'url'              "https://$base.azurewebsites.net"
+        StorageAccount     = Resolve $config 'storageAccount'      "st$($base -replace '-', '')"
+        AppInsights        = Resolve $config.appInsights 'name'    "ai-$base"
+        CosmosAccount      = $cosmosAccount
+        CosmosEndpoint     = "https://$cosmosAccount.documents.azure.com:443/"
+        CosmosDatabase     = "catan"
+        Config             = $config  # original config object for other fields (auth, etc.)
+    }
+}
+
+# ─── Azure CLI Wrapper ───────────────────────────────────────────────────────
+
+<#
+.SYNOPSIS
+    Runs an Azure CLI command with timeout, structured output, and clean error handling.
+.PARAMETER Command
+    The az CLI command (without the leading "az").
+.PARAMETER Check
+    Existence probe mode. Returns $null on failure instead of throwing.
+    Use when checking if a resource exists (expected 404 is not an error).
+.PARAMETER FailOnError
+    Legacy parameter — use -Check instead. Kept for backward compatibility.
+.PARAMETER SuppressOutput
+    Returns $true on success instead of the command output.
+.PARAMETER JsonOutput
+    Parses output as JSON and returns the parsed object.
+.PARAMETER TimeoutSeconds
+    Maximum seconds to wait before killing the process. Default: 120.
+#>
+function Invoke-AzCommand {
+    param(
+        [Parameter(Mandatory, Position = 0)]
+        [string]$Command,
+
+        [switch]$Check,
+        [bool]$FailOnError = $true,
+        [switch]$SuppressOutput,
+        [switch]$JsonOutput,
+        [int]$TimeoutSeconds = 120
+    )
+
+    $isFatal = $FailOnError -and -not $Check
+
+    Write-Log -Level "DEBUG" -Message "az $Command"
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    try {
+        $azPath = (Get-Command az -ErrorAction Stop).Source
+
+        $psi = [System.Diagnostics.ProcessStartInfo]::new()
+        $psi.FileName = $azPath
+        $psi.Arguments = $Command
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.CreateNoWindow = $true
+        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+        $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $psi
+        $process.Start() | Out-Null
+
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+
+        $completed = $process.WaitForExit($TimeoutSeconds * 1000)
+
+        if (-not $completed) {
+            $stopwatch.Stop()
+            try { $process.Kill() } catch { Write-Log -Level "DEBUG" -Message "Failed to kill timed-out process: $_" }
+
+            $timeoutMsg = "az command timed out after ${TimeoutSeconds}s: az $Command"
+            if ($isFatal) {
+                Write-Log -Level "ERROR" -Message $timeoutMsg
+                throw $timeoutMsg
+            }
+            Write-Log -Level "DEBUG" -Message $timeoutMsg
+            return $null
+        }
+
+        $process.WaitForExit()
+        $stdout = $stdoutTask.GetAwaiter().GetResult().Trim()
+        $stderr = $stderrTask.GetAwaiter().GetResult().Trim()
+        $exitCode = $process.ExitCode
+
+        $stopwatch.Stop()
+
+        $elapsed = $stopwatch.Elapsed
+        $durationStr = if ($elapsed.TotalMinutes -ge 1) {
+            "{0:N1} min" -f $elapsed.TotalMinutes
+        } elseif ($elapsed.TotalSeconds -ge 1) {
+            "{0:N1}s" -f $elapsed.TotalSeconds
+        } else {
+            "{0:N0}ms" -f $elapsed.TotalMilliseconds
+        }
+
+        $durationLevel = if ($elapsed.TotalSeconds -ge 10) { "INFO" } else { "DEBUG" }
+        Write-Log -Level $durationLevel -Message "  completed in $durationStr"
+
+        if ($exitCode -ne 0) {
+            $errorMsg = if ($stderr) { $stderr } else { "Command failed with exit code $exitCode" }
+            Write-Log -Level "DEBUG" -Message "az exit code: $exitCode"
+
+            if ($isFatal) {
+                Write-Log -Level "ERROR" -Message "az $Command"
+                Write-Log -Level "ERROR" -Message $errorMsg
+                throw "Azure CLI command failed: $errorMsg"
+            }
+            else {
+                Write-Log -Level "DEBUG" -Message "Command failed (non-fatal): $errorMsg"
+                return $null
+            }
+        }
+
+        if ($SuppressOutput) { return $true }
+
+        if ($JsonOutput -and $stdout) {
+            try {
+                return ConvertFrom-Json $stdout
+            }
+            catch {
+                Write-Log -Level "DEBUG" -Message "JSON parse failed, returning raw output: $_"
+                return $stdout
+            }
+        }
+
+        return $stdout
+    }
+    catch {
+        $stopwatch.Stop()
+        if ($isFatal) { throw }
+        return $null
+    }
+    finally {
+        if ($process) { $process.Dispose() }
+    }
+}
+
+# ─── Azure Shared Helpers ────────────────────────────────────────────────────
+
+<#
+.SYNOPSIS
+    Saves Azure configuration to .azure/catan-azure.json.
+.PARAMETER ProjectRoot
+    The root directory of the project.
+.PARAMETER Config
+    Hashtable containing Azure resource configuration.
+#>
+function Save-AzureConfig {
+    param(
+        [Parameter(Mandatory)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory)]
+        [hashtable]$Config
+    )
+
+    $configDir = Join-Path $ProjectRoot ".azure"
+    $configFile = Join-Path $configDir "catan-azure.json"
+
+    if (-not (Test-Path $configDir)) {
+        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    }
+
+    $Config | ConvertTo-Json -Depth 10 | Set-Content $configFile
+    Write-Log -Level "INFO" -Message "Configuration saved to $configFile"
+}
+
+<#
+.SYNOPSIS
+    Verifies Azure CLI login status.
+.OUTPUTS
+    Boolean - $true if logged in, $false otherwise.
+#>
+function Test-AzureLogin {
+    $account = Invoke-AzCommand "account show" -Check -JsonOutput
+    if (-not $account) {
+        Write-Log -Level "ERROR" -Message "Not logged into Azure"
+        Write-Log -Level "INFO" -Message "Please run: az login"
+        return $false
+    }
+    Write-Log -Level "INFO" -Message "Logged in as: $($account.user.name)"
+    Write-Log -Level "INFO" -Message "Subscription: $($account.name)"
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Registers an Azure resource provider if not already registered.
+.PARAMETER Namespace
+    The provider namespace (e.g., "Microsoft.Web", "Microsoft.Storage").
+.OUTPUTS
+    Boolean - $true if registered.
+#>
+function Register-AzureProvider {
+    param([Parameter(Mandatory)][string]$Namespace)
+
+    $state = Invoke-AzCommand "provider show --namespace $Namespace --query registrationState -o tsv" -Check
+    if ($state -eq "Registered") {
+        Write-Log -Level "DEBUG" -Message "Provider $Namespace already registered"
+        return $true
+    }
+
+    Write-Log -Level "INFO" -Message "Registering provider: $Namespace"
+    Invoke-AzCommand "provider register --namespace $Namespace" -SuppressOutput
+
+    $maxWait = 120
+    $waited = 0
+    while ($waited -lt $maxWait) {
+        Start-Sleep -Seconds 5
+        $waited += 5
+        $state = Invoke-AzCommand "provider show --namespace $Namespace --query registrationState -o tsv" -Check
+        if ($state -eq "Registered") {
+            Write-Log -Level "INFO" -Message "Provider $Namespace registered"
+            return $true
+        }
+        Write-Log -Level "DEBUG" -Message "Waiting for $Namespace registration... ($waited s)"
+    }
+
+    throw "Provider $Namespace registration timed out after $maxWait seconds"
+}
+
+<#
+.SYNOPSIS
+    Creates or verifies an Azure resource group.
+.PARAMETER ResourceGroup
+    The resource group name.
+.PARAMETER Location
+    Azure region (e.g., "westus2").
+.OUTPUTS
+    Boolean - $true on success.
+#>
+function Install-AzureResourceGroup {
+    param(
+        [Parameter(Mandatory)][string]$ResourceGroup,
+        [Parameter(Mandatory)][string]$Location
+    )
+
+    Write-Log -Level "INFO" -Message "Checking resource group: $ResourceGroup"
+
+    $existing = Invoke-AzCommand "group show --name $ResourceGroup" -Check -JsonOutput
+    if ($existing) {
+        Write-Log -Level "INFO" -Message "Resource group exists: $ResourceGroup"
+        return $true
+    }
+
+    Write-Log -Level "INFO" -Message "Creating resource group: $ResourceGroup in $Location"
+    Invoke-AzCommand "group create --name $ResourceGroup --location $Location" -SuppressOutput
+    Write-Log -Level "INFO" -Message "Resource group created: $ResourceGroup"
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Deletes an Azure resource group and all resources within it.
+.PARAMETER ResourceGroup
+    The resource group name to delete.
+.OUTPUTS
+    Boolean - $true if deletion started or group doesn't exist.
+#>
+function Remove-AzureResourceGroup {
+    param([Parameter(Mandatory)][string]$ResourceGroup)
+
+    $existing = Invoke-AzCommand "group show --name $ResourceGroup" -Check -JsonOutput
+    if (-not $existing) {
+        Write-Log -Level "INFO" -Message "Resource group does not exist: $ResourceGroup"
+        return $true
+    }
+
+    Write-Log -Level "WARN" -Message "Deleting resource group: $ResourceGroup (this deletes ALL resources)"
+    Invoke-AzCommand "group delete --name $ResourceGroup --yes --no-wait" -SuppressOutput
+    Write-Log -Level "INFO" -Message "Resource group deletion started: $ResourceGroup"
+    return $true
+}
+
+# ─── Azure Resource Helpers ───────────────────────────────────────────────────
+
+<#
+.SYNOPSIS
+    Creates or verifies an App Service Plan.
+.PARAMETER ResourceGroup
+    Azure resource group name.
+.PARAMETER PlanName
+    App Service Plan name.
+.PARAMETER Location
+    Azure region.
+#>
+function Install-AzureAppServicePlan {
+    param(
+        [Parameter(Mandatory)][string]$ResourceGroup,
+        [Parameter(Mandatory)][string]$PlanName,
+        [Parameter(Mandatory)][string]$Location
+    )
+
+    Register-AzureProvider -Namespace "Microsoft.Web"
+
+    Write-Log -Level "INFO" -Message "Checking App Service Plan: $PlanName"
+
+    $existing = Invoke-AzCommand "appservice plan show --name $PlanName --resource-group $ResourceGroup" -Check -JsonOutput
+    if (-not $existing) {
+        Write-Log -Level "INFO" -Message "Creating App Service Plan: $PlanName (B1, single instance)"
+        Invoke-AzCommand "appservice plan create --name $PlanName --resource-group $ResourceGroup --location $Location --sku B1 --is-linux --number-of-workers 1" -SuppressOutput
+        Write-Log -Level "INFO" -Message "App Service Plan created: $PlanName"
+    }
+    else {
+        $currentSku = $existing.sku.name
+        if ($currentSku -in @("F1", "D1")) {
+            Write-Log -Level "INFO" -Message "Upgrading App Service Plan from $currentSku to B1 (required for Always On)"
+            Invoke-AzCommand "appservice plan update --name $PlanName --resource-group $ResourceGroup --sku B1" -SuppressOutput
+        }
+        else {
+            Write-Log -Level "INFO" -Message "App Service Plan exists: $PlanName (SKU: $currentSku)"
+        }
+    }
+
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Creates or verifies Application Insights. Returns connection string.
+#>
+function Install-AzureAppInsights {
+    param(
+        [Parameter(Mandatory)][string]$ResourceGroup,
+        [Parameter(Mandatory)][string]$AppInsightsName,
+        [Parameter(Mandatory)][string]$Location
+    )
+
+    Write-Log -Level "INFO" -Message "Checking Application Insights: $AppInsightsName"
+
+    $existing = Invoke-AzCommand "monitor app-insights component show --app $AppInsightsName --resource-group $ResourceGroup" -Check -JsonOutput
+    if (-not $existing) {
+        Write-Log -Level "INFO" -Message "Creating Application Insights: $AppInsightsName"
+        Invoke-AzCommand "monitor app-insights component create --app $AppInsightsName --resource-group $ResourceGroup --location $Location --kind web --application-type web" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Application Insights created: $AppInsightsName"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Application Insights exists: $AppInsightsName"
+    }
+
+    return Invoke-AzCommand "monitor app-insights component show --app $AppInsightsName --resource-group $ResourceGroup --query connectionString -o tsv"
+}
+
+<#
+.SYNOPSIS
+    Gets the short git commit hash of origin/main.
+#>
+function Get-GitCommitHash {
+    param([string]$ProjectRoot)
+
+    try {
+        $root = if ($ProjectRoot) { $ProjectRoot } else { $PWD.Path }
+        $hash = git -C $root rev-parse --short origin/main 2>$null
+        if ([string]::IsNullOrWhiteSpace($hash)) { return "unknown" }
+        return ($hash | Select-Object -First 1).Trim()
+    }
+    catch {
+        return "unknown"
+    }
+}
+
+<#
+.SYNOPSIS
+    Deploys a zip package via the Kudu ZIP Deploy REST API.
+.DESCRIPTION
+    Uses /api/zipdeploy?isAsync=true which returns 202 immediately, then polls
+    deployment status with a 10-minute timeout.
+#>
+function Deploy-KuduZip {
+    param(
+        [Parameter(Mandatory)][string]$AppName,
+        [Parameter(Mandatory)][string]$ResourceGroup,
+        [Parameter(Mandatory)][string]$ZipPath,
+        [string]$Slot = $null
+    )
+
+    $tokenResult = Invoke-AzCommand "account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv" -Check
+    if (-not $tokenResult) {
+        Write-Log -Level "ERROR" -Message "Failed to get Azure access token"
+        return $false
+    }
+    $headers = @{ Authorization = "Bearer $tokenResult" }
+
+    $scmHost = if ($Slot) { "$AppName-$Slot.scm.azurewebsites.net" } else { "$AppName.scm.azurewebsites.net" }
+    $slotLabel = if ($Slot) { " (slot: $Slot)" } else { "" }
+    Write-Log -Level "INFO" -Message "Deploying via Kudu API to $scmHost$slotLabel..."
+
+    $uri = "https://$scmHost/api/zipdeploy?isAsync=true"
+    try {
+        $response = Invoke-WebRequest -Uri $uri -Method Post -InFile $ZipPath `
+            -ContentType "application/zip" -Headers $headers -UseBasicParsing -TimeoutSec 300
+    }
+    catch {
+        Write-Log -Level "ERROR" -Message "Kudu deploy request failed: $_"
+        return $false
+    }
+
+    if ($response.StatusCode -ne 202) {
+        Write-Log -Level "ERROR" -Message "Kudu deploy returned HTTP $($response.StatusCode) (expected 202)"
+        return $false
+    }
+
+    Write-Log -Level "INFO" -Message "Deploy submitted (HTTP 202). Polling status..."
+
+    $statusUri = "https://$scmHost/api/deployments/latest"
+    for ($i = 1; $i -le 60; $i++) {
+        Start-Sleep -Seconds 10
+        try {
+            $status = Invoke-RestMethod -Uri $statusUri -Headers $headers -TimeoutSec 15
+            $code = $status.status
+            $statusLabel = switch ($code) { 0 { "Pending" } 1 { "Building" } 2 { "Deploying" } 3 { "Failed" } 4 { "Success" } default { "Unknown ($code)" } }
+            $level = if ($i % 6 -eq 0) { "INFO" } else { "DEBUG" }
+            Write-Log -Level $level -Message "  Deploy status ($($i * 10)s): $statusLabel"
+            if ($code -eq 4) { Write-Log -Level "INFO" -Message "Kudu deployment succeeded"; return $true }
+            if ($code -eq 3) { Write-Log -Level "ERROR" -Message "Kudu deployment failed"; return $false }
+        }
+        catch {
+            Write-Log -Level "DEBUG" -Message "  Status poll error: $_"
+        }
+    }
+
+    Write-Log -Level "WARN" -Message "Deploy status polling timed out after 10 min (deploy was submitted)"
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Checks if deployment is needed by comparing git commits.
+#>
+function Test-DeploymentNeeded {
+    param(
+        [Parameter(Mandatory)][string]$AppName,
+        [Parameter(Mandatory)][string]$ResourceGroup,
+        [switch]$Force,
+        [string]$Slot = $null,
+        [string]$ProjectRoot
+    )
+
+    if ($Force) {
+        Write-Log -Level "INFO" -Message "Force deploy requested"
+        return $true
+    }
+
+    $currentHash = Get-GitCommitHash -ProjectRoot $ProjectRoot
+    Write-Log -Level "DEBUG" -Message "Current git commit: $currentHash"
+
+    $slotArgs = if ($Slot) { " --slot $Slot" } else { "" }
+    $deployedHash = Invoke-AzCommand "webapp config appsettings list --name $AppName --resource-group $ResourceGroup$slotArgs --query `"[?name=='DEPLOY_COMMIT'].value | [0]`" -o tsv" -Check
+
+    if (-not $deployedHash) {
+        Write-Log -Level "INFO" -Message "No previous deployment found"
+        return $true
+    }
+
+    Write-Log -Level "DEBUG" -Message "Deployed git commit: $deployedHash"
+
+    if ($currentHash -eq $deployedHash) {
+        Write-Log -Level "INFO" -Message "Already deployed (commit $currentHash). Use -Force to redeploy."
+        return $false
+    }
+
+    Write-Log -Level "INFO" -Message "Changes detected: $deployedHash -> $currentHash"
+    return $true
+}
 
 # Export all functions
 Export-ModuleMember -Function @(
+    # Module config
+    'Set-ModuleTraceLevel',
+    # Logging
     'Write-Log',
     'Complete-StatusMessage',
+    # Environment
     'Update-EnvironmentVariables',
     'Update-CurrentSessionPath',
+    # User interaction
     'Get-UserConfirmation',
+    'WaitForUser',
+    # Process management
     'Invoke-ElevatedInstance',
     'Invoke-Elevated',
-    'WaitForUser',
     'Stop-RunningProcesses',
+    'Invoke-BackgroundInstaller',
+    # System info
     'Get-PowerShellVersion',
-    'Invoke-BackgroundInstaller'
+    # Azure CLI
+    'Invoke-AzCommand',
+    # Azure configuration
+    'Get-AzureConfig',
+    'Save-AzureConfig',
+    'Get-AzureResourceNames',
+    # Azure shared helpers
+    'Test-AzureLogin',
+    'Register-AzureProvider',
+    'Install-AzureResourceGroup',
+    'Remove-AzureResourceGroup',
+    'Install-AzureAppServicePlan',
+    'Install-AzureAppInsights',
+    # Azure deploy helpers
+    'Get-GitCommitHash',
+    'Deploy-KuduZip',
+    'Test-DeploymentNeeded'
 )

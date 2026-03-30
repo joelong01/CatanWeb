@@ -73,6 +73,8 @@ param(
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "$scriptPath\utility-scripts.psm1" -Force
 
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 # Define all dependency scripts and their order
 $script:DependencyScripts = @(
     @{
@@ -273,10 +275,10 @@ function Get-AllDependencyStatus {
 function Show-DependencyTable {
     param([array]$Results)
 
-    Write-Host ""
-    Write-Host "Dependency Status" -ForegroundColor Cyan
-    Write-Host "=================" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Dependency Status" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "=================" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "" -NoLabel
 
     # Calculate column widths
     $nameWidth = ($Results | ForEach-Object { $_.Description.Length } | Measure-Object -Maximum).Maximum
@@ -284,8 +286,8 @@ function Show-DependencyTable {
 
     # Header
     $header = "{0,-$nameWidth} {1,-15} {2,-15}" -f "Component", "Status", "Version"
-    Write-Host $header -ForegroundColor White
-    Write-Host ("-" * ($nameWidth + 32)) -ForegroundColor Gray
+    Write-Log -Level INFO -Message $header -NoLabel -ForegroundColor White
+Write-Log -Level INFO -Message ("-" * ($nameWidth + 32)) -NoLabel
 
     foreach ($result in $Results) {
         $statusColor = switch ($result.Status) {
@@ -299,14 +301,14 @@ function Show-DependencyTable {
         $version = if ($result.Version) { $result.Version } else { "-" }
         $line = "{0,-$nameWidth} {1,-15} {2,-15}" -f $result.Description, $result.Status, $version
 
-        Write-Host $line -ForegroundColor $statusColor
+        Write-Log -Level INFO -Message $line -ForegroundColor $statusColor -NoLabel
 
         if ($result.Error -and $TraceLevel -eq "DEBUG") {
-            Write-Host "     Error: $($result.Error)" -ForegroundColor Red
+            Write-Log -Level ERROR -Message "     Error: $($result.Error)"
         }
     }
 
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 <#
@@ -359,7 +361,7 @@ Examples:
     # Detailed diagnostic output
     install-dependencies.ps1 -Doctor -TraceLevel DEBUG
 "@
-    Write-Host $help
+    Write-Log -Level INFO -Message $help -NoLabel
 }
 
 # Main execution block

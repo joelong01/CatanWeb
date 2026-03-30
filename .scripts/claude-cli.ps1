@@ -66,6 +66,8 @@ param(
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "$scriptPath\utility-scripts.psm1" -Force
 
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 # NPM package name for Claude CLI
 $script:PackageName = "@anthropic-ai/claude-code"
 
@@ -255,10 +257,10 @@ function Uninstall-ClaudeCli {
 function Show-DoctorOutput {
     param([hashtable]$Result)
 
-    Write-Host ""
-    Write-Host "Claude CLI Status" -ForegroundColor Cyan
-    Write-Host "=================" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Claude CLI Status" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "=================" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "" -NoLabel
 
     $statusColor = switch ($Result.Status) {
         "Installed" { "Green" }
@@ -267,19 +269,19 @@ function Show-DoctorOutput {
         default { "Red" }
     }
 
-    Write-Host "Status:       " -NoNewline
-    Write-Host $Result.Status -ForegroundColor $statusColor
+    Write-Log -Level INFO -Message "Status:       " -NoLabel -NoNewline
+    Write-Log -Level INFO -Message $Result.Status -ForegroundColor $statusColor -NoLabel
 
     if ($Result.Version) {
-        Write-Host "Version:      $($Result.Version)"
+        Write-Log -Level INFO -Message "Version:      $($Result.Version)" -NoLabel
     }
 
-    Write-Host "npm Available: $(if ($Result.HasNpm) { 'Yes' } else { 'No' })"
-    Write-Host "Package:       $($Result.PackageName)"
+    Write-Log -Level INFO -Message "npm Available: $(if ($Result.HasNpm) { 'Yes' } else { 'No' })" -NoLabel
+    Write-Log -Level INFO -Message "Package:       $($Result.PackageName)" -NoLabel
 
-    Write-Host ""
-    Write-Host $Result.Message -ForegroundColor $statusColor
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message $Result.Message -ForegroundColor $statusColor -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 <#
@@ -336,7 +338,7 @@ Examples:
     # Remove Claude CLI
     claude-cli.ps1 -Clean -Yes
 "@
-    Write-Host $help
+    Write-Log -Level INFO -Message $help -NoLabel
 }
 
 # Main execution block
