@@ -144,95 +144,120 @@ Write-Log -Level INFO -Message "State: $($state.gameState)" -NoLabel
 Write-Log -Level INFO -Message "Random iterations: $turnCount" -NoLabel
 Write-Log -Level INFO -Message "" -NoLabel
 
-# 4. Undo all the way back, measuring each action
-Write-Log -Level INFO -Message "Undoing all actions..." -NoLabel
+# 4. Find a WaitingForNext state by undoing until we hit one
+Write-Log -Level INFO -Message "Searching for WaitingForNext state (undoing from end)..." -NoLabel
 $undoCount = 0
-$undoTimes = @()
+$foundState = $null
 
-$countSw = [System.Diagnostics.Stopwatch]::StartNew()
 while ($true) {
+    $state = Get-GameState -GameId $TestGameId
+    if ($state.gameState -eq "WaitingForNext") {
+        $foundState = $state
+        Write-Log -Level INFO -Message "Found WaitingForNext after $undoCount undos" -NoLabel -ForegroundColor Green
+        break
+    }
     try {
-        $sw = [System.Diagnostics.Stopwatch]::StartNew()
         Invoke-GameAction -GameId $TestGameId -MessageType "UndoMessage" | Out-Null
-        $sw.Stop()
         $undoCount++
-        $undoTimes += $sw.ElapsedMilliseconds
-        if ($undoCount % 50 -eq 0) {
-            Write-Log -Level INFO -Message "  $undoCount undos... (last: $($sw.ElapsedMilliseconds)ms)" -NoLabel
+        if ($undoCount % 100 -eq 0) {
+            Write-Log -Level INFO -Message "  $undoCount undos... (state: $($state.gameState))" -NoLabel
         }
     }
     catch {
-        # Undo failed = we've reached the beginning
-        break
+        Write-Log -Level ERROR -Message "Reached beginning without finding WaitingForNext" -NoLabel
+        exit 1
     }
 }
-$countSw.Stop()
 
-Write-Log -Level INFO -Message "Undo depth: $undoCount actions" -NoLabel
-Write-Log -Level INFO -Message "Total undo time: $([math]::Round($countSw.Elapsed.TotalSeconds, 1))s" -NoLabel
+# 5. Now undo one more to get to a state BEFORE the build, so we can redo it
+Write-Log -Level INFO -Message "" -NoLabel
+Write-Log -Level INFO -Message "Game state: $($foundState.gameState)" -NoLabel
+Write-Log -Level INFO -Message "Current player: $($foundState.currentPlayerId)" -NoLabel
+Write-Log -Level INFO -Message "Log depth at this point: ~$(15028 - $undoCount) entries" -NoLabel
 Write-Log -Level INFO -Message "" -NoLabel
 
-# 5. Redo all back to the end and measure
-Write-Log -Level INFO -Message "Redoing all $undoCount actions..." -NoLabel
-$redoTimes = @()
-$redoSw = [System.Diagnostics.Stopwatch]::StartNew()
-for ($i = 0; $i -lt $undoCount; $i++) {
+# 6. Measure the cost of a REDO (which triggers FromGameModel → serialize → compress)
+#    This is equivalent to making a forward action at this log depth
+Write-Log -Level INFO -Message "Benchmarking forward action cost..." -NoLabel -ForegroundColor Cyan
+Write-Log -Level INFO -Message "" -NoLabel
+
+# Undo once more, then redo to measure the forward action
+Invoke-GameAction -GameId $TestGameId -MessageType "UndoMessage" | Out-Null
+
+$iterations = 10
+$forwardTimes = @()
+for ($i = 0; $i -lt $iterations; $i++) {
+    # Redo = forward action (triggers Done() → FromGameModel → serialize → compress)
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     Invoke-GameAction -GameId $TestGameId -MessageType "RedoMessage" | Out-Null
     $sw.Stop()
-    $redoTimes += $sw.ElapsedMilliseconds
-    if (($i + 1) % 50 -eq 0) {
-        Write-Log -Level DEBUG -Message "  Redone $($i + 1)/$undoCount..." -NoLabel
+    $forwardTimes += $sw.ElapsedMilliseconds
+
+    # Undo to reset for next measurement
+    Invoke-GameAction -GameId $TestGameId -MessageType "UndoMessage" | Out-Null
+
+    Write-Log -Level DEBUG -Message "  Iteration $($i + 1): $($sw.ElapsedMilliseconds)ms" -NoLabel
+}
+
+# 7. Report
+Write-Log -Level INFO -Message "Results — Forward Action at Log Depth ~$(15028 - $undoCount)" -NoLabel -ForegroundColor Cyan
+Write-Log -Level INFO -Message ("=" * 55) -NoLabel -ForegroundColor Cyan
+Write-Log -Level INFO -Message "" -NoLabel
+
+$avg = [math]::Round(($forwardTimes | Measure-Object -Average).Average, 1)
+$max = ($forwardTimes | Measure-Object -Maximum).Maximum
+$min = ($forwardTimes | Measure-Object -Minimum).Minimum
+$p90 = ($forwardTimes | Sort-Object)[[math]::Floor($forwardTimes.Count * 0.9)]
+
+Write-Log -Level INFO -Message ("  {0,-12} {1,8} {2,8} {3,8} {4,8}" -f "Metric", "Avg(ms)", "P90(ms)", "Max(ms)", "Min(ms)") -NoLabel -ForegroundColor Gray
+Write-Log -Level INFO -Message ("  {0,-12} {1,8} {2,8} {3,8} {4,8}" -f "--------", "-------", "-------", "-------", "-------") -NoLabel -ForegroundColor Gray
+Write-Log -Level INFO -Message ("  {0,-12} {1,8} {2,8} {3,8} {4,8}" -f "Forward", $avg, $p90, $max, $min) -NoLabel
+Write-Log -Level INFO -Message "" -NoLabel
+Write-Log -Level INFO -Message "  All timings (ms): $($forwardTimes -join ', ')" -NoLabel
+Write-Log -Level INFO -Message "" -NoLabel
+
+# Compare: measure same action at a SHALLOW log depth (undo to near beginning)
+Write-Log -Level INFO -Message "Measuring same action type at shallow log depth..." -NoLabel
+# Undo most of the way back
+$targetDepth = 10
+$remaining = 15028 - $undoCount - $targetDepth
+for ($i = 0; $i -lt $remaining; $i++) {
+    try { Invoke-GameAction -GameId $TestGameId -MessageType "UndoMessage" | Out-Null }
+    catch { break }
+    if ($i % 1000 -eq 0 -and $i -gt 0) {
+        Write-Log -Level INFO -Message "  Undone $i more..." -NoLabel
     }
 }
-$redoSw.Stop()
 
-Write-Log -Level INFO -Message "Total redo time: $([math]::Round($redoSw.Elapsed.TotalSeconds, 1))s" -NoLabel
-Write-Log -Level INFO -Message "" -NoLabel
+# Find WaitingForNext at shallow depth
+$shallowFound = $false
+for ($i = 0; $i -lt 50; $i++) {
+    try { Invoke-GameAction -GameId $TestGameId -MessageType "RedoMessage" | Out-Null }
+    catch { break }
+    $s = Get-GameState -GameId $TestGameId
+    if ($s.gameState -eq "WaitingForNext") { $shallowFound = $true; break }
+}
 
-# 6. Report results
-Write-Log -Level INFO -Message "Results" -NoLabel -ForegroundColor Cyan
-Write-Log -Level INFO -Message "=======" -NoLabel -ForegroundColor Cyan
-Write-Log -Level INFO -Message "" -NoLabel
+if ($shallowFound) {
+    Invoke-GameAction -GameId $TestGameId -MessageType "UndoMessage" | Out-Null
+    $shallowTimes = @()
+    for ($i = 0; $i -lt $iterations; $i++) {
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        Invoke-GameAction -GameId $TestGameId -MessageType "RedoMessage" | Out-Null
+        $sw.Stop()
+        $shallowTimes += $sw.ElapsedMilliseconds
+        Invoke-GameAction -GameId $TestGameId -MessageType "UndoMessage" | Out-Null
+    }
 
-$undoAvg = if ($undoTimes.Count -gt 0) { [math]::Round(($undoTimes | Measure-Object -Average).Average, 1) } else { 0 }
-$undoMax = if ($undoTimes.Count -gt 0) { ($undoTimes | Measure-Object -Maximum).Maximum } else { 0 }
-$undoMin = if ($undoTimes.Count -gt 0) { ($undoTimes | Measure-Object -Minimum).Minimum } else { 0 }
-$undoP90 = if ($undoTimes.Count -gt 0) { $sorted = $undoTimes | Sort-Object; $sorted[[math]::Floor($sorted.Count * 0.9)] } else { 0 }
-
-$redoAvg = if ($redoTimes.Count -gt 0) { [math]::Round(($redoTimes | Measure-Object -Average).Average, 1) } else { 0 }
-$redoMax = if ($redoTimes.Count -gt 0) { ($redoTimes | Measure-Object -Maximum).Maximum } else { 0 }
-$redoMin = if ($redoTimes.Count -gt 0) { ($redoTimes | Measure-Object -Minimum).Minimum } else { 0 }
-$redoP90 = if ($redoTimes.Count -gt 0) { $sorted = $redoTimes | Sort-Object; $sorted[[math]::Floor($sorted.Count * 0.9)] } else { 0 }
-
-Write-Log -Level INFO -Message ("  {0,-12} {1,8} {2,8} {3,8} {4,8} {5,8}" -f "Operation", "Count", "Avg(ms)", "P90(ms)", "Max(ms)", "Min(ms)") -NoLabel -ForegroundColor Gray
-Write-Log -Level INFO -Message ("  {0,-12} {1,8} {2,8} {3,8} {4,8} {5,8}" -f "--------", "-----", "-------", "-------", "-------", "-------") -NoLabel -ForegroundColor Gray
-Write-Log -Level INFO -Message ("  {0,-12} {1,8} {2,8} {3,8} {4,8} {5,8}" -f "Undo", $undoCount, $undoAvg, $undoP90, $undoMax, $undoMin) -NoLabel
-Write-Log -Level INFO -Message ("  {0,-12} {1,8} {2,8} {3,8} {4,8} {5,8}" -f "Redo", $undoCount, $redoAvg, $redoP90, $redoMax, $redoMin) -NoLabel
-Write-Log -Level INFO -Message "" -NoLabel
-
-# Show timing curve (first 10, last 10)
-if ($undoTimes.Count -ge 20) {
-    Write-Log -Level INFO -Message "Undo timing curve (ms):" -NoLabel -ForegroundColor Cyan
-    $first10 = ($undoTimes[0..9] | ForEach-Object { [math]::Round($_) }) -join ", "
-    $last10 = ($undoTimes[($undoTimes.Count - 10)..($undoTimes.Count - 1)] | ForEach-Object { [math]::Round($_) }) -join ", "
-    Write-Log -Level INFO -Message "  First 10: $first10" -NoLabel
-    Write-Log -Level INFO -Message "  Last 10:  $last10" -NoLabel
+    $shallowAvg = [math]::Round(($shallowTimes | Measure-Object -Average).Average, 1)
     Write-Log -Level INFO -Message "" -NoLabel
-    Write-Log -Level INFO -Message "Redo timing curve (ms):" -NoLabel -ForegroundColor Cyan
-    $first10 = ($redoTimes[0..9] | ForEach-Object { [math]::Round($_) }) -join ", "
-    $last10 = ($redoTimes[($redoTimes.Count - 10)..($redoTimes.Count - 1)] | ForEach-Object { [math]::Round($_) }) -join ", "
-    Write-Log -Level INFO -Message "  First 10: $first10" -NoLabel
-    Write-Log -Level INFO -Message "  Last 10:  $last10" -NoLabel
+    Write-Log -Level INFO -Message "Results — Forward Action at Shallow Log (~$targetDepth entries)" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message ("  {0,-12} {1,8}" -f "Avg(ms)", $shallowAvg) -NoLabel
+    Write-Log -Level INFO -Message "  All timings (ms): $($shallowTimes -join ', ')" -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "Slowdown factor: $([math]::Round($avg / [math]::Max($shallowAvg, 0.1), 1))x" -NoLabel -ForegroundColor Yellow
+} else {
+    Write-Log -Level WARN -Message "Could not find WaitingForNext at shallow depth" -NoLabel
 }
 
 Write-Log -Level INFO -Message "" -NoLabel
-
-# Assessment
-if ($undoAvg -gt 100) {
-    Write-Log -Level INFO -Message "Assessment: SLOW — average undo > 100ms" -NoLabel -ForegroundColor Red
-} elseif ($undoAvg -gt 50) {
-    Write-Log -Level INFO -Message "Assessment: MODERATE — average undo 50-100ms" -NoLabel -ForegroundColor Yellow
-} else {
-    Write-Log -Level INFO -Message "Assessment: GOOD — average undo < 50ms" -NoLabel -ForegroundColor Green
-}
