@@ -86,6 +86,7 @@ export function MenuHex({
       className="w-full h-full cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={!href ? onClick : undefined}
       {...a11yProps}
     >
       {/* Outer hex - border with hover effect */}

@@ -332,7 +332,7 @@ Check `.gitignore` for excluded files:
 
 - `.webui-pids.json` - WebUI process tracking
 - `code-reviews/` - AI-generated code reviews
-- `*.db`, `*.db-shm`, `*.db-wal` - SQLite database files
+- `*.db`, `*.db-shm`, `*.db-wal` - Database files
 - `.test-images/` - Test images for AI analysis (see Image Analysis section)
 
 ### Image Analysis
@@ -443,6 +443,15 @@ Tests/
 
 ## Git and Version Control
 
+### Issue Tracking
+
+- **File an issue before fixing**: Before starting work on a bug fix or feature, create a
+  GitHub issue to track the work. Use the GitHub MCP tools to create the issue.
+- **Branch name in title**: Prefix the issue title with the current branch name in brackets,
+  e.g., `[longgame-perf] database install fails when project hasn't been built yet`
+- **Keep issues focused**: One issue per bug or feature. Include steps to reproduce for bugs.
+- **Reference issues in commits**: When committing, list the issues being fixed (see below).
+
 ### Branch Strategy
 
 - **Main branch**: `main` - Production-ready code
@@ -454,6 +463,8 @@ Tests/
 - **ALWAYS ask permission**: AI assistants must ask the user for permission before creating any commit
 - **Commit frequently**: Small, logical commits
 - **Clear messages**: Describe what and why, not how
+- **Reference issues**: Include `Fixes #<number>` or `Relates to #<number>` in the commit message
+  body for each issue addressed by the commit
 - **Group related changes**: Stage files that belong together
 - **Test before commit**: Ensure build passes
 - **Lint before commit**: Run `./catan.ps1 lint` to check all changed files:
@@ -483,6 +494,56 @@ git --no-pager status
 git --no-pager log --oneline -10
 ```
 
+### Pull Request Workflow
+
+Before creating or merging a pull request, AI assistants must perform a code review:
+
+1. **Review the diff**: Examine all changes between the feature branch and the target branch
+2. **Run the build and tests**: Verify everything passes before the PR
+3. **Self-review**: Check for issues listed in the project's code review guidelines
+   (see `.ai/commands/code-review.md`)
+4. **Add PR comments**: Post findings as comments on the pull request using GitHub CLI.
+   Include both positive observations and any issues found
+5. **List fixed issues**: Ensure the PR description lists all GitHub issues addressed
+   (e.g., "Closes #100, Fixes #101")
+
+### After Creating a PR
+
+After creating a PR, **always** provide:
+
+1. The PR link
+2. AI code review instructions the developer can paste into another AI agent (Copilot,
+   ChatGPT, another Claude session, etc.) to get an independent review
+
+**Template for AI review instructions:**
+
+````text
+Review PR #{number}: {title}
+Repository: {owner}/{repo}
+URL: {pr_url}
+
+Instructions:
+1. Read `.ai/commands/code-review.md` for the review process
+2. Run `gh pr diff {number}` to get the diff
+3. For each changed file, read the FULL file (not just the diff)
+4. Post each finding as a separate comment on PR #{number} using:
+   `gh api repos/{owner}/{repo}/issues/{number}/comments -f body="..."`
+5. Number findings sequentially (Finding 1/N, 2/N, etc.)
+6. End with a summary table of all findings with severity
+7. Follow the iterative cycle: review → comment → fix → verify
+````
+
+### Post-Merge Cleanup
+
+After a PR is merged:
+
+1. **Close referenced issues** with a comment linking to the merge commit:
+   `gh issue close <number> -c "Fixed in commit <sha> (PR #<pr>)"`
+2. **Partially addressed issues** get a comment instead of closing:
+   `gh issue comment <number> -c "Partially addressed in PR #<pr>. Remaining: ..."`
+
+This creates a traceable chain: **Issue → PR → Commit → Code**.
+
 ## Project-Specific Context
 
 ### Technology Stack
@@ -490,7 +551,7 @@ git --no-pager log --oneline -10
 - **.NET 9.0**: Core framework (pinned via `global.json`)
 - **Blazor WebAssembly**: WebUI frontend
 - **ASP.NET Core**: GameService backend with SignalR
-- **SQLite**: Local database (mirrors future CosmosDB schema)
+- **CosmosDB**: Database (local emulator + Azure)
 - **SVG**: Dynamic board rendering
 - **PowerShell 7+**: Build and automation scripts (use `pwsh` command, not `powershell`)
 
@@ -512,7 +573,7 @@ git --no-pager log --oneline -10
 ### Security Notes
 
 - **No credentials in code**: Use configuration files (not committed)
-- **Database location**: SQLite files in user profile (not repository)
+- **Database location**: CosmosDB emulator (local) or Azure CosmosDB (production)
 - **API keys**: Document where needed, never commit actual keys
 
 ## Design, Planning, and Review Workflow

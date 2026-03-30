@@ -329,10 +329,17 @@ namespace Catan3.GameService.Controllers
 
                 // Note: Save happens automatically via GameStateMachine.LogGameModel() -> Log.SaveAsync()
 
-                // Start recording if requested
+                // Start recording if requested (supplementary — don't fail game creation)
                 if (newGameMessage.RecordGame)
                 {
-                    await _recordingService.StartRecordingAsync(gameModel.GameId, newGameMessage.GameName ?? "Untitled Game", gameModel);
+                    try
+                    {
+                        await _recordingService.StartRecordingAsync(gameModel.GameId, newGameMessage.GameName ?? "Untitled Game", gameModel);
+                    }
+                    catch (Exception recEx)
+                    {
+                        _logger.LogEvent("Recording", $"Failed to start recording for game {gameModel.GameId}: {recEx.Message}", LogLevel.Warning);
+                    }
                 }
 
                 // Return minimal response - client must join via SignalR to get GameModel

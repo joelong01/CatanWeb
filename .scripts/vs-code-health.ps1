@@ -54,6 +54,8 @@ param(
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "$scriptPath\utility-scripts.psm1" -Force
 
+$PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
+
 # Known problematic/duplicate extensions
 $script:DuplicateClaudeExtensions = @(
     @{
@@ -498,21 +500,21 @@ function Show-HealthCheckOutput {
         [switch]$Fix
     )
 
-    Write-Host ""
-    Write-Host "VS Code Health Check" -ForegroundColor Cyan
-    Write-Host "====================" -ForegroundColor Cyan
-    Write-Host "Timestamp: $($Results.Timestamp)"
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
+    Write-Log -Level INFO -Message "VS Code Health Check" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "====================" -NoLabel -ForegroundColor Cyan
+    Write-Log -Level INFO -Message "Timestamp: $($Results.Timestamp)" -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 
     # VS Code status
     $vscodeColor = if ($Results.VSCode.Status -eq "OK") { "Green" } else { "Red" }
-    Write-Host "VS Code" -ForegroundColor White
-    Write-Host "  Status:  " -NoNewline
-    Write-Host $Results.VSCode.Status -ForegroundColor $vscodeColor
+    Write-Log -Level INFO -Message "VS Code" -NoLabel -ForegroundColor White
+    Write-Log -Level INFO -Message "  Status:  " -NoLabel -NoNewline
+    Write-Log -Level INFO -Message $Results.VSCode.Status -ForegroundColor $vscodeColor -NoLabel
     if ($Results.VSCode.Version) {
-        Write-Host "  Version: $($Results.VSCode.Version)"
+        Write-Log -Level INFO -Message "  Version: $($Results.VSCode.Version)" -NoLabel
     }
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
 
     # Extensions status
     $extColor = switch ($Results.Extensions.Status) {
@@ -520,20 +522,20 @@ function Show-HealthCheckOutput {
         "Fixed" { "Yellow" }
         default { "Red" }
     }
-    Write-Host "Extensions" -ForegroundColor White
-    Write-Host "  Status:  " -NoNewline
-    Write-Host $Results.Extensions.Status -ForegroundColor $extColor
-    Write-Host "  Total:   $($Results.Extensions.Installed.Count)"
+    Write-Log -Level INFO -Message "Extensions" -NoLabel -ForegroundColor White
+    Write-Log -Level INFO -Message "  Status:  " -NoLabel -NoNewline
+    Write-Log -Level INFO -Message $Results.Extensions.Status -ForegroundColor $extColor -NoLabel
+    Write-Log -Level INFO -Message "  Total:   $($Results.Extensions.Installed.Count)" -NoLabel
     if ($Results.Extensions.ClaudeCodeVersion) {
-        Write-Host "  Claude Code: v$($Results.Extensions.ClaudeCodeVersion)"
+        Write-Log -Level INFO -Message "  Claude Code: v$($Results.Extensions.ClaudeCodeVersion)" -NoLabel
     }
     if ($Results.Extensions.Duplicates.Count -gt 0) {
-        Write-Host "  Duplicates: $($Results.Extensions.Duplicates.Count)" -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "  Duplicates: $($Results.Extensions.Duplicates.Count)"
     }
     if ($Results.Extensions.Missing.Count -gt 0) {
-        Write-Host "  Missing: $($Results.Extensions.Missing.Count)" -ForegroundColor Red
+        Write-Log -Level ERROR -Message "  Missing: $($Results.Extensions.Missing.Count)"
     }
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
 
     # Credentials status
     $credColor = switch ($Results.Credentials.Status) {
@@ -541,58 +543,58 @@ function Show-HealthCheckOutput {
         "Expired" { "Red" }
         default { "Yellow" }
     }
-    Write-Host "Credentials" -ForegroundColor White
-    Write-Host "  Status:  " -NoNewline
-    Write-Host $Results.Credentials.Status -ForegroundColor $credColor
+    Write-Log -Level INFO -Message "Credentials" -NoLabel -ForegroundColor White
+    Write-Log -Level INFO -Message "  Status:  " -NoLabel -NoNewline
+    Write-Log -Level INFO -Message $Results.Credentials.Status -ForegroundColor $credColor -NoLabel
     if ($Results.Credentials.SubscriptionType) {
-        Write-Host "  Subscription: $($Results.Credentials.SubscriptionType)"
+        Write-Log -Level INFO -Message "  Subscription: $($Results.Credentials.SubscriptionType)" -NoLabel
     }
     if ($Results.Credentials.RateLimitTier) {
-        Write-Host "  Rate Limit: $($Results.Credentials.RateLimitTier)"
+        Write-Log -Level INFO -Message "  Rate Limit: $($Results.Credentials.RateLimitTier)" -NoLabel
     }
     if ($Results.Credentials.ExpiresAt) {
-        Write-Host "  Expires: $($Results.Credentials.ExpiresAt)"
+        Write-Log -Level INFO -Message "  Expires: $($Results.Credentials.ExpiresAt)" -NoLabel
     }
-    Write-Host ""
+    Write-Log -Level INFO -Message "" -NoLabel
 
     # Issues
     $unfixedIssues = $Results.Issues | Where-Object { -not $_.Fixed }
     if ($unfixedIssues.Count -gt 0) {
-        Write-Host "Issues Found" -ForegroundColor Yellow
-        Write-Host "------------" -ForegroundColor Yellow
+        Write-Log -Level WARN -Message "Issues Found"
+        Write-Log -Level WARN -Message "------------"
 
         foreach ($issue in $unfixedIssues) {
             $sevColor = if ($issue.Severity -eq "Error") { "Red" } else { "Yellow" }
-            Write-Host "  [$($issue.Severity)] " -ForegroundColor $sevColor -NoNewline
-            Write-Host $issue.Message
+            Write-Log -Level INFO -Message "  [$($issue.Severity)] " -ForegroundColor $sevColor -NoLabel -NoNewline
+            Write-Log -Level INFO -Message $issue.Message -NoLabel
 
             if ($issue.Reason) {
-                Write-Host "    Reason: $($issue.Reason)" -ForegroundColor Gray
+                Write-Log -Level INFO -Message "    Reason: $($issue.Reason)" -NoLabel
             }
 
             if (-not $Fix -and $issue.Fix) {
                 if ($issue.CanAutoFix) {
-                    Write-Host "    Fix: " -NoNewline -ForegroundColor Gray
-                    Write-Host $issue.Fix -ForegroundColor Cyan
-                    Write-Host "    (or run with -Fix to auto-fix)" -ForegroundColor Gray
+                    Write-Log -Level INFO -Message "    Fix: " -NoLabel -NoNewline
+                    Write-Log -Level INFO -Message $issue.Fix -NoLabel -ForegroundColor Cyan
+                    Write-Log -Level INFO -Message "    (or run with -Fix to auto-fix)" -NoLabel
                 } else {
-                    Write-Host "    Fix: " -NoNewline -ForegroundColor Gray
-                    Write-Host $issue.Fix -ForegroundColor Cyan
+                    Write-Log -Level INFO -Message "    Fix: " -NoLabel -NoNewline
+                    Write-Log -Level INFO -Message $issue.Fix -NoLabel -ForegroundColor Cyan
                 }
             }
         }
-        Write-Host ""
+        Write-Log -Level INFO -Message "" -NoLabel
     }
 
     # Fixed issues
     $fixedIssues = $Results.Issues | Where-Object { $_.Fixed }
     if ($fixedIssues.Count -gt 0) {
-        Write-Host "Issues Fixed" -ForegroundColor Green
-        Write-Host "------------" -ForegroundColor Green
+        Write-Log -Level INFO -Message "Issues Fixed" -NoLabel -ForegroundColor Green
+        Write-Log -Level INFO -Message "------------" -NoLabel -ForegroundColor Green
         foreach ($issue in $fixedIssues) {
-            Write-Host "  [Fixed] $($issue.Message)" -ForegroundColor Green
+            Write-Log -Level INFO -Message "  [Fixed] $($issue.Message)" -NoLabel -ForegroundColor Green
         }
-        Write-Host ""
+        Write-Log -Level INFO -Message "" -NoLabel
     }
 
     # Overall status
@@ -601,9 +603,9 @@ function Show-HealthCheckOutput {
         "Warning" { "Yellow" }
         default { "Red" }
     }
-    Write-Host "Overall: " -NoNewline
-    Write-Host $Results.OverallStatus -ForegroundColor $overallColor
-    Write-Host ""
+    Write-Log -Level INFO -Message "Overall: " -NoLabel -NoNewline
+    Write-Log -Level INFO -Message $Results.OverallStatus -ForegroundColor $overallColor -NoLabel
+    Write-Log -Level INFO -Message "" -NoLabel
 }
 
 <#
@@ -668,7 +670,7 @@ Examples:
     # Verbose output
     vs-code-health.ps1 -Doctor -TraceLevel DEBUG
 "@
-    Write-Host $help
+    Write-Log -Level INFO -Message $help -NoLabel
 }
 
 # Main execution block

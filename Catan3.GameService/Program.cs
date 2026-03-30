@@ -270,14 +270,18 @@ app.MapGet("/health", async (Catan3.GameService.Abstractions.ICatanDb db) =>
 
     try
     {
-        var players = await db.LoadPlayersAsync();
+        var playerCount = await db.CountPlayersAsync();
         var gameCount = await db.CountGamesAsync();
+        var templateCount = await db.CountTemplatesAsync();
+        var recordingCount = await db.CountRecordingsAsync();
         response["databaseDiagnostics"] = new
         {
             connected = true,
             checkedAt = DateTime.UtcNow,
-            playerCount = players.Count,
+            playerCount,
             gameCount,
+            templateCount,
+            recordingCount,
         };
     }
     catch (Exception ex)
