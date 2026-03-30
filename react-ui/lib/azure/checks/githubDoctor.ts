@@ -54,13 +54,23 @@ export async function runGitHubDoctor(
     return {
       domain: 'github',
       name: appDisplayName,
-      checks: [{ check: 'graphAuth', status: 'error', error: `Graph API auth failed: ${formatError(err)}` }],
+      checks: [
+        {
+          check: 'graphAuth',
+          status: 'error',
+          error: `Graph API auth failed: ${formatError(err)}`,
+        },
+      ],
       healthy: false,
     };
   }
 
   // 1. App registration
-  const { result: appResult, appObjectId, appId } = await checkAppRegistration(graphToken, appDisplayName, report);
+  const {
+    result: appResult,
+    appObjectId,
+    appId,
+  } = await checkAppRegistration(graphToken, appDisplayName, report);
   checks.push(appResult);
   if (appResult.status === 'error') {
     return { domain: 'github', name: appDisplayName, checks, healthy: false };
@@ -100,7 +110,11 @@ async function checkAppRegistration(
   report: CheckReporter
 ): Promise<{ result: CheckResult; appObjectId?: string; appId?: string }> {
   const t = timedCheck('appRegistration', report);
-  report({ check: 'appRegistration', status: 'running', detail: `Looking for '${displayName}'...` });
+  report({
+    check: 'appRegistration',
+    status: 'running',
+    detail: `Looking for '${displayName}'...`,
+  });
 
   try {
     const response = await graphFetch(
@@ -166,7 +180,11 @@ async function checkFederatedCredentials(
   report: CheckReporter
 ): Promise<CheckResult> {
   const t = timedCheck('federatedCredentials', report);
-  report({ check: 'federatedCredentials', status: 'running', detail: 'Checking federated credentials...' });
+  report({
+    check: 'federatedCredentials',
+    status: 'running',
+    detail: 'Checking federated credentials...',
+  });
 
   try {
     const response = await graphFetch(
@@ -181,13 +199,18 @@ async function checkFederatedCredentials(
 
     const found: string[] = [];
     const missing: string[] = [];
-    if (hasMain) found.push('main'); else missing.push('main');
-    if (hasStaging) found.push('staging'); else missing.push('staging');
+    if (hasMain) found.push('main');
+    else missing.push('main');
+    if (hasStaging) found.push('staging');
+    else missing.push('staging');
 
     if (missing.length === 0) {
       return t.ok(`Federated: ${found.join(', ')}`);
     }
-    return t.fail(`Missing federated credentials: ${missing.join(', ')}`, `Found: ${found.join(', ') || 'none'}`);
+    return t.fail(
+      `Missing federated credentials: ${missing.join(', ')}`,
+      `Found: ${found.join(', ') || 'none'}`
+    );
   } catch (err) {
     return t.fail(`Failed to check federated credentials: ${formatError(err)}`);
   }

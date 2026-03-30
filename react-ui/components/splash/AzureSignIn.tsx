@@ -97,9 +97,7 @@ export default function AzureSignIn({ onTokenAcquired }: AzureSignInProps) {
         )}
       </button>
 
-      {error && (
-        <p className="text-red-400 text-xs text-center max-w-sm">{error}</p>
-      )}
+      {error && <p className="text-red-400 text-xs text-center max-w-sm">{error}</p>}
     </div>
   );
 }

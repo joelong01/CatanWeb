@@ -617,13 +617,17 @@ Write-Header "Catan Project Linter"
 # Determine which files to lint
 if ($All) {
     Write-Info "Mode: Linting ALL files"
-    # Get all relevant files
-    $changedFiles = Get-ChildItem -Path $projectRoot -Recurse -File |
-        Where-Object {
-            $_.FullName -notmatch "node_modules|\\bin\\|\\obj\\|\\.git\\" -and
-            $_.Extension -match "\.(cs|ts|tsx|js|jsx|mjs|md|json|ps1)$"
-        } |
-        Select-Object -ExpandProperty FullName
+    # Use git ls-files to get only tracked files (respects .gitignore)
+    Push-Location $projectRoot
+    try {
+        $changedFiles = git ls-files --cached --others --exclude-standard 2>$null |
+            Where-Object { $_ -match "\.(cs|ts|tsx|js|jsx|mjs|md|json|ps1)$" } |
+            ForEach-Object { Join-Path $projectRoot $_ } |
+            Where-Object { Test-Path $_ }
+    }
+    finally {
+        Pop-Location
+    }
 }
 else {
     Write-Info "Mode: Linting CHANGED files only"

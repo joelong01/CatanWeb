@@ -96,7 +96,9 @@ export function useHealthCheck(): HealthResult {
   // updates after unmount during async retries).
   const mountedRef = useRef(true);
   useEffect(() => {
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const runCheck = useCallback(async () => {
@@ -132,7 +134,9 @@ export function useHealthCheck(): HealthResult {
 
           if (healthData.databaseDiagnostics?.connected) {
             const db = healthData.databaseDiagnostics;
-            addStep(`Players: ${db.playerCount}, Games: ${db.gameCount}, Templates: ${db.templateCount}, Recordings: ${db.recordingCount}`);
+            addStep(
+              `Players: ${db.playerCount}, Games: ${db.gameCount}, Templates: ${db.templateCount}, Recordings: ${db.recordingCount}`
+            );
           }
 
           // Check if database is connected
@@ -155,9 +159,10 @@ export function useHealthCheck(): HealthResult {
         // Non-OK response — retry if attempts remain
         if (attempt < MAX_RETRIES) {
           if (!mountedRef.current) return;
-          const msg = response.status === 503
-            ? 'GameService is starting up...'
-            : `GameService returned HTTP ${response.status}`;
+          const msg =
+            response.status === 503
+              ? 'GameService is starting up...'
+              : `GameService returned HTTP ${response.status}`;
           addStep(`${msg} — retrying in ${RETRY_DELAYS[attempt] / 1000}s...`);
           setStatus('retrying');
           setRetryCount(attempt + 1);
@@ -195,9 +200,10 @@ export function useHealthCheck(): HealthResult {
         return;
       }
     }
-  }, []);
+  }, [healthUrl]);
 
-  // Run on mount
+  // Run on mount — runCheck sets state (intentional, it's the initialization path)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     runCheck();
   }, [runCheck]);

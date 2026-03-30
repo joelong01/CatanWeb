@@ -152,13 +152,23 @@ async function checkAppConfig(
   report: CheckReporter
 ): Promise<CheckResult> {
   const t = timedCheck('appConfig', report);
-  report({ check: 'appConfig', status: 'running', detail: 'Checking Always On + startup timeout...' });
+  report({
+    check: 'appConfig',
+    status: 'running',
+    detail: 'Checking Always On + startup timeout...',
+  });
 
   try {
-    const siteConfig = await client.webApps.getConfiguration(config.resourceGroup, config.gameServiceAppName);
+    const siteConfig = await client.webApps.getConfiguration(
+      config.resourceGroup,
+      config.gameServiceAppName
+    );
     const alwaysOn = siteConfig.alwaysOn ?? false;
 
-    const settings = await client.webApps.listApplicationSettings(config.resourceGroup, config.gameServiceAppName);
+    const settings = await client.webApps.listApplicationSettings(
+      config.resourceGroup,
+      config.gameServiceAppName
+    );
     const timeoutStr = settings.properties?.['WEBSITES_CONTAINER_START_TIME_LIMIT'];
     const timeout = timeoutStr ? parseInt(timeoutStr, 10) : 230;
     const timeoutOk = timeout >= 600;
@@ -180,10 +190,7 @@ async function checkAppConfig(
  * Checks the GameService /health endpoint with retry logic for cold starts.
  * Retries: 2 attempts with 15s then 60s timeouts.
  */
-async function checkHealthEndpoint(
-  targetUrl: string,
-  report: CheckReporter
-): Promise<CheckResult> {
+async function checkHealthEndpoint(targetUrl: string, report: CheckReporter): Promise<CheckResult> {
   const t = timedCheck('healthEndpoint', report);
   report({ check: 'healthEndpoint', status: 'running', detail: `Checking ${targetUrl}/health...` });
 
@@ -211,13 +218,21 @@ async function checkHealthEndpoint(
 
       // Non-200 response — retry if attempts remain
       if (attempt < timeouts.length) {
-        report({ check: 'healthEndpoint', status: 'running', detail: `HTTP ${response.status}, retrying (attempt ${attempt + 2})...` });
+        report({
+          check: 'healthEndpoint',
+          status: 'running',
+          detail: `HTTP ${response.status}, retrying (attempt ${attempt + 2})...`,
+        });
         continue;
       }
       return t.fail(`Health endpoint returned HTTP ${response.status}`);
     } catch (err) {
       if (attempt < timeouts.length) {
-        report({ check: 'healthEndpoint', status: 'running', detail: `Unreachable, retrying (attempt ${attempt + 2})...` });
+        report({
+          check: 'healthEndpoint',
+          status: 'running',
+          detail: `Unreachable, retrying (attempt ${attempt + 2})...`,
+        });
         continue;
       }
       return t.fail(`Health endpoint unreachable: ${formatError(err)}`);
@@ -231,10 +246,7 @@ async function checkHealthEndpoint(
  * Checks deployment status by comparing deployed commit (from /health)
  * to the current git commit on origin/main.
  */
-async function checkDeployment(
-  targetUrl: string,
-  report: CheckReporter
-): Promise<CheckResult> {
+async function checkDeployment(targetUrl: string, report: CheckReporter): Promise<CheckResult> {
   const t = timedCheck('deployment', report);
   report({ check: 'deployment', status: 'running', detail: 'Checking deployment status...' });
 
@@ -242,7 +254,10 @@ async function checkDeployment(
     // Get current git commit
     let currentCommit: string;
     try {
-      currentCommit = execSync('git rev-parse --short origin/main', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+      currentCommit = execSync('git rev-parse --short origin/main', {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      }).trim();
     } catch {
       currentCommit = 'unknown';
     }
@@ -283,10 +298,15 @@ async function checkDeployment(
 
     // Commits differ — first verify both commits exist locally
     try {
-      execSync(`git cat-file -t ${deployedCommit}`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+      execSync(`git cat-file -t ${deployedCommit}`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
     } catch {
       // Deployed commit not in local git history (e.g., on a feature branch)
-      return t.ok(`deployed=${deployedCommit}, current=${currentCommit} (deployed commit not in local history — run 'git fetch' to compare)`);
+      return t.ok(
+        `deployed=${deployedCommit}, current=${currentCommit} (deployed commit not in local history — run 'git fetch' to compare)`
+      );
     }
 
     // Both commits exist — check if any deployable files changed
@@ -299,7 +319,9 @@ async function checkDeployment(
       if (diff.length === 0) {
         return t.ok(`commit=${deployedCommit} (current=${currentCommit}, no deployable changes)`);
       }
-      return t.warn(`needs deploy: ${diff.split('\n').length} files changed (deployed=${deployedCommit}, current=${currentCommit})`);
+      return t.warn(
+        `needs deploy: ${diff.split('\n').length} files changed (deployed=${deployedCommit}, current=${currentCommit})`
+      );
     } catch {
       return t.warn(`deployed=${deployedCommit}, current=${currentCommit} (diff failed)`);
     }

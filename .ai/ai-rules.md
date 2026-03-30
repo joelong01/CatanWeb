@@ -470,9 +470,12 @@ Tests/
 - **Lint before commit**: Run `./catan.ps1 lint` to check all changed files:
   - This single command checks: C#, TypeScript/ESLint, Markdown, JSON, PowerShell, and spelling
   - Auto-fixes are applied where possible (use `-NoFix` to disable)
-  - Fix any remaining issues before committing
+  - **Fix ALL lint errors before committing — including pre-existing ones.** The repo must be lint-clean
+    after every PR. Do not ignore errors because they were there before your changes.
   - Use `./catan.ps1 lint all` to check entire codebase (slower)
   - Use `./catan.ps1 lint ts` to check only TypeScript, etc. (cs, ts, md, json, ps1, spell)
+- **Format before every PR**: Run `./catan.ps1 format -All` to ensure consistent formatting.
+  This avoids strange diffs caused by formatting inconsistencies between developers and AI agents.
 
 ### Git Best Practices
 
