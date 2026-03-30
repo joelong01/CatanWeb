@@ -92,6 +92,33 @@ after each action. This is the **only** persistence path for game state.
 when a new request arrives, the request is noted and the save loop runs again with
 the latest state. Rapid actions produce at most one save per save-cycle duration (~35ms).
 
+## Save Path Audit
+
+All persistence of game state was audited. Two categories:
+
+**Gameplay saves (must use Log.RequestSave only):**
+
+All gameplay actions (roll, purchase, build, shuffle, balance, declare winner, etc.)
+go through `GameStateMachine.Handle*Async()` → `LogGameModel()` → `Log.RequestSave()`.
+No other gameplay code path saves. The following redundant saves were removed:
+
+- `GameApiController.SaveGameToDatabase` — deleted (third copy of serialize+compress)
+- `GameApiController.ProcessGameActionResult` — deleted (called SaveGameToDatabase + broadcast)
+- `PUT game/{gameId}/houserules` — removed redundant save, kept broadcast
+- `POST game/{gameId}/shuffle` — removed redundant save, kept broadcast
+- `POST game/{gameId}/winner` — removed redundant save
+
+**Non-gameplay saves (legitimate, use _gamePersistence directly):**
+
+These create or modify games outside the normal action flow:
+
+| Endpoint | Purpose | Why direct save is correct |
+|----------|---------|---------------------------|
+| `POST game/{gameId}/replay` | Copy game for replay | New game, not in any Log yet |
+| `PATCH game/{gameId}/rename` | Rename game | Modifies serialized log directly |
+| Copy game path | Duplicate game | New game, separate log |
+| Import game path | Restore from file | New game, separate log |
+
 ## Note: HandlePersistGameAsync
 
 `GameStateMachine.HandlePersistGameAsync` provides an explicit save path for
