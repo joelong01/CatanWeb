@@ -37,11 +37,13 @@ Converts TypeScript enums to string literal union types for better
 ergonomics:
 
 **Before:**
+
 ```typescript
 export enum Direction { North = 'North', South = 'South' }
 ```
 
 **After:**
+
 ```typescript
 export type Direction = 'North' | 'South';
 export const Direction = { North: 'North', South: 'South' } as const;
@@ -64,6 +66,7 @@ TypeScript interfaces:
 `.South`, etc.) that are useful in C# for ergonomic board traversal
 (~30 call sites) but should not be serialized. The `[JsonIgnore]`
 approach is preferred over extension methods because:
+
 - Better C# ergonomics (property syntax vs method calls)
 - Post-processing is a one-time setup cost
 - No breaking changes to ~30 call sites

@@ -123,6 +123,7 @@ tiles that share the same number but have different resources.
 ### Return Value
 
 The algorithm always returns a valid board. The return indicates:
+
 - Whether the target variance (0.5) was achieved
 - The actual variance of the returned board
 - The best board is used even if convergence is incomplete

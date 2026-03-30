@@ -50,6 +50,7 @@ calculates the fake-out coordinates and stores them in
 `RobberModel.FakeOutCoordinates`.
 
 **Client-side state machine:**
+
 ```
 enum FakeOutPhase { None, AnimatingToFake, HoldingAtFake, AnimatingToFinal }
 ```
@@ -72,6 +73,7 @@ When Dodgy IS selected as the robber target:
 | Clearing logic | 995-996, 1216-1217 | Clears coordinates on roll/next |
 
 **RobberModel properties:**
+
 ```typescript
 interface RobberModel {
     coordinates: HexCoordinates;
@@ -149,6 +151,7 @@ effects when creating new games with "Use House Rules" checked.
 ## Dodgy Player ID
 
 The constant `"Dodgy-001"` is hardcoded in:
+
 - `GameStateMachine.cs` (line 1864)
 - `Game.razor` (line 755)
 - `RobberLayer.razor` (line 96)

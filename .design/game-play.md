@@ -29,6 +29,7 @@ to build. Players manage their own resource cards physically and
 click purchase buttons when they build.
 
 This means:
+
 - No resource card validation on purchases
 - No enforcement of trading rules
 - No hand-limit checking (7-card discard is honor-system)
@@ -57,6 +58,7 @@ soldiers, dev cards) but not **what cards are held**.
 ### Board Setup (`PickingBoard`)
 
 Players collectively approve the board before playing:
+
 - **Shuffle**: randomize tile placement
 - **Balance**: run the balance algorithm for fair distribution
 - **Swap**: manually swap tile resources or numbers
@@ -70,6 +72,7 @@ what and presents a "Go First" overlay for the winning player.
 ### Resource Allocation (`AllocateResourceForward` / `AllocateResourceReverse`)
 
 Standard Catan initial placement:
+
 1. Forward pass: each player places one settlement + one road
 2. Reverse pass: each player places a second settlement + road
 3. Second settlement grants initial resources
@@ -77,12 +80,14 @@ Standard Catan initial placement:
 ### Main Game Loop (`WaitingForRoll` / `WaitingForNext`)
 
 The core gameplay cycle. Each turn alternates between:
+
 - `WaitingForRoll`: only the roll ring is active
 - `WaitingForNext`: all purchase buttons and board interaction active
 
 ### Robber (`MustMoveRobber`)
 
 When a 7 is rolled or a soldier is played:
+
 1. Click a tile to move the robber
 2. If valid targets exist, select which player to steal from
 3. Robber animates to new position (1.2s CSS transition)
@@ -116,6 +121,7 @@ Configurable via the Settings page or New Game creation:
 ### In-Game Roll Statistics
 
 The app tracks every dice roll and displays:
+
 - Roll frequency histogram
 - Expected vs. actual distribution
 - Per-resource production totals
@@ -123,6 +129,7 @@ The app tracks every dice roll and displays:
 ### Lifetime Player Statistics
 
 Across all completed games, the app tracks per player:
+
 - Games played and win count
 - Total and average score
 - Longest road achievements
@@ -136,6 +143,7 @@ Stats API.
 ## Board Generation
 
 Boards are dynamically generated with configurable tile counts:
+
 - **Regular**: 19 land tiles + surrounding water/harbor ring
 - **Expansion**: 30 land tiles for 5-6 players
 

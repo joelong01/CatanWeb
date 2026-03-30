@@ -15,6 +15,7 @@
 Identical to `deploy-staging.yml` `changes` job.
 Outputs: `backend`, `frontend` booleans.
 Path filters:
+
 - backend: `^(Catan3\.GameService|Catan3\.Shared)/`
 - frontend: `^react-ui/`
 - `workflow_dispatch` → force both true.

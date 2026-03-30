@@ -45,6 +45,7 @@ interface UIState {
 ```
 
 `layoutStore.ts` provides:
+
 - `isPortraitViewport()` function
 - `PORTRAIT_PANELS` preset with vertical stacking
 - `resetToPortrait()` and `resetToLandscape()` actions
@@ -95,6 +96,7 @@ Uses `data-layout-mode` attribute:
 ```
 
 Portrait-specific purchase grid maintains 3x2 layout:
+
 ```css
 .portrait-purchase .purchase-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -111,6 +113,7 @@ CSS custom variants defined in `globals.css`:
 ```
 
 CSS variables:
+
 - `--portrait-width: 1080px`
 - `--portrait-height: 1920px`
 - `--portrait-tab-height: 60px`
