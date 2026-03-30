@@ -19,13 +19,6 @@ namespace Catan3.GameService.Services
         private readonly RecordingService _recordingService;
         private readonly ILogger<AsyncCommandProcessor> _logger;
 
-        /// <summary>
-        /// Pending save requests per game. Only the latest state is kept — intermediate
-        /// states are coalesced. A background task drains this and saves to the database.
-        /// </summary>
-        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (GameStateMachine stateMachine, GameModel model)> _pendingSaves = new();
-        private int _saveRunning = 0; // 0 = idle, 1 = running
-
         public AsyncCommandProcessor(
             SignalRNotificationService signalRNotification,
             IServiceScopeFactory scopeFactory,
@@ -38,57 +31,6 @@ namespace Catan3.GameService.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Enqueues a save request. If a save is already in progress, the new state
-        /// replaces the pending one (coalescing). A background task processes saves.
-        /// </summary>
-        private void EnqueueSave(GameStateMachine stateMachine, GameModel gameModel)
-        {
-            var gameId = gameModel.GameId;
-            _pendingSaves[gameId] = (stateMachine, gameModel);
-
-            // If no save task is running, start one
-            if (Interlocked.CompareExchange(ref _saveRunning, 1, 0) == 0)
-            {
-                _ = Task.Run(ProcessPendingSavesAsync);
-            }
-        }
-
-        /// <summary>
-        /// Background task that drains all pending saves. Keeps running as long as
-        /// there are pending saves (new ones may arrive while saving).
-        /// </summary>
-        private async Task ProcessPendingSavesAsync()
-        {
-            try
-            {
-                while (!_pendingSaves.IsEmpty)
-                {
-                    // Snapshot and clear all pending saves
-                    var gameIds = _pendingSaves.Keys.ToList();
-                    foreach (var gameId in gameIds)
-                    {
-                        if (_pendingSaves.TryRemove(gameId, out var pending))
-                        {
-                            await SaveGameToDatabaseAsync(pending.stateMachine, pending.model);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _saveRunning, 0);
-
-                // Check if new saves arrived while we were finishing
-                if (!_pendingSaves.IsEmpty)
-                {
-                    if (Interlocked.CompareExchange(ref _saveRunning, 1, 0) == 0)
-                    {
-                        _ = Task.Run(ProcessPendingSavesAsync);
-                    }
-                }
-            }
-        }
 
         /// <summary>
         /// Processes a game command asynchronously with parallel operations
@@ -104,15 +46,18 @@ namespace Catan3.GameService.Services
             {
                 // Extract gameId for error reporting
                 gameId = request.OptionalString("gameId");
+                var messageType = request.OptionalString("messageType") ?? "unknown";
+                var totalSw = System.Diagnostics.Stopwatch.StartNew();
 
-                _logger.LogEvent("Process Command", $"Processing command {commandId} for game {gameId}");
-
-                // Execute game logic using the provided GameStateMachine function
+                // Execute game logic
+                var logicSw = System.Diagnostics.Stopwatch.StartNew();
                 var (gameModel, stateMachine, recordedMessage) = await ExecuteGameLogicAsync(request, getGameStateMachine);
+                logicSw.Stop();
                 gameStateMachine = stateMachine;
-                gameId = gameModel.GameId; // Ensure we have the correct gameId
+                gameId = gameModel.GameId;
 
                 // Fast path: notify clients immediately
+                var notifySw = System.Diagnostics.Stopwatch.StartNew();
                 var tasks = new List<Task>
                 {
                     _signalRNotification.NotifyAsync(gameId, gameModel),
@@ -121,13 +66,15 @@ namespace Catan3.GameService.Services
                 };
 
                 await Task.WhenAll(tasks);
+                notifySw.Stop();
+                totalSw.Stop();
 
-                // Slow path: save to database on background thread (fire-and-forget)
-                // The save is O(N) in log depth (serialize + compress entire log).
-                // Don't block the action path on it.
-                EnqueueSave(gameStateMachine, gameModel);
+                // Persistence is handled by Log.SaveAsync() inside GameStateMachine.LogGameModel()
+                // The Log owns its own save lifecycle (coalesced, background).
 
-                _logger.LogEvent("Command Completed", $"Command {commandId} completed successfully for game {gameId}");
+                _logger.LogInformation(
+                    "[PERF] {MessageType} game={GameId} logic={LogicMs}ms notify={NotifyMs}ms total={TotalMs}ms state={GameState}",
+                    messageType, gameId, logicSw.ElapsedMilliseconds, notifySw.ElapsedMilliseconds, totalSw.ElapsedMilliseconds, gameModel.GameState);
             }
             catch (Exception ex)
             {
@@ -141,51 +88,6 @@ namespace Catan3.GameService.Services
             }
         }
 
-        /// <summary>
-        /// Saves the full game log (with undo/redo stacks) to the database
-        /// </summary>
-        private async Task SaveGameToDatabaseAsync(GameStateMachine gameStateMachine, GameModel gameModel)
-        {
-            _logger.LogDebug("SaveGameToDatabaseAsync called for game {GameId}", gameModel.GameId);
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            try
-            {
-                // Create a new scope for database operations (since we're a singleton)
-                using var scope = _scopeFactory.CreateScope();
-                var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
-
-                // Get the full serializable log (preserves undo/redo stacks)
-                var serializableLog = gameStateMachine.GetSerializableLog();
-                var json = JsonHelper.Serialize(serializableLog);
-                var compressed = JsonHelper.Compress(json);
-
-                var serializeMs = sw.ElapsedMilliseconds;
-
-                // Create metadata for queryability
-                var metadata = new GameMetadata
-                {
-                    GameName = gameModel.GameName,
-                    GameState = gameModel.GameState.ToString(),
-                    StartedBy = "WebUI", // Placeholder until user auth is implemented
-                    PlayerCount = gameModel.Players.Count,
-                    GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
-                    PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
-                    TurnCount = serializableLog.DoneCount
-                };
-
-                // Save to database
-                await gamePersistence.SaveAsync(gameModel.GameId, compressed, metadata);
-                sw.Stop();
-                _logger.LogDebug(
-                    "Game {GameId} async save: serialize={SerializeMs}ms total={TotalMs}ms size={Size}bytes turns={Turns}",
-                    gameModel.GameId, serializeMs, sw.ElapsedMilliseconds, compressed.Length, serializableLog.DoneCount);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to save game {GameId} to database", gameModel.GameId);
-                // Don't throw - database save failure shouldn't break the game operation
-            }
-        }
 
         /// <summary>
         /// Executes the game logic using the provided GameStateMachine function
