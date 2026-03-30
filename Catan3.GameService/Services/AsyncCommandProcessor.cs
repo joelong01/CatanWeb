@@ -19,6 +19,13 @@ namespace Catan3.GameService.Services
         private readonly RecordingService _recordingService;
         private readonly ILogger<AsyncCommandProcessor> _logger;
 
+        /// <summary>
+        /// Pending save requests per game. Only the latest state is kept — intermediate
+        /// states are coalesced. A background task drains this and saves to the database.
+        /// </summary>
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (GameStateMachine stateMachine, GameModel model)> _pendingSaves = new();
+        private int _saveRunning = 0; // 0 = idle, 1 = running
+
         public AsyncCommandProcessor(
             SignalRNotificationService signalRNotification,
             IServiceScopeFactory scopeFactory,
@@ -29,6 +36,58 @@ namespace Catan3.GameService.Services
             _scopeFactory = scopeFactory;
             _recordingService = recordingService;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// Enqueues a save request. If a save is already in progress, the new state
+        /// replaces the pending one (coalescing). A background task processes saves.
+        /// </summary>
+        private void EnqueueSave(GameStateMachine stateMachine, GameModel gameModel)
+        {
+            var gameId = gameModel.GameId;
+            _pendingSaves[gameId] = (stateMachine, gameModel);
+
+            // If no save task is running, start one
+            if (Interlocked.CompareExchange(ref _saveRunning, 1, 0) == 0)
+            {
+                _ = Task.Run(ProcessPendingSavesAsync);
+            }
+        }
+
+        /// <summary>
+        /// Background task that drains all pending saves. Keeps running as long as
+        /// there are pending saves (new ones may arrive while saving).
+        /// </summary>
+        private async Task ProcessPendingSavesAsync()
+        {
+            try
+            {
+                while (!_pendingSaves.IsEmpty)
+                {
+                    // Snapshot and clear all pending saves
+                    var gameIds = _pendingSaves.Keys.ToList();
+                    foreach (var gameId in gameIds)
+                    {
+                        if (_pendingSaves.TryRemove(gameId, out var pending))
+                        {
+                            await SaveGameToDatabaseAsync(pending.stateMachine, pending.model);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _saveRunning, 0);
+
+                // Check if new saves arrived while we were finishing
+                if (!_pendingSaves.IsEmpty)
+                {
+                    if (Interlocked.CompareExchange(ref _saveRunning, 1, 0) == 0)
+                    {
+                        _ = Task.Run(ProcessPendingSavesAsync);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -53,16 +112,20 @@ namespace Catan3.GameService.Services
                 gameStateMachine = stateMachine;
                 gameId = gameModel.GameId; // Ensure we have the correct gameId
 
-                // Parallel operations: Notify clients + command completion + persistence + recording
+                // Fast path: notify clients immediately
                 var tasks = new List<Task>
                 {
                     _signalRNotification.NotifyAsync(gameId, gameModel),
                     _signalRNotification.NotifyCommandCompletedAsync(gameId, commandId, true, "Command executed successfully"),
-                    SaveGameToDatabaseAsync(gameStateMachine, gameModel),
                     TryRecordActionAsync(gameId, recordedMessage)
                 };
 
                 await Task.WhenAll(tasks);
+
+                // Slow path: save to database on background thread (fire-and-forget)
+                // The save is O(N) in log depth (serialize + compress entire log).
+                // Don't block the action path on it.
+                EnqueueSave(gameStateMachine, gameModel);
 
                 _logger.LogEvent("Command Completed", $"Command {commandId} completed successfully for game {gameId}");
             }
