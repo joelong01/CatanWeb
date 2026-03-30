@@ -293,7 +293,8 @@ public class RecordingController : ControllerBase
             return NotFound(new { message = $"Recording {id} not found" });
         }
 
-        _logger.LogInformation("Deleted recording {RecordingId}", id);
+        var safeId = id?.Replace(Environment.NewLine, " ").Replace("\r", " ").Replace("\n", " ");
+        _logger.LogInformation("Deleted recording {RecordingId}", safeId);
         return Ok(new { message = "Recording deleted" });
     }
 
@@ -370,6 +371,9 @@ public class RecordingController : ControllerBase
     [HttpPost("recording/{id}/replay")]
     public async Task<ActionResult<ReplayResult>> ReplayRecording(string id, [FromQuery] bool perf = false)
     {
+        // Sanitize user-provided id for log safety
+        var safeId = id?.Replace(Environment.NewLine, " ").Replace("\r", " ").Replace("\n", " ") ?? "";
+
         // Load the recording
         var result = await _recordingService.GetRecordingAsync(id);
         if (result == null)
@@ -387,7 +391,7 @@ public class RecordingController : ControllerBase
         }
 
         _logger.LogInformation("Starting replay of recording {RecordingId} ({Name}) with {ActionCount} actions",
-            id, recording.Name, recordingData.Actions.Count);
+            safeId, recording.Name, recordingData.Actions.Count);
 
         try
         {
@@ -445,7 +449,7 @@ public class RecordingController : ControllerBase
             }
 
             totalStopwatch.Stop();
-            _logger.LogInformation("Successfully replayed recording {RecordingId} ({Name})", id, recording.Name);
+            _logger.LogInformation("Successfully replayed recording {RecordingId} ({Name})", safeId, recording.Name);
             return Ok(new ReplayResult
             {
                 Success = true,
@@ -458,7 +462,7 @@ public class RecordingController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error replaying recording {RecordingId}", id);
+            _logger.LogError(ex, "Error replaying recording {RecordingId}", safeId);
             return Ok(new ReplayResult
             {
                 Success = false,
