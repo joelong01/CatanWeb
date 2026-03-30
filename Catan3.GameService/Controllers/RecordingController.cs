@@ -63,6 +63,27 @@ public class ReplayResult
     public string? ExpectedHash { get; set; }
     public string? ActualHash { get; set; }
     public string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// Per-action timing data. Only populated when perf=true query parameter is set.
+    /// </summary>
+    public List<ActionTiming>? Timings { get; set; }
+
+    /// <summary>
+    /// Total elapsed time in milliseconds for the full replay.
+    /// </summary>
+    public double? TotalElapsedMs { get; set; }
+}
+
+/// <summary>
+/// Timing data for a single replayed action.
+/// </summary>
+public class ActionTiming
+{
+    public int Index { get; set; }
+    public string ActionType { get; set; } = string.Empty;
+    public string GameState { get; set; } = string.Empty;
+    public double ElapsedMs { get; set; }
 }
 
 /// <summary>
@@ -347,7 +368,7 @@ public class RecordingController : ControllerBase
     /// Replays a recording and verifies each action produces the expected GameHash.
     /// </summary>
     [HttpPost("recording/{id}/replay")]
-    public async Task<ActionResult<ReplayResult>> ReplayRecording(string id)
+    public async Task<ActionResult<ReplayResult>> ReplayRecording(string id, [FromQuery] bool perf = false)
     {
         // Load the recording
         var result = await _recordingService.GetRecordingAsync(id);
@@ -377,15 +398,31 @@ public class RecordingController : ControllerBase
             gameStateMachine.InitializeLoggingState(recordingData.InitialGameModel);
 
             // Execute each action and verify hash
+            var timings = perf ? new List<ActionTiming>() : null;
+            var totalStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             for (int i = 0; i < recordingData.Actions.Count; i++)
             {
                 var action = recordingData.Actions[i];
+                var preState = gameStateMachine.GetCurrentState().GameState.ToString();
 
-                // Execute the action
+                // Time the action execution
+                var actionStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var resultModel = await ExecuteRecordedAction(gameStateMachine, action, recordingData.InitialGameModel.GameId);
+                actionStopwatch.Stop();
+
+                if (perf)
+                {
+                    timings!.Add(new ActionTiming
+                    {
+                        Index = i,
+                        ActionType = action.GetType().Name.Replace("Recorded", ""),
+                        GameState = preState,
+                        ElapsedMs = Math.Round(actionStopwatch.Elapsed.TotalMilliseconds, 2)
+                    });
+                }
 
                 // ExpectedGameHash is the POST-action hash (captured after action executed during recording)
-                // Compare actual result with the current action's expected hash
                 if (!string.IsNullOrEmpty(action.ExpectedGameHash) &&
                     resultModel.GameHash != action.ExpectedGameHash)
                 {
@@ -400,18 +437,23 @@ public class RecordingController : ControllerBase
                         FailedAtAction = i,
                         ExpectedHash = action.ExpectedGameHash,
                         ActualHash = resultModel.GameHash,
-                        ErrorMessage = $"Hash mismatch after {action.GetType().Name}"
+                        ErrorMessage = $"Hash mismatch after {action.GetType().Name}",
+                        Timings = timings,
+                        TotalElapsedMs = totalStopwatch.Elapsed.TotalMilliseconds
                     });
                 }
             }
 
+            totalStopwatch.Stop();
             _logger.LogInformation("Successfully replayed recording {RecordingId} ({Name})", id, recording.Name);
             return Ok(new ReplayResult
             {
                 Success = true,
                 RecordingName = recording.Name,
                 ActionsReplayed = recordingData.Actions.Count,
-                TotalActions = recordingData.Actions.Count
+                TotalActions = recordingData.Actions.Count,
+                Timings = timings,
+                TotalElapsedMs = Math.Round(totalStopwatch.Elapsed.TotalMilliseconds, 2)
             });
         }
         catch (Exception ex)
