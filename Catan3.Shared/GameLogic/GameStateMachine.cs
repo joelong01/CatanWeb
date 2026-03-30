@@ -1480,18 +1480,9 @@ namespace Catan3.Shared.GameLogic
             // this.TraceMessage($"GameState: {gameModel.GameState} OldHash={oldHash} newHash={gameModel.GameHash}");
             _gameLog.Done(gameModel);
 
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _gameLog.SaveAsync();
-                }
-                catch (Exception ex)
-                {
-                    // Handle the exception (e.g., log it, show a message to the user, etc.)
-                    _logger.Trace(GameTraceLevel.Trace, $"Error saving log: {ex.Message}");
-                }
-            });
+            // Request a coalesced background save. The Log owns persistence —
+            // rapid calls are coalesced so only the latest state is saved.
+            _gameLog.RequestSave();
 
         }
         private void UpdatePurchaseUi(GameModel gameModel)

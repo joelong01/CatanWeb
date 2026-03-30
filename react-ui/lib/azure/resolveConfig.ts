@@ -22,7 +22,6 @@
  * or discoverable from Azure after auth.
  */
 
-import { ResourceManagementClient } from '@azure/arm-resources';
 import type { TokenCredential } from '@azure/core-auth';
 import type { AzureConfig } from './types';
 
@@ -107,8 +106,8 @@ export async function getDefaultSubscriptionId(): Promise<string> {
   } catch {
     throw new Error(
       'Could not get Azure subscription. Make sure you are logged in:\n' +
-      '  az login\n' +
-      '  az account set --subscription <name-or-id>'
+        '  az login\n' +
+        '  az account set --subscription <name-or-id>'
     );
   }
 }
@@ -131,15 +130,20 @@ export async function discoverSubscriptionId(
     throw new Error('Could not get Azure management token');
   }
 
-  const response = await fetch('https://management.azure.com/subscriptions?api-version=2022-12-01', {
-    headers: { Authorization: `Bearer ${tokenResponse.token}` },
-  });
+  const response = await fetch(
+    'https://management.azure.com/subscriptions?api-version=2022-12-01',
+    {
+      headers: { Authorization: `Bearer ${tokenResponse.token}` },
+    }
+  );
 
   if (!response.ok) {
     throw new Error(`Failed to list subscriptions: HTTP ${response.status}`);
   }
 
-  const data = await response.json() as { value: Array<{ subscriptionId: string; state: string }> };
+  const data = (await response.json()) as {
+    value: Array<{ subscriptionId: string; state: string }>;
+  };
   const enabled = data.value.filter((s) => s.state === 'Enabled');
 
   // Find the subscription containing our resource group + Cosmos account.
@@ -164,7 +168,7 @@ export async function discoverSubscriptionId(
 
   throw new Error(
     `Could not find '${cosmosAccountName}' in '${resourceGroup}' across ${enabled.length} subscription(s). ` +
-    `Make sure you sign in with the correct Azure account.`
+      `Make sure you sign in with the correct Azure account.`
   );
 }
 
@@ -175,9 +179,13 @@ export async function discoverSubscriptionId(
  * This is the ONLY value read from the config file — everything else
  * is derived from baseName or discovered from Azure.
  */
-export function readBaseNameFromConfig(configPath: string): { baseName: string; clientId?: string } | null {
+export function readBaseNameFromConfig(
+  configPath: string
+): { baseName: string; clientId?: string } | null {
   try {
-    const { readFileSync } = require('fs');
+    // Dynamic import needed for server-side file access in Next.js API routes
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { readFileSync } = require('fs') as typeof import('fs');
     const cfg = JSON.parse(readFileSync(configPath, 'utf-8'));
     const baseName = cfg.baseName;
     if (!baseName) return null;

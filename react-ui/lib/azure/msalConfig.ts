@@ -40,8 +40,5 @@ export const azureManagementScope = 'https://management.azure.com/.default';
  * clientId (to initiate MSAL sign-in).
  */
 export function isAzureConfigured(): boolean {
-  return (
-    !!process.env.NEXT_PUBLIC_AZURE_BASE_NAME &&
-    !!process.env.NEXT_PUBLIC_AZURE_CLIENT_ID
-  );
+  return !!process.env.NEXT_PUBLIC_AZURE_BASE_NAME && !!process.env.NEXT_PUBLIC_AZURE_CLIENT_ID;
 }

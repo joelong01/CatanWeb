@@ -41,7 +41,8 @@ function getBuildVersionEnv(): Record<string, string> {
 
   try {
     env['NEXT_PUBLIC_BUILD_COMMIT'] = execSync('git rev-parse --short HEAD', {
-      encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
   } catch {
     env['NEXT_PUBLIC_BUILD_COMMIT'] = process.env.DEPLOY_COMMIT ?? 'unknown';
@@ -49,16 +50,31 @@ function getBuildVersionEnv(): Record<string, string> {
 
   try {
     env['NEXT_PUBLIC_BUILD_BRANCH'] = execSync('git rev-parse --abbrev-ref HEAD', {
-      encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
   } catch {
     env['NEXT_PUBLIC_BUILD_BRANCH'] = 'unknown';
   }
 
   const now = new Date();
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  env['NEXT_PUBLIC_BUILD_TIME'] = process.env.DEPLOY_BUILD_TIME
-    ?? `${months[now.getMonth()]}${now.getDate()}-${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  env['NEXT_PUBLIC_BUILD_TIME'] =
+    process.env.DEPLOY_BUILD_TIME ??
+    `${months[now.getMonth()]}${now.getDate()}-${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   return env;
 }

@@ -120,7 +120,7 @@ export default function Home(): React.ReactElement {
     if (health.status !== 'healthy') {
       health.retry();
     }
-  }, [health.status, health.retry]);
+  }, [health]);
 
   // ── Game cluster (top): center + 6 surrounding (full ring) ──
   // Spiral order: center, top, top-right, bottom-right, bottom, bottom-left, top-left

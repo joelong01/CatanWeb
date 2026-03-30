@@ -118,11 +118,11 @@ export interface DoctorResult {
  * `CosmosCatanDb.InitializeAsync()`.
  */
 export const REQUIRED_CONTAINERS: Record<string, string> = {
-  'players': '/id',
-  'games': '/id',
+  players: '/id',
+  games: '/id',
   'completed-games': '/id',
-  'templates': '/id',
-  'recordings': '/id',
+  templates: '/id',
+  recordings: '/id',
 };
 
 /**
@@ -153,22 +153,43 @@ export function formatError(err: unknown): string {
 export function timedCheck(
   checkName: string,
   report: CheckReporter
-): { start: number; ok: (detail: string) => CheckResult; fail: (error: string, detail?: string) => CheckResult; warn: (detail: string) => CheckResult } {
+): {
+  start: number;
+  ok: (detail: string) => CheckResult;
+  fail: (error: string, detail?: string) => CheckResult;
+  warn: (detail: string) => CheckResult;
+} {
   const start = Date.now();
   return {
     start,
     ok(detail: string): CheckResult {
-      const r: CheckResult = { check: checkName, status: 'ok', detail, durationMs: Date.now() - start };
+      const r: CheckResult = {
+        check: checkName,
+        status: 'ok',
+        detail,
+        durationMs: Date.now() - start,
+      };
       report(r);
       return r;
     },
     fail(error: string, detail?: string): CheckResult {
-      const r: CheckResult = { check: checkName, status: 'error', error, detail, durationMs: Date.now() - start };
+      const r: CheckResult = {
+        check: checkName,
+        status: 'error',
+        error,
+        detail,
+        durationMs: Date.now() - start,
+      };
       report(r);
       return r;
     },
     warn(detail: string): CheckResult {
-      const r: CheckResult = { check: checkName, status: 'warning', detail, durationMs: Date.now() - start };
+      const r: CheckResult = {
+        check: checkName,
+        status: 'warning',
+        detail,
+        durationMs: Date.now() - start,
+      };
       report(r);
       return r;
     },

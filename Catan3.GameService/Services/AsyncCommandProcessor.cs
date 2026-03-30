@@ -15,21 +15,19 @@ namespace Catan3.GameService.Services
     public class AsyncCommandProcessor
     {
         private readonly SignalRNotificationService _signalRNotification;
-        private readonly IServiceScopeFactory _scopeFactory;
         private readonly RecordingService _recordingService;
         private readonly ILogger<AsyncCommandProcessor> _logger;
 
         public AsyncCommandProcessor(
             SignalRNotificationService signalRNotification,
-            IServiceScopeFactory scopeFactory,
             RecordingService recordingService,
             ILogger<AsyncCommandProcessor> logger)
         {
             _signalRNotification = signalRNotification;
-            _scopeFactory = scopeFactory;
             _recordingService = recordingService;
             _logger = logger;
         }
+
 
         /// <summary>
         /// Processes a game command asynchronously with parallel operations
@@ -45,26 +43,35 @@ namespace Catan3.GameService.Services
             {
                 // Extract gameId for error reporting
                 gameId = request.OptionalString("gameId");
+                var messageType = request.OptionalString("messageType") ?? "unknown";
+                var totalSw = System.Diagnostics.Stopwatch.StartNew();
 
-                _logger.LogEvent("Process Command", $"Processing command {commandId} for game {gameId}");
-
-                // Execute game logic using the provided GameStateMachine function
+                // Execute game logic
+                var logicSw = System.Diagnostics.Stopwatch.StartNew();
                 var (gameModel, stateMachine, recordedMessage) = await ExecuteGameLogicAsync(request, getGameStateMachine);
+                logicSw.Stop();
                 gameStateMachine = stateMachine;
-                gameId = gameModel.GameId; // Ensure we have the correct gameId
+                gameId = gameModel.GameId;
 
-                // Parallel operations: Notify clients + command completion + persistence + recording
+                // Fast path: notify clients immediately
+                var notifySw = System.Diagnostics.Stopwatch.StartNew();
                 var tasks = new List<Task>
                 {
                     _signalRNotification.NotifyAsync(gameId, gameModel),
                     _signalRNotification.NotifyCommandCompletedAsync(gameId, commandId, true, "Command executed successfully"),
-                    SaveGameToDatabaseAsync(gameStateMachine, gameModel),
                     TryRecordActionAsync(gameId, recordedMessage)
                 };
 
                 await Task.WhenAll(tasks);
+                notifySw.Stop();
+                totalSw.Stop();
 
-                _logger.LogEvent("Command Completed", $"Command {commandId} completed successfully for game {gameId}");
+                // Persistence is handled by Log.SaveAsync() inside GameStateMachine.LogGameModel()
+                // The Log owns its own save lifecycle (coalesced, background).
+
+                _logger.LogInformation(
+                    "[PERF] {MessageType} game={GameId} logic={LogicMs}ms notify={NotifyMs}ms total={TotalMs}ms state={GameState}",
+                    messageType, gameId, logicSw.ElapsedMilliseconds, notifySw.ElapsedMilliseconds, totalSw.ElapsedMilliseconds, gameModel.GameState);
             }
             catch (Exception ex)
             {
@@ -78,51 +85,6 @@ namespace Catan3.GameService.Services
             }
         }
 
-        /// <summary>
-        /// Saves the full game log (with undo/redo stacks) to the database
-        /// </summary>
-        private async Task SaveGameToDatabaseAsync(GameStateMachine gameStateMachine, GameModel gameModel)
-        {
-            _logger.LogDebug("SaveGameToDatabaseAsync called for game {GameId}", gameModel.GameId);
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            try
-            {
-                // Create a new scope for database operations (since we're a singleton)
-                using var scope = _scopeFactory.CreateScope();
-                var gamePersistence = scope.ServiceProvider.GetRequiredService<IGamePersistence>();
-
-                // Get the full serializable log (preserves undo/redo stacks)
-                var serializableLog = gameStateMachine.GetSerializableLog();
-                var json = JsonHelper.Serialize(serializableLog);
-                var compressed = JsonHelper.Compress(json);
-
-                var serializeMs = sw.ElapsedMilliseconds;
-
-                // Create metadata for queryability
-                var metadata = new GameMetadata
-                {
-                    GameName = gameModel.GameName,
-                    GameState = gameModel.GameState.ToString(),
-                    StartedBy = "WebUI", // Placeholder until user auth is implemented
-                    PlayerCount = gameModel.Players.Count,
-                    GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
-                    PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
-                    TurnCount = serializableLog.DoneCount
-                };
-
-                // Save to database
-                await gamePersistence.SaveAsync(gameModel.GameId, compressed, metadata);
-                sw.Stop();
-                _logger.LogDebug(
-                    "Game {GameId} async save: serialize={SerializeMs}ms total={TotalMs}ms size={Size}bytes turns={Turns}",
-                    gameModel.GameId, serializeMs, sw.ElapsedMilliseconds, compressed.Length, serializableLog.DoneCount);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to save game {GameId} to database", gameModel.GameId);
-                // Don't throw - database save failure shouldn't break the game operation
-            }
-        }
 
         /// <summary>
         /// Executes the game logic using the provided GameStateMachine function

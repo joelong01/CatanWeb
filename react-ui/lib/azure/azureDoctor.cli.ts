@@ -35,7 +35,11 @@
 import { DefaultAzureCredential } from '@azure/identity';
 import { join } from 'path';
 import { runAzureDoctor } from './azureDoctor';
-import { resolveAzureConfig, getDefaultSubscriptionId, readBaseNameFromConfig } from './resolveConfig';
+import {
+  resolveAzureConfig,
+  getDefaultSubscriptionId,
+  readBaseNameFromConfig,
+} from './resolveConfig';
 import type { CheckResult, CheckStatus } from './types';
 
 // ── Argument parsing ─────────────────────────────────────────────────────────
@@ -170,15 +174,21 @@ async function main() {
         const icon = domain.healthy ? '\u2705' : '\u274C';
         const failed = domain.checks.filter((c) => c.status === 'error').length;
         const warned = domain.checks.filter((c) => c.status === 'warning').length;
-        const suffix = failed > 0 ? ` (${failed} failed)` : warned > 0 ? ` (${warned} warnings)` : '';
+        const suffix =
+          failed > 0 ? ` (${failed} failed)` : warned > 0 ? ` (${warned} warnings)` : '';
         console.log(`  ${icon} ${domain.domain.padEnd(16)} ${domain.name}${suffix}`);
       }
       console.log('');
       if (result.allPassed) {
         console.log('\u2705 All checks passed.');
       } else {
-        const totalFailed = result.domains.reduce((n, d) => n + d.checks.filter((c) => c.status === 'error').length, 0);
-        console.log(`\u274C ${totalFailed} check(s) failed across ${result.domains.filter((d) => !d.healthy).length} domain(s).`);
+        const totalFailed = result.domains.reduce(
+          (n, d) => n + d.checks.filter((c) => c.status === 'error').length,
+          0
+        );
+        console.log(
+          `\u274C ${totalFailed} check(s) failed across ${result.domains.filter((d) => !d.healthy).length} domain(s).`
+        );
       }
     }
 

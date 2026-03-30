@@ -15,7 +15,12 @@
 import type { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import type { WebSiteManagementClient } from '@azure/arm-appservice';
 import type { AzureConfig, CheckReporter, CheckResult, DomainResult } from '../types';
-import { REQUIRED_CONTAINERS, COSMOS_DATA_CONTRIBUTOR_ROLE_ID, formatError, timedCheck } from '../types';
+import {
+  REQUIRED_CONTAINERS,
+  COSMOS_DATA_CONTRIBUTOR_ROLE_ID,
+  formatError,
+  timedCheck,
+} from '../types';
 
 /**
  * Runs all Cosmos DB doctor checks in sequence.
@@ -78,7 +83,10 @@ async function checkCosmosAccount(
   report({ check: 'cosmosAccount', status: 'running', detail: 'Checking Cosmos account...' });
 
   try {
-    const account = await client.databaseAccounts.get(config.resourceGroup, config.cosmosAccountName);
+    const account = await client.databaseAccounts.get(
+      config.resourceGroup,
+      config.cosmosAccountName
+    );
     if (account.provisioningState !== 'Succeeded') {
       return t.fail(
         `Cosmos account '${config.cosmosAccountName}' is not ready (state: ${account.provisioningState}).`,
@@ -109,7 +117,10 @@ async function checkCosmosFirewall(
   report({ check: 'cosmosFirewall', status: 'running', detail: 'Checking firewall config...' });
 
   try {
-    const account = await client.databaseAccounts.get(config.resourceGroup, config.cosmosAccountName);
+    const account = await client.databaseAccounts.get(
+      config.resourceGroup,
+      config.cosmosAccountName
+    );
     const publicAccess = account.publicNetworkAccess === 'Enabled';
     const ipRulesEmpty = !account.ipRules || account.ipRules.length === 0;
 
@@ -125,14 +136,22 @@ async function checkCosmosFirewall(
       return t.fail(`Cosmos firewall is blocking access: ${issues.join(', ')}`, issues.join(', '));
     }
 
-    report({ check: 'cosmosFirewall', status: 'fixing', detail: 'Enabling public access (this may take a minute)...' });
-    await client.databaseAccounts.beginCreateOrUpdateAndWait(config.resourceGroup, config.cosmosAccountName, {
-      location: account.location!,
-      locations: account.locations ?? [],
-      databaseAccountOfferType: account.databaseAccountOfferType ?? 'Standard',
-      publicNetworkAccess: 'Enabled',
-      ipRules: [],
+    report({
+      check: 'cosmosFirewall',
+      status: 'fixing',
+      detail: 'Enabling public access (this may take a minute)...',
     });
+    await client.databaseAccounts.beginCreateOrUpdateAndWait(
+      config.resourceGroup,
+      config.cosmosAccountName,
+      {
+        location: account.location!,
+        locations: account.locations ?? [],
+        databaseAccountOfferType: account.databaseAccountOfferType ?? 'Standard',
+        publicNetworkAccess: 'Enabled',
+        ipRules: [],
+      }
+    );
     return t.ok('Fixed: publicNetworkAccess=Enabled, ipRules=[]');
   } catch (err) {
     return t.fail(`Failed to check/fix Cosmos firewall: ${formatError(err)}`);
@@ -150,19 +169,33 @@ async function checkCosmosContainers(
   autoFix: boolean
 ): Promise<CheckResult> {
   const t = timedCheck('cosmosContainers', report);
-  report({ check: 'cosmosContainers', status: 'running', detail: 'Checking database and containers...' });
+  report({
+    check: 'cosmosContainers',
+    status: 'running',
+    detail: 'Checking database and containers...',
+  });
 
   try {
     // Verify database exists
     try {
-      await client.sqlResources.getSqlDatabase(config.resourceGroup, config.cosmosAccountName, config.cosmosDatabaseName);
+      await client.sqlResources.getSqlDatabase(
+        config.resourceGroup,
+        config.cosmosAccountName,
+        config.cosmosDatabaseName
+      );
     } catch {
-      return t.fail(`Database '${config.cosmosDatabaseName}' not found. Run: ./catan.ps1 database install -Azure`);
+      return t.fail(
+        `Database '${config.cosmosDatabaseName}' not found. Run: ./catan.ps1 database install -Azure`
+      );
     }
 
     // Enumerate existing containers
     const existing = new Set<string>();
-    for await (const c of client.sqlResources.listSqlContainers(config.resourceGroup, config.cosmosAccountName, config.cosmosDatabaseName)) {
+    for await (const c of client.sqlResources.listSqlContainers(
+      config.resourceGroup,
+      config.cosmosAccountName,
+      config.cosmosDatabaseName
+    )) {
       if (c.resource?.id) existing.add(c.resource.id);
     }
 
@@ -175,11 +208,23 @@ async function checkCosmosContainers(
       return t.fail(`Missing containers: ${missing.join(', ')}`, `Missing: ${missing.join(', ')}`);
     }
 
-    report({ check: 'cosmosContainers', status: 'fixing', detail: `Creating: ${missing.join(', ')}...` });
+    report({
+      check: 'cosmosContainers',
+      status: 'fixing',
+      detail: `Creating: ${missing.join(', ')}...`,
+    });
     for (const name of missing) {
       await client.sqlResources.beginCreateUpdateSqlContainerAndWait(
-        config.resourceGroup, config.cosmosAccountName, config.cosmosDatabaseName, name,
-        { resource: { id: name, partitionKey: { paths: [REQUIRED_CONTAINERS[name]], kind: 'Hash' } } }
+        config.resourceGroup,
+        config.cosmosAccountName,
+        config.cosmosDatabaseName,
+        name,
+        {
+          resource: {
+            id: name,
+            partitionKey: { paths: [REQUIRED_CONTAINERS[name]], kind: 'Hash' },
+          },
+        }
       );
     }
     return t.ok(`Fixed: created ${missing.join(', ')}`);
@@ -198,10 +243,17 @@ async function checkAppServiceConfig(
   report: CheckReporter
 ): Promise<CheckResult> {
   const t = timedCheck('appServiceConfig', report);
-  report({ check: 'appServiceConfig', status: 'running', detail: 'Checking App Service config...' });
+  report({
+    check: 'appServiceConfig',
+    status: 'running',
+    detail: 'Checking App Service config...',
+  });
 
   try {
-    const settings = await client.webApps.listApplicationSettings(config.resourceGroup, config.gameServiceAppName);
+    const settings = await client.webApps.listApplicationSettings(
+      config.resourceGroup,
+      config.gameServiceAppName
+    );
     const hasEndpoint = !!settings.properties?.['COSMOS_ENDPOINT'];
 
     const site = await client.webApps.get(config.resourceGroup, config.gameServiceAppName);
@@ -214,7 +266,10 @@ async function checkAppServiceConfig(
     if (issues.length === 0) {
       return t.ok('COSMOS_ENDPOINT set, managed identity enabled');
     }
-    return t.fail(`App Service config issues: ${issues.join(', ')}. Run: ./catan.ps1 azure deploy`, issues.join(', '));
+    return t.fail(
+      `App Service config issues: ${issues.join(', ')}. Run: ./catan.ps1 azure deploy`,
+      issues.join(', ')
+    );
   } catch (err) {
     return t.fail(`Failed to check App Service config: ${formatError(err)}`);
   }
@@ -239,12 +294,20 @@ async function checkCosmosRbac(
     const site = await webClient.webApps.get(config.resourceGroup, config.gameServiceAppName);
     const principalId = site.identity?.principalId;
     if (!principalId) {
-      return t.fail('Cannot check RBAC: App Service has no managed identity. Run: ./catan.ps1 azure deploy');
+      return t.fail(
+        'Cannot check RBAC: App Service has no managed identity. Run: ./catan.ps1 azure deploy'
+      );
     }
 
     let hasRole = false;
-    for await (const a of cosmosClient.sqlResources.listSqlRoleAssignments(config.resourceGroup, config.cosmosAccountName)) {
-      if (a.principalId === principalId && a.roleDefinitionId?.includes(COSMOS_DATA_CONTRIBUTOR_ROLE_ID)) {
+    for await (const a of cosmosClient.sqlResources.listSqlRoleAssignments(
+      config.resourceGroup,
+      config.cosmosAccountName
+    )) {
+      if (
+        a.principalId === principalId &&
+        a.roleDefinitionId?.includes(COSMOS_DATA_CONTRIBUTOR_ROLE_ID)
+      ) {
         hasRole = true;
         break;
       }
@@ -258,10 +321,16 @@ async function checkCosmosRbac(
       return t.fail(`Managed identity ${principalId} lacks Cosmos Data Contributor role`);
     }
 
-    report({ check: 'cosmosRbac', status: 'fixing', detail: `Granting role to ${principalId.substring(0, 8)}...` });
+    report({
+      check: 'cosmosRbac',
+      status: 'fixing',
+      detail: `Granting role to ${principalId.substring(0, 8)}...`,
+    });
     const accountScope = `/subscriptions/${config.subscriptionId}/resourceGroups/${config.resourceGroup}/providers/Microsoft.DocumentDB/databaseAccounts/${config.cosmosAccountName}`;
     await cosmosClient.sqlResources.beginCreateUpdateSqlRoleAssignmentAndWait(
-      crypto.randomUUID(), config.resourceGroup, config.cosmosAccountName,
+      crypto.randomUUID(),
+      config.resourceGroup,
+      config.cosmosAccountName,
       {
         roleDefinitionId: `${accountScope}/sqlRoleDefinitions/${COSMOS_DATA_CONTRIBUTOR_ROLE_ID}`,
         principalId,

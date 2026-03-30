@@ -32,6 +32,7 @@ Game-specific icon font with glyphs for board elements:
 | Settlement | `\uE926` | Settlement markers |
 
 **React loading:** Next.js `localFont()` API in `layout.tsx`:
+
 ```typescript
 const catanFont = localFont({
     src: '../public/fonts/Catan.ttf',
@@ -43,6 +44,7 @@ const catanFont = localFont({
 Preloaded via `<link rel="preload">` in the document head.
 
 **Blazor loading:** Standard `@font-face` in `app.css`:
+
 ```css
 @font-face {
     font-family: 'Catan';
@@ -84,6 +86,7 @@ tree-shaking via individual icon imports.
 Free requires explicit human approval before use.
 
 **Prohibited without approval:**
+
 - Unicode symbols and emoji
 - New font families
 - Browser-specific fonts
@@ -95,6 +98,7 @@ Free requires explicit human approval before use.
 ### React
 
 Theme configuration in `public/themes/base/theme.json`:
+
 - Maps asset names to file paths
 - Includes tile images, harbor images, resource cards, building
   icons, stat icons, backgrounds, and fonts
@@ -103,6 +107,7 @@ Theme configuration in `public/themes/base/theme.json`:
 ### Blazor
 
 `ClientAssetService` loads theme JSON via HTTP:
+
 - Supports theme hierarchy: `base` (fallback), `classic`,
   `black-and-white`
 - Resolves `AssetName` enum to URL paths

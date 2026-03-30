@@ -539,14 +539,7 @@ export default function GamePage(): React.ReactElement {
       setRobberTargetPlayers(targetPlayers);
       setRobberMenuPosition(clampedPosition);
     },
-    [
-      gameState,
-      robber?.coordinates,
-      getPlayersWithBuildingsOnTile,
-      currentPlayer?.id,
-      currentPlayer?.name,
-      clampRobberMenuPosition,
-    ]
+    [gameState, robber?.coordinates, getPlayersWithBuildingsOnTile, clampRobberMenuPosition]
   );
 
   // Left-click handler for robber placement (menu at click position)
@@ -695,19 +688,34 @@ export default function GamePage(): React.ReactElement {
       // Works in WaitingForNext, WaitingForRoll (soldier), Supplemental, etc.
       switch (lowerKey) {
         case 's':
-          if (canPurchaseSettlement) { e.preventDefault(); handleAction('settlement'); }
+          if (canPurchaseSettlement) {
+            e.preventDefault();
+            handleAction('settlement');
+          }
           return;
         case 'c':
-          if (canPurchaseCity) { e.preventDefault(); handleAction('city'); }
+          if (canPurchaseCity) {
+            e.preventDefault();
+            handleAction('city');
+          }
           return;
         case 'k':
-          if (canPlaySoldier) { e.preventDefault(); handleAction('soldier'); }
+          if (canPlaySoldier) {
+            e.preventDefault();
+            handleAction('soldier');
+          }
           return;
         case 'r':
-          if (canPurchaseRoad) { e.preventDefault(); handleAction('road'); }
+          if (canPurchaseRoad) {
+            e.preventDefault();
+            handleAction('road');
+          }
           return;
         case 'd':
-          if (canPurchaseDevCard) { e.preventDefault(); handleAction('devcard'); }
+          if (canPurchaseDevCard) {
+            e.preventDefault();
+            handleAction('devcard');
+          }
           return;
       }
     };
