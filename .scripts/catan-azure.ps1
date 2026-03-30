@@ -3026,7 +3026,10 @@ if ($Verb -eq "install") {
     if (-not $config.baseName) {
         $baseName = Get-AvailableBaseName
         $config = Initialize-ConfigFromBaseName -BaseName $baseName
-        Save-LocalConfig -Config $config
+        # Only persist baseName (+ auth if present) — all other names are derived
+        $persistConfig = @{ baseName = $baseName }
+        if ($config.auth) { $persistConfig.auth = $config.auth }
+        Save-LocalConfig -Config $persistConfig
     }
     else {
         # baseName exists — derive all resource names (convention over configuration)
