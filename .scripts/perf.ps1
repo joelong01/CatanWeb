@@ -110,7 +110,7 @@ foreach ($rec in $recordings) {
     Write-Log -Level INFO -Message ("  {0,5} {1,-22} {2,-22} {3,10}" -f "-----", "----------------------", "----------------------", "----------") -NoLabel -ForegroundColor Gray
 
     foreach ($t in $result.timings) {
-        $color = if ($t.elapsedMs -gt 10) { "Yellow" } elseif ($t.elapsedMs -gt 50) { "Red" } else { "White" }
+        $color = if ($t.elapsedMs -gt 50) { "Red" } elseif ($t.elapsedMs -gt 10) { "Yellow" } else { "White" }
         Write-Log -Level INFO -Message ("  {0,5} {1,-22} {2,-22} {3,10}" -f $t.index, $t.actionType, $t.gameState, $t.elapsedMs) -NoLabel -ForegroundColor $color
     }
 
