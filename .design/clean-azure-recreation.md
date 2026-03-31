@@ -31,6 +31,7 @@ az group delete --name rg-catan --yes --no-wait
 ```
 
 This destroys everything: App Service Plan, both web apps (production
+
 + staging slots), SQL Server + database, storage account, App
 Insights. There is no data worth preserving — the database is
 unreachable and all game data can be regenerated from defaults.
@@ -149,7 +150,7 @@ Separate design doc to follow.
 
 ## What's NOT changing
 
-- Resource names (same `catan-azure.json` config)
-- OIDC federated credentials (already exist on the Azure AD app)
-- GitHub secrets (already configured)
-- Local development (SQLite, unaffected)
++ Resource names (same `catan-azure.json` config)
++ OIDC federated credentials (already exist on the Azure AD app)
++ GitHub secrets (already configured)
++ Local development (SQLite, unaffected)

@@ -26,12 +26,12 @@ export interface CheckRowProps {
 
 /** Status icon and color mapping. */
 const STATUS_CONFIG: Record<CheckRowStatus, { icon: string; color: string }> = {
-  pending:  { icon: '\u25CB', color: 'text-gray-500' },      // ○
-  running:  { icon: '',       color: 'text-blue-400' },       // spinner
-  ok:       { icon: '\u2705', color: 'text-green-400' },      // ✅
-  warning:  { icon: '\u26A0\uFE0F', color: 'text-yellow-400' }, // ⚠️
-  error:    { icon: '\u274C', color: 'text-red-400' },        // ❌
-  fixing:   { icon: '\uD83D\uDD27', color: 'text-amber-400' }, // 🔧
+  pending: { icon: '\u25CB', color: 'text-gray-500' }, // ○
+  running: { icon: '', color: 'text-blue-400' }, // spinner
+  ok: { icon: '\u2705', color: 'text-green-400' }, // ✅
+  warning: { icon: '\u26A0\uFE0F', color: 'text-yellow-400' }, // ⚠️
+  error: { icon: '\u274C', color: 'text-red-400' }, // ❌
+  fixing: { icon: '\uD83D\uDD27', color: 'text-amber-400' }, // 🔧
 };
 
 export default function CheckRow({ label, status, durationMs, detail, error }: CheckRowProps) {
@@ -58,16 +58,12 @@ export default function CheckRow({ label, status, durationMs, detail, error }: C
         </span>
 
         {/* Detail */}
-        <span className={`flex-1 text-xs ${color}`}>
-          {detail ?? ''}
-        </span>
+        <span className={`flex-1 text-xs ${color}`}>{detail ?? ''}</span>
       </div>
 
       {/* Error message (expanded below the row) */}
       {error && status === 'error' && (
-        <div className="ml-9 mt-1 text-xs text-red-400/80 font-mono">
-          {error}
-        </div>
+        <div className="ml-9 mt-1 text-xs text-red-400/80 font-mono">{error}</div>
       )}
     </div>
   );

@@ -14,7 +14,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest): NextResponse {
+export function middleware(_request: NextRequest): NextResponse {
   const response = NextResponse.next();
 
   // HTML pages: always revalidate — prevents stale deployments

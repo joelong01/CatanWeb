@@ -50,9 +50,10 @@ function getHealthCheckRows(health: HealthResult): Array<{
   const { status, data, error } = health;
 
   if (status === 'checking' || status === 'retrying') {
-    const detail = status === 'retrying'
-      ? `Attempt ${health.retryCount + 1}... ${error ?? ''}`
-      : 'Connecting...';
+    const detail =
+      status === 'retrying'
+        ? `Attempt ${health.retryCount + 1}... ${error ?? ''}`
+        : 'Connecting...';
     return [
       { label: 'Game Service', status: 'running', detail },
       { label: 'Database', status: 'pending' },
@@ -64,10 +65,27 @@ function getHealthCheckRows(health: HealthResult): Array<{
   if (status === 'healthy' && data) {
     const db = data.databaseDiagnostics;
     return [
-      { label: 'Game Service', status: 'ok', detail: `${data.version.environment} (${data.version.commit})` },
-      { label: 'Database', status: db.connected ? 'ok' : 'error', detail: db.connected ? 'Connected' : 'Disconnected', error: db.error },
-      { label: 'Players', status: db.playerCount > 0 ? 'ok' : 'warning', detail: `${db.playerCount} players` },
-      { label: 'Templates', status: db.templateCount > 0 ? 'ok' : 'warning', detail: `${db.templateCount} templates` },
+      {
+        label: 'Game Service',
+        status: 'ok',
+        detail: `${data.version.environment} (${data.version.commit})`,
+      },
+      {
+        label: 'Database',
+        status: db.connected ? 'ok' : 'error',
+        detail: db.connected ? 'Connected' : 'Disconnected',
+        error: db.error,
+      },
+      {
+        label: 'Players',
+        status: db.playerCount > 0 ? 'ok' : 'warning',
+        detail: `${db.playerCount} players`,
+      },
+      {
+        label: 'Templates',
+        status: db.templateCount > 0 ? 'ok' : 'warning',
+        detail: `${db.templateCount} templates`,
+      },
       { label: 'Games', status: 'ok', detail: `${db.gameCount} saved` },
       { label: 'Recordings', status: 'ok', detail: `${db.recordingCount} saved` },
     ];
@@ -76,8 +94,17 @@ function getHealthCheckRows(health: HealthResult): Array<{
   if (data) {
     const db = data.databaseDiagnostics;
     return [
-      { label: 'Game Service', status: 'ok', detail: `${data.version.environment} (${data.version.commit})` },
-      { label: 'Database', status: 'error', detail: 'Connection failed', error: db?.error ?? error },
+      {
+        label: 'Game Service',
+        status: 'ok',
+        detail: `${data.version.environment} (${data.version.commit})`,
+      },
+      {
+        label: 'Database',
+        status: 'error',
+        detail: 'Connection failed',
+        error: db?.error ?? error,
+      },
       { label: 'Players', status: 'pending' },
       { label: 'Templates', status: 'pending' },
     ];
@@ -123,88 +150,94 @@ export default function SplashOverlay({ health, onRetry, onDismiss }: SplashOver
   const [azureError, setAzureError] = useState<string | null>(null);
 
   const healthRows = getHealthCheckRows(health);
-  const isChecking = health.status === 'checking' || health.status === 'retrying';
+  const _isChecking = health.status === 'checking' || health.status === 'retrying';
   const showAzureOption = health.status === 'failed' && isAzureConfigured();
 
   /**
    * Phase 3: Stream Azure doctor results from the Next.js API route.
    * Each SSE event updates the check list in real time.
    */
-  const runAzureDoctor = useCallback(async (token: string) => {
-    setPhase('azure-doctor');
-    setAzureChecks([]);
-    setAzureError(null);
+  const runAzureDoctor = useCallback(
+    async (token: string) => {
+      setPhase('azure-doctor');
+      setAzureChecks([]);
+      setAzureError(null);
 
-    try {
-      const response = await fetch('/api/azure/doctor?fix=true', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      try {
+        const response = await fetch('/api/azure/doctor?fix=true', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      if (!response.ok) {
-        const body = await response.text();
-        setAzureError(`Azure doctor failed: HTTP ${response.status} — ${body}`);
-        setPhase('done');
-        return;
-      }
+        if (!response.ok) {
+          const body = await response.text();
+          setAzureError(`Azure doctor failed: HTTP ${response.status} — ${body}`);
+          setPhase('done');
+          return;
+        }
 
-      // Read SSE stream
-      const reader = response.body?.getReader();
-      if (!reader) {
-        setAzureError('No response stream');
-        setPhase('done');
-        return;
-      }
+        // Read SSE stream
+        const reader = response.body?.getReader();
+        if (!reader) {
+          setAzureError('No response stream');
+          setPhase('done');
+          return;
+        }
 
-      const decoder = new TextDecoder();
-      let buffer = '';
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+          buffer += decoder.decode(value, { stream: true });
 
-        // Parse SSE events from buffer
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
+          // Parse SSE events from buffer
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              // Update or add check result
-              setAzureChecks((prev) => {
-                const idx = prev.findIndex((c) => c.check === data.check);
-                if (idx >= 0) {
-                  const updated = [...prev];
-                  updated[idx] = data;
-                  return updated;
-                }
-                // Skip domain header events (they start with ──)
-                if (data.check?.startsWith('──')) return prev;
-                return [...prev, data];
-              });
-            } catch {
-              // Ignore unparseable lines
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                // Update or add check result
+                setAzureChecks((prev) => {
+                  const idx = prev.findIndex((c) => c.check === data.check);
+                  if (idx >= 0) {
+                    const updated = [...prev];
+                    updated[idx] = data;
+                    return updated;
+                  }
+                  // Skip domain header events (they start with ──)
+                  if (data.check?.startsWith('──')) return prev;
+                  return [...prev, data];
+                });
+              } catch {
+                // Ignore unparseable lines
+              }
             }
           }
         }
-      }
 
-      // After stream completes, re-run Phase 1 to verify everything works
-      setPhase('done');
-      onRetry();
-    } catch (err) {
-      setAzureError(`Stream error: ${err instanceof Error ? err.message : String(err)}`);
-      setPhase('done');
-    }
-  }, [onRetry]);
+        // After stream completes, re-run Phase 1 to verify everything works
+        setPhase('done');
+        onRetry();
+      } catch (err) {
+        setAzureError(`Stream error: ${err instanceof Error ? err.message : String(err)}`);
+        setPhase('done');
+      }
+    },
+    [onRetry]
+  );
 
   /** Phase 2 → Phase 3 transition: token acquired, start doctor. */
-  const handleTokenAcquired = useCallback((token: string) => {
-    runAzureDoctor(token);
-  }, [runAzureDoctor]);
+  const handleTokenAcquired = useCallback(
+    (token: string) => {
+      runAzureDoctor(token);
+    },
+    [runAzureDoctor]
+  );
 
   // ── Subtitle ─────────────────────────────────────────────────────────────
 
@@ -244,7 +277,16 @@ export default function SplashOverlay({ health, onRetry, onDismiss }: SplashOver
             <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Activity Log</p>
             <div className="font-mono text-[11px] text-gray-400 space-y-0.5 max-h-40 overflow-y-auto">
               {health.steps.map((step, i) => (
-                <div key={i} className={step.startsWith('Error') ? 'text-red-400' : step.startsWith('All checks') ? 'text-green-400' : ''}>
+                <div
+                  key={i}
+                  className={
+                    step.startsWith('Error')
+                      ? 'text-red-400'
+                      : step.startsWith('All checks')
+                        ? 'text-green-400'
+                        : ''
+                  }
+                >
                   {step}
                 </div>
               ))}
@@ -255,12 +297,14 @@ export default function SplashOverlay({ health, onRetry, onDismiss }: SplashOver
         {/* Phase 3: Azure doctor results (when running) */}
         {(phase === 'azure-doctor' || (phase === 'done' && azureChecks.length > 0)) && (
           <div className="bg-gray-900/80 rounded-lg border border-gray-700 px-4 py-3 mb-4">
-            <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Azure Infrastructure</p>
+            <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">
+              Azure Infrastructure
+            </p>
             {azureChecks.map((check) => (
               <CheckRow
                 key={check.check}
                 label={AZURE_CHECK_LABELS[check.check] ?? check.check}
-                status={check.status === 'warning' ? 'warning' : check.status as CheckRowStatus}
+                status={check.status === 'warning' ? 'warning' : (check.status as CheckRowStatus)}
                 durationMs={check.durationMs}
                 detail={check.detail}
                 error={check.error}
@@ -307,7 +351,8 @@ export default function SplashOverlay({ health, onRetry, onDismiss }: SplashOver
               </button>
               {!showAzureOption && (
                 <p className="text-gray-500 text-xs text-center">
-                  If this persists, run <code className="text-gray-400">./catan.ps1 doctor</code> for help.
+                  If this persists, run <code className="text-gray-400">./catan.ps1 doctor</code>{' '}
+                  for help.
                 </p>
               )}
             </>
@@ -315,9 +360,7 @@ export default function SplashOverlay({ health, onRetry, onDismiss }: SplashOver
 
           {/* Retrying indicator */}
           {health.status === 'retrying' && (
-            <p className="text-gray-400 text-sm">
-              Retry {health.retryCount} of 3...
-            </p>
+            <p className="text-gray-400 text-sm">Retry {health.retryCount} of 3...</p>
           )}
         </div>
       </div>

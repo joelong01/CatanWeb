@@ -30,9 +30,7 @@ export async function runUIDoctor(
   const checks: CheckResult[] = [];
   const slotSuffix = config.staging ? ' (staging)' : '';
   const appName = config.uiAppName;
-  const targetUrl = config.staging
-    ? `https://${appName}-staging.azurewebsites.net`
-    : config.uiUrl;
+  const targetUrl = config.staging ? `https://${appName}-staging.azurewebsites.net` : config.uiUrl;
 
   // 1. Web App + managed identity
   const appResult = await checkWebApp(webClient, config, report);
@@ -98,10 +96,17 @@ async function checkGameServiceUrlSetting(
   report: CheckReporter
 ): Promise<CheckResult> {
   const t = timedCheck('gameServiceUrl', report);
-  report({ check: 'gameServiceUrl', status: 'running', detail: 'Checking GameService URL setting...' });
+  report({
+    check: 'gameServiceUrl',
+    status: 'running',
+    detail: 'Checking GameService URL setting...',
+  });
 
   try {
-    const settings = await client.webApps.listApplicationSettings(config.resourceGroup, config.uiAppName);
+    const settings = await client.webApps.listApplicationSettings(
+      config.resourceGroup,
+      config.uiAppName
+    );
 
     // Staging uses NEXT_PUBLIC_GAME_SERVICE_URL, production uses GAMESERVICE_URL
     const settingName = config.staging ? 'NEXT_PUBLIC_GAME_SERVICE_URL' : 'GAMESERVICE_URL';
@@ -123,10 +128,7 @@ async function checkGameServiceUrlSetting(
 }
 
 /** Checks if the UI site responds to HTTP requests (15s timeout). */
-async function checkSiteResponding(
-  targetUrl: string,
-  report: CheckReporter
-): Promise<CheckResult> {
+async function checkSiteResponding(targetUrl: string, report: CheckReporter): Promise<CheckResult> {
   const t = timedCheck('siteResponding', report);
   report({ check: 'siteResponding', status: 'running', detail: `Checking ${targetUrl}...` });
 
@@ -162,13 +164,19 @@ async function checkDeployment(
     // Get current git commit
     let currentCommit: string;
     try {
-      currentCommit = execSync('git rev-parse --short origin/main', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+      currentCommit = execSync('git rev-parse --short origin/main', {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      }).trim();
     } catch {
       currentCommit = 'unknown';
     }
 
     // Get deployed commit from app settings
-    const settings = await client.webApps.listApplicationSettings(config.resourceGroup, config.uiAppName);
+    const settings = await client.webApps.listApplicationSettings(
+      config.resourceGroup,
+      config.uiAppName
+    );
     const deployedCommit = settings.properties?.['DEPLOY_COMMIT'] ?? 'unknown';
 
     if (!deployedCommit || deployedCommit === 'unknown') {
@@ -189,9 +197,14 @@ async function checkDeployment(
 
     // Commits differ — first verify both commits exist locally
     try {
-      execSync(`git cat-file -t ${deployedCommit}`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+      execSync(`git cat-file -t ${deployedCommit}`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
     } catch {
-      return t.ok(`deployed=${deployedCommit}, current=${currentCommit} (deployed commit not in local history — run 'git fetch' to compare)`);
+      return t.ok(
+        `deployed=${deployedCommit}, current=${currentCommit} (deployed commit not in local history — run 'git fetch' to compare)`
+      );
     }
 
     // Both commits exist — check if any deployable files changed
@@ -204,7 +217,9 @@ async function checkDeployment(
       if (diff.length === 0) {
         return t.ok(`commit=${deployedCommit} (current=${currentCommit}, no deployable changes)`);
       }
-      return t.warn(`needs deploy: ${diff.split('\n').length} files changed (deployed=${deployedCommit}, current=${currentCommit})`);
+      return t.warn(
+        `needs deploy: ${diff.split('\n').length} files changed (deployed=${deployedCommit}, current=${currentCommit})`
+      );
     } catch {
       return t.warn(`deployed=${deployedCommit}, current=${currentCommit} (diff failed)`);
     }

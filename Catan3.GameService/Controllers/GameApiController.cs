@@ -103,58 +103,9 @@ namespace Catan3.GameService.Controllers
         /// <summary>
         /// Common post-action processing: save to database and broadcast to clients
         /// </summary>
-        private async Task ProcessGameActionResult(GameStateMachine gameStateMachine, GameModel gameModel, string actionName)
-        {
-            // Save to database
-            await SaveGameToDatabase(gameStateMachine, gameModel);
-
-            // Broadcast to all clients in game group
-            await _hubContext.Clients.Group(gameModel.GameId).SendAsync("GameStateUpdated", gameModel);
-            _logger.LogEvent("Send Client Update", $"GameStateUpdated sent for {actionName} - GameId={gameModel.GameId}");
-        }
-
-        /// <summary>
-        /// Saves the full game log (with undo/redo stacks) to the database
-        /// </summary>
-        private async Task SaveGameToDatabase(GameStateMachine gameStateMachine, GameModel gameModel)
-        {
-            _logger.LogDebug("SaveGameToDatabase called for game {GameId}", gameModel.GameId);
-            try
-            {
-                var sw = System.Diagnostics.Stopwatch.StartNew();
-
-                // Get the full serializable log (preserves undo/redo stacks)
-                var serializableLog = gameStateMachine.GetSerializableLog();
-                var json = JsonHelper.Serialize(serializableLog);
-                var compressed = JsonHelper.Compress(json);
-
-                var serializeMs = sw.ElapsedMilliseconds;
-
-                // Create metadata for queryability
-                var metadata = new GameMetadata
-                {
-                    GameName = gameModel.GameName,
-                    GameState = gameModel.GameState.ToString(),
-                    StartedBy = "WebUI", // Placeholder until user auth is implemented
-                    PlayerCount = gameModel.Players.Count,
-                    GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
-                    PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
-                    TurnCount = serializableLog.DoneCount
-                };
-
-                // Save to database
-                var result = await _gamePersistence.SaveAsync(gameModel.GameId, compressed, metadata);
-                sw.Stop();
-                _logger.LogDebug(
-                    "Game {GameId} saved: serialize={SerializeMs}ms total={TotalMs}ms size={Size}bytes turns={Turns} result={Result}",
-                    gameModel.GameId, serializeMs, sw.ElapsedMilliseconds, compressed.Length, serializableLog.DoneCount, result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to save game {GameId} to database", gameModel.GameId);
-                // Don't throw - database save failure shouldn't break the game operation
-            }
-        }
+        // Gameplay persistence is handled exclusively by Log.RequestSave() via
+        // GameStateMachine.LogGameModel(). No other gameplay code path should save.
+        // Non-gameplay saves (copy, import, rename) use _gamePersistence directly.
 
         /// <summary>
         /// Creates a GameStateMachine with GameService-specific dependencies
@@ -378,8 +329,9 @@ namespace Catan3.GameService.Controllers
                 var message = new UpdateHouseRulesMessage(houseRules);
                 var gameModel = await gameStateMachine.HandleUpdateHouseRulesAsync(message);
 
-                // Save to database and broadcast to all clients
-                await ProcessGameActionResult(gameStateMachine, gameModel, "UpdateHouseRules");
+                // Broadcast to all clients (save handled by Log.RequestSave via LogGameModel)
+                await _hubContext.Clients.Group(gameModel.GameId).SendAsync("GameStateUpdated", gameModel);
+                _logger.LogEvent("Send Client Update", $"GameStateUpdated sent for UpdateHouseRules - GameId={gameModel.GameId}");
 
                 return Ok(new { success = true, message = $"House rules updated: GoldTiles={houseRules.GoldTiles}" });
             }
@@ -449,8 +401,9 @@ namespace Catan3.GameService.Controllers
                 // Record action if recording is active
                 await TryRecordActionAsync(gameId, new ShuffleRecord(updatedGameModel, shuffleMessage));
 
-                // Save to database and broadcast to clients
-                await ProcessGameActionResult(gameStateMachine, updatedGameModel, "Shuffle");
+                // Broadcast to all clients (save handled by Log.RequestSave via LogGameModel)
+                await _hubContext.Clients.Group(gameId).SendAsync("GameStateUpdated", updatedGameModel);
+                _logger.LogEvent("Send Client Update", $"GameStateUpdated sent for Shuffle - GameId={gameId}");
 
                 return Ok(new CommandResponse
                 {
@@ -563,8 +516,8 @@ namespace Catan3.GameService.Controllers
                 await _hubContext.Clients.Group(updatedGameModel.GameId).SendAsync("GameStateUpdated", updatedGameModel);
                 _logger.LogEvent("Send Client Update", $"GameStateUpdated sent for DeclareWinner - GameId={gameId}");
 
-                // Post-game I/O: save game log, update lifetime stats, archive — all after broadcast
-                await SaveGameToDatabase(gameStateMachine, updatedGameModel);
+                // Post-game I/O: update lifetime stats, archive — all after broadcast
+                // Game save handled by Log.RequestSave() via LogGameModel
 
                 if (currentState.SaveLifetimeStats)
                 {

@@ -37,6 +37,20 @@ namespace Catan3.Shared.Utility
         public bool InTestMode { get; set; } = false;
 
         /// <summary>
+        /// Save coalescing: rapid calls to RequestSave() are coalesced so only
+        /// the latest state is persisted. This prevents O(N) serialize+compress
+        /// from running on every action in a fast sequence.
+        ///
+        /// Thread safety: The DoneStack/RedoStack are ObservableCollection (not thread-safe).
+        /// This is safe because game actions are processed sequentially by the GameStateMachine —
+        /// only one action modifies the stacks at a time. The background save reads the stacks
+        /// via GetSerializableLog() which iterates them, but new actions don't arrive until
+        /// the current action's Done() + RequestSave() completes.
+        /// </summary>
+        private int _saveRequested = 0; // 0 = no pending save, 1 = save requested
+        private int _saveRunning = 0;   // 0 = idle, 1 = save in progress
+
+        /// <summary>
         /// Gets or sets whether the log is currently active for tracking operations.
         /// </summary>
         public bool IsActive { get; set; } = true;
@@ -569,32 +583,83 @@ namespace Catan3.Shared.Utility
         ///     the name of the file that is saved owned by the FileService
         /// </summary>
         /// <returns></returns>
-        public async Task SaveAsync()
+        /// <summary>
+        /// Requests a save. Coalesces rapid calls — if a save is already in progress,
+        /// the request is noted and the save will run again after the current one completes
+        /// with the latest state. This is the primary entry point for persistence.
+        /// Called by GameStateMachine.LogGameModel() after each action.
+        /// </summary>
+        public void RequestSave()
         {
-            _logger?.TraceMessage($"SaveAsync called - FilePath: {FilePath}, InTestMode: {InTestMode}");
+            if (PersistService is null || InTestMode) return;
 
-            if (PersistService is null) return;
+            // Mark that a save is needed
+            Interlocked.Exchange(ref _saveRequested, 1);
 
-            // Skip saving when in test mode to prevent overwriting test files
-            if (InTestMode)
+            // If no save is running, start one
+            if (Interlocked.CompareExchange(ref _saveRunning, 1, 0) == 0)
             {
-                _logger?.TraceMessage("SaveAsync: Skipping save because InTestMode is true");
-                return;
+                _ = Task.Run(RunSaveLoopAsync);
             }
-            _logger?.TraceMessage("NOT IN TEST MODE");
+        }
+
+        /// <summary>
+        /// Background save loop. Runs as long as saves are requested.
+        /// Each iteration saves the current state. If new requests arrive
+        /// during a save, the loop runs again with the latest state.
+        /// </summary>
+        private async Task RunSaveLoopAsync()
+        {
             try
             {
-                var uncompressedLog = GetSerializableLog();
-                var json = JsonHelper.Serialize(uncompressedLog);
-                var compressedBytes = JsonHelper.Compress(json);
+                while (Interlocked.CompareExchange(ref _saveRequested, 0, 1) == 1)
+                {
+                    await SaveAsync();
+                }
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _saveRunning, 0);
 
-                // Pass gameId as location for database persistence (not FilePath)
+                // Check if another request arrived while we were finishing
+                if (Volatile.Read(ref _saveRequested) == 1)
+                {
+                    if (Interlocked.CompareExchange(ref _saveRunning, 1, 0) == 0)
+                    {
+                        _ = Task.Run(RunSaveLoopAsync);
+                    }
+                }
+            }
+        }
+
+        public async Task SaveAsync()
+        {
+            if (PersistService is null) return;
+
+            if (InTestMode) return;
+
+            try
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var uncompressedLog = GetSerializableLog();
+                var getLogMs = sw.ElapsedMilliseconds;
+
+                var json = JsonHelper.Serialize(uncompressedLog);
+                var serializeMs = sw.ElapsedMilliseconds - getLogMs;
+
+                var compressedBytes = JsonHelper.Compress(json);
+                var compressMs = sw.ElapsedMilliseconds - getLogMs - serializeMs;
+
                 var gameModel = CurrentState();
                 await PersistService.SaveAsync(gameModel.GameId, compressedBytes);
+                sw.Stop();
+
+                var dbMs = sw.ElapsedMilliseconds - getLogMs - serializeMs - compressMs;
+                _logger?.TraceMessage($"[PERF-SAVE] getLog={getLogMs}ms serialize={serializeMs}ms compress={compressMs}ms db={dbMs}ms total={sw.ElapsedMilliseconds}ms jsonSize={json.Length / 1024}kb compressed={compressedBytes.Length / 1024}kb turns={uncompressedLog.DoneCount}");
             }
             catch (Exception ex)
             {
-                _logger?.TraceMessage($"Failed SaveAs: {ex.Message}");
+                _logger?.Trace(GameTraceLevel.Warning, $"Failed SaveAsync: {ex.Message}");
             }
         }
 

@@ -35,10 +35,10 @@ export async function POST(req: NextRequest): Promise<Response> {
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   if (!token) {
-    return new Response(
-      JSON.stringify({ error: 'Missing Authorization: Bearer <token> header' }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Missing Authorization: Bearer <token> header' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const staging = req.nextUrl.searchParams.get('staging') === 'true';
@@ -48,7 +48,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   const baseName = process.env.NEXT_PUBLIC_AZURE_BASE_NAME;
   if (!baseName) {
     return new Response(
-      JSON.stringify({ error: 'baseName not configured. Add "baseName" to .azure/catan-azure.json.' }),
+      JSON.stringify({
+        error: 'baseName not configured. Add "baseName" to .azure/catan-azure.json.',
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -61,7 +63,9 @@ export async function POST(req: NextRequest): Promise<Response> {
     config.subscriptionId = await discoverSubscriptionId(credential, config.resourceGroup);
   } catch (err) {
     return new Response(
-      JSON.stringify({ error: `Could not discover subscription: ${err instanceof Error ? err.message : err}` }),
+      JSON.stringify({
+        error: `Could not discover subscription: ${err instanceof Error ? err.message : err}`,
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -87,9 +91,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         );
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
-        controller.enqueue(
-          encoder.encode(`event: error\ndata: ${JSON.stringify({ error })}\n\n`)
-        );
+        controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error })}\n\n`));
       } finally {
         controller.close();
       }
@@ -100,7 +102,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
     },
   });
 }

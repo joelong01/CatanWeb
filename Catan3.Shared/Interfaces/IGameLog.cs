@@ -105,6 +105,13 @@ namespace Catan3.Shared.Interfaces
         Task SaveAsync();
 
         /// <summary>
+        /// Requests a coalesced background save. Rapid calls are coalesced so
+        /// only the latest state is persisted. This is the primary entry point
+        /// for persistence — called by GameStateMachine after each action.
+        /// </summary>
+        void RequestSave();
+
+        /// <summary>
         /// Asynchronously saves the current log state to a specified file path.
         /// </summary>
         Task SaveAsAsync(string filePath);
