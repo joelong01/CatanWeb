@@ -1902,8 +1902,10 @@ function Deploy-UI {
     Write-Log -Level "INFO" -Message "Installing React UI dependencies..."
     $nodeModulesPath = Join-Path $reactDir "node_modules"
     if (Test-Path $nodeModulesPath) {
-        Write-Log -Level "DEBUG" -Message "Removing node_modules to break file locks..."
+        Write-Log -Level "INFO" -Message "Removing node_modules (~600MB, may take a moment)..."
+        $ProgressPreference = 'SilentlyContinue'
         Remove-Item $nodeModulesPath -Recurse -Force -ErrorAction SilentlyContinue
+        $ProgressPreference = 'Continue'
         if (Test-Path $nodeModulesPath) {
             Write-Log -Level "WARN" -Message "Could not fully remove node_modules — a process may hold a lock."
             Write-Log -Level "INFO" -Message "  Try closing VS Code or other editors, then retry."
