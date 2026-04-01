@@ -1395,18 +1395,41 @@ function Deploy-KuduZip {
     $slotLabel = if ($Slot) { " (slot: $Slot)" } else { "" }
     Write-Log -Level "INFO" -Message "Deploying via Kudu API to $scmHost$slotLabel..."
 
-    $uri = "https://$scmHost/api/zipdeploy?isAsync=true"
+    # Warm up the SCM site before uploading — cold SCM sites can reset connections
+    Write-Log -Level "DEBUG" -Message "Warming up SCM site..."
     try {
-        $response = Invoke-WebRequest -Uri $uri -Method Post -InFile $ZipPath `
-            -ContentType "application/zip" -Headers $headers -UseBasicParsing -TimeoutSec 300
+        $null = Invoke-WebRequest -Uri "https://$scmHost/" -Headers $headers -UseBasicParsing -TimeoutSec 30
     }
     catch {
-        Write-Log -Level "ERROR" -Message "Kudu deploy request failed: $_"
-        return $false
+        Write-Log -Level "DEBUG" -Message "SCM warmup: $_"
     }
 
-    if ($response.StatusCode -ne 202) {
-        Write-Log -Level "ERROR" -Message "Kudu deploy returned HTTP $($response.StatusCode) (expected 202)"
+    # Upload zip with retry on connection reset
+    $uri = "https://$scmHost/api/zipdeploy?isAsync=true"
+    $maxRetries = 3
+    $response = $null
+    for ($attempt = 1; $attempt -le $maxRetries; $attempt++) {
+        try {
+            $response = Invoke-WebRequest -Uri $uri -Method Post -InFile $ZipPath `
+                -ContentType "application/zip" -Headers $headers -UseBasicParsing -TimeoutSec 600
+            break
+        }
+        catch {
+            $errMsg = "$_"
+            if ($attempt -lt $maxRetries -and $errMsg -match "forcibly closed|transport connection|connection was reset") {
+                Write-Log -Level "WARN" -Message "Upload attempt $attempt failed (connection reset). Retrying in 10s..."
+                Start-Sleep -Seconds 10
+            }
+            else {
+                Write-Log -Level "ERROR" -Message "Kudu deploy request failed (attempt $attempt/$maxRetries): $errMsg"
+                return $false
+            }
+        }
+    }
+
+    if (-not $response -or $response.StatusCode -ne 202) {
+        $code = if ($response) { $response.StatusCode } else { "no response" }
+        Write-Log -Level "ERROR" -Message "Kudu deploy returned HTTP $code (expected 202)"
         return $false
     }
 
@@ -1429,8 +1452,9 @@ function Deploy-KuduZip {
         }
     }
 
-    Write-Log -Level "WARN" -Message "Deploy status polling timed out after 10 min (deploy was submitted)"
-    return $true
+    # Timeout — deployment may still be in progress, report as failure (#147)
+    Write-Log -Level "ERROR" -Message "Deploy status polling timed out after 10 min"
+    return $false
 }
 
 <#
