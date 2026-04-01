@@ -76,6 +76,21 @@ function getBuildVersionEnv(): Record<string, string> {
     process.env.DEPLOY_BUILD_TIME ??
     `${months[now.getMonth()]}${now.getDate()}-${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+  // Extract PR number from the most recent merge commit on the current branch
+  // Merge commits have format: "Merge pull request #NNN from ..."
+  try {
+    const mergeLog = execSync('git log --oneline --merges -1', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    const prMatch = mergeLog.match(/#(\d+)/);
+    if (prMatch) {
+      env['NEXT_PUBLIC_BUILD_PR'] = prMatch[1];
+    }
+  } catch {
+    // No merge commit found — local dev or non-merge branch
+  }
+
   return env;
 }
 
