@@ -1425,7 +1425,11 @@ switch ($Verb) {
             & $dbScript -Verb deploy -Azure -TraceLevel $TraceLevel
             if ($LASTEXITCODE -ne 0) { exit 1 }
 
-            # 2. Deploy code (idempotent — skips if already deployed at current commit)
+            # 2. Ensure GitHub OIDC is configured (so CI/CD deploys work)
+            & $azureScript github install -TraceLevel $TraceLevel
+            # Don't fail install if GitHub OIDC fails — it's not critical for local deploys
+
+            # 3. Deploy code (idempotent — skips if already deployed at current commit)
             Write-Log -Level INFO -Message "" -NoLabel
             Write-Log -Level INFO -Message "Deploying code..." -NoLabel -ForegroundColor Cyan
             & $azureScript game-service deploy -TraceLevel $TraceLevel
@@ -1943,6 +1947,8 @@ switch ($Verb) {
                 # Deploy RBAC and app settings for CosmosDB
                 & $dbScript deploy -Azure -TraceLevel $TraceLevel
                 if ($LASTEXITCODE -ne 0) { exit 1 }
+                # Ensure GitHub OIDC for CI/CD
+                & $azureScript github install -TraceLevel $TraceLevel
                 Write-Log -Level INFO -Message "" -NoLabel
                 Write-Log -Level INFO -Message "All Azure resources installed and configured!" -NoLabel -ForegroundColor Green
             }
