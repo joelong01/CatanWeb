@@ -1389,14 +1389,17 @@ function Install-GameService {
         Write-Log -Level "INFO" -Message "GameService App exists: $appName"
     }
 
-    # Enable Always On to prevent cold starts (10-20 sec delay after idle)
-    # This keeps the app warm by pinging it periodically
-    Write-Log -Level "INFO" -Message "Enabling Always On for $appName..."
-    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --always-on true" -SuppressOutput
+    # Enable Always On if plan supports it (B1+, not F1/D1)
+    $planSku = Invoke-AzCommand "appservice plan show --name $($Config.gameService.appServicePlan) --resource-group $rgName --query sku.name -o tsv" -Check
+    if ($planSku -and $planSku.Trim() -notin @("F1", "D1")) {
+        Write-Log -Level "INFO" -Message "Enabling Always On for $appName..."
+        Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --always-on true" -SuppressOutput
+    }
+    else {
+        Write-Log -Level "WARN" -Message "Skipping Always On — $($planSku.Trim()) tier doesn't support it (expect cold starts)"
+    }
 
     # Increase container startup timeout from default 230s to 600s
-    # The GameService does background DB seeding on first start which can be slow
-    # on cold Azure SQL connections with Managed Identity
     Write-Log -Level "INFO" -Message "Setting container startup timeout to 600s..."
     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
 
@@ -1479,9 +1482,15 @@ function Install-UI {
         Write-Log -Level "INFO" -Message "UI App exists: $appName"
     }
 
-    # Enable Always On to prevent cold starts (10-20 sec delay after idle)
-    Write-Log -Level "INFO" -Message "Enabling Always On for $appName..."
-    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --always-on true" -SuppressOutput
+    # Enable Always On if plan supports it (B1+, not F1/D1)
+    $planSku = Invoke-AzCommand "appservice plan show --name $planName --resource-group $rgName --query sku.name -o tsv" -Check
+    if ($planSku -and $planSku.Trim() -notin @("F1", "D1")) {
+        Write-Log -Level "INFO" -Message "Enabling Always On for $appName..."
+        Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --always-on true" -SuppressOutput
+    }
+    else {
+        Write-Log -Level "WARN" -Message "Skipping Always On — $($planSku.Trim()) tier doesn't support it"
+    }
 
     # Application Insights — skipped (not currently used; az monitor app-insights can hang)
     # $appInsightsConnectionString = Install-AppInsights -Config $Config

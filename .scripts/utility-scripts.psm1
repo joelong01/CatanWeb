@@ -1307,19 +1307,21 @@ function Install-AzureAppServicePlan {
 
     $existing = Invoke-AzCommand "appservice plan show --name $PlanName --resource-group $ResourceGroup" -Check -JsonOutput
     if (-not $existing) {
+        # Try B1 first (supports Always On), fall back to F1 if quota insufficient
         Write-Log -Level "INFO" -Message "Creating App Service Plan: $PlanName (B1, single instance)"
-        Invoke-AzCommand "appservice plan create --name $PlanName --resource-group $ResourceGroup --location $Location --sku B1 --is-linux --number-of-workers 1" -SuppressOutput
-        Write-Log -Level "INFO" -Message "App Service Plan created: $PlanName"
+        $created = Invoke-AzCommand "appservice plan create --name $PlanName --resource-group $ResourceGroup --location $Location --sku B1 --is-linux --number-of-workers 1" -Check -SuppressOutput
+        if (-not $created) {
+            Write-Log -Level "WARN" -Message "B1 SKU failed (likely quota). Trying F1 (Free) tier..."
+            Invoke-AzCommand "appservice plan create --name $PlanName --resource-group $ResourceGroup --location $Location --sku F1 --is-linux" -SuppressOutput
+            Write-Log -Level "WARN" -Message "App Service Plan created with F1 (Free) tier — Always On not available, expect cold starts"
+        }
+        else {
+            Write-Log -Level "INFO" -Message "App Service Plan created: $PlanName (B1)"
+        }
     }
     else {
         $currentSku = $existing.sku.name
-        if ($currentSku -in @("F1", "D1")) {
-            Write-Log -Level "INFO" -Message "Upgrading App Service Plan from $currentSku to B1 (required for Always On)"
-            Invoke-AzCommand "appservice plan update --name $PlanName --resource-group $ResourceGroup --sku B1" -SuppressOutput
-        }
-        else {
-            Write-Log -Level "INFO" -Message "App Service Plan exists: $PlanName (SKU: $currentSku)"
-        }
+        Write-Log -Level "INFO" -Message "App Service Plan exists: $PlanName (SKU: $currentSku)"
     }
 
     return $true
