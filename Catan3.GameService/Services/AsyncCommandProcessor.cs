@@ -69,9 +69,12 @@ namespace Catan3.GameService.Services
                 // Persistence is handled by Log.SaveAsync() inside GameStateMachine.LogGameModel()
                 // The Log owns its own save lifecycle (coalesced, background).
 
+                // Measure GameModel serialized size for telemetry (cheap — just serialize once)
+                var modelSizeKb = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(gameModel).Length / 1024;
+
                 _logger.LogInformation(
-                    "[PERF] {MessageType} game={GameId} logic={LogicMs}ms notify={NotifyMs}ms total={TotalMs}ms state={GameState}",
-                    messageType, gameId, logicSw.ElapsedMilliseconds, notifySw.ElapsedMilliseconds, totalSw.ElapsedMilliseconds, gameModel.GameState);
+                    "[PERF] {MessageType} game={GameId} logic={LogicMs}ms notify={NotifyMs}ms total={TotalMs}ms state={GameState} modelSize={ModelSizeKb}kb",
+                    messageType, gameId, logicSw.ElapsedMilliseconds, notifySw.ElapsedMilliseconds, totalSw.ElapsedMilliseconds, gameModel.GameState, modelSizeKb);
             }
             catch (Exception ex)
             {
