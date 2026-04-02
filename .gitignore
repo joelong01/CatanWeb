@@ -415,3 +415,4 @@ streamdeck/*.streamDeckPlugin
 
 # CosmosDB contract test params (written by catan.ps1, deleted after test run)
 Tests/GameService/CatanDb/.cosmos-test-params.json
+catanweb-logs.zip
