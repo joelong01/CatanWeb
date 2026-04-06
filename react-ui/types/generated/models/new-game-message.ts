@@ -14,4 +14,5 @@ export interface NewGameMessage {
     saveLifetimeStats: boolean;
     templateId: string;
     recordGame: boolean;
+    seed: number;
 }
