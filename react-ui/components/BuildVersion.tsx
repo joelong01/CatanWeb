@@ -1,51 +1,48 @@
 /**
  * @module BuildVersion
  *
- * Subtle build version display — shows branch, date, and commit hash
- * so users (and developers) can verify what's actually running.
+ * Compact build marker — shows PR number as a clickable link to GitHub.
+ * Designed to be minimal on mobile (just "PR xxx") and not hide UI controls.
  *
- * Helps diagnose browser caching issues (issue #68) — if the version
- * string doesn't match the latest deployment, the browser has stale code.
- *
- * Format: "staging-Mar27-9:22-f94c7d4"
+ * In dev mode (no PR number), shows commit hash instead.
  */
 
 'use client';
 
 import React from 'react';
 
-/**
- * Formats the build version string from environment variables.
- * Always returns something — "dev" if no build info is available.
- */
-function getBuildVersion(): string {
+const REPO_URL = 'https://github.com/joelong01/CatanWeb';
+
+export default function BuildVersion(): React.ReactElement {
+  const pr = process.env.NEXT_PUBLIC_BUILD_PR;
+  const commit = process.env.NEXT_PUBLIC_BUILD_COMMIT;
   const branch = process.env.NEXT_PUBLIC_BUILD_BRANCH;
   const time = process.env.NEXT_PUBLIC_BUILD_TIME;
-  const commit = process.env.NEXT_PUBLIC_BUILD_COMMIT;
 
-  if (!commit || commit === 'unknown') return 'dev';
+  // Build tooltip with full details
+  const tooltip = [branch, time, commit].filter((s) => s && s !== 'unknown').join(' · ');
 
-  const parts: string[] = [];
-  if (branch && branch !== 'unknown') parts.push(branch);
-  if (time) parts.push(time);
-  parts.push(commit);
+  if (pr) {
+    return (
+      <a
+        href={`${REPO_URL}/pull/${pr}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-1 right-1 text-xs text-white font-mono bg-black/80 px-2 py-1 rounded z-[9999] pointer-events-auto no-underline hover:text-blue-300"
+        title={tooltip}
+      >
+        PR {pr}
+      </a>
+    );
+  }
 
-  return parts.join('-');
-}
-
-/**
- * Renders a subtle version string in the bottom-right corner of the viewport.
- * Fixed position, low opacity, small text — visible but not distracting.
- */
-export default function BuildVersion(): React.ReactElement {
-  const version = getBuildVersion();
-
+  // No PR — local dev mode
   return (
     <div
-      className="fixed bottom-2 right-2 text-sm text-yellow-400 font-mono bg-black/80 px-2 py-1 rounded select-all z-[9999] pointer-events-auto"
-      title={`Build: ${version}`}
+      className="fixed bottom-1 right-1 text-xs text-white font-mono bg-black/80 px-2 py-1 rounded z-[9999] pointer-events-auto"
+      title={tooltip}
     >
-      {version}
+      dev
     </div>
   );
 }
