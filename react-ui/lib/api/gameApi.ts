@@ -234,6 +234,7 @@ export const gameApi = {
       saveLifetimeStats,
       templateId,
       recordGame,
+      seed: null as unknown as number,
     };
 
     const result = await apiFetch<CreateGameResponse>('/api/game/new', {

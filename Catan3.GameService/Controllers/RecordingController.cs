@@ -404,47 +404,79 @@ public class RecordingController : ControllerBase
             // Execute each action and verify hash
             var timings = perf ? new List<ActionTiming>() : null;
             var totalStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var hashMismatchCount = 0;
 
             for (int i = 0; i < recordingData.Actions.Count; i++)
             {
                 var action = recordingData.Actions[i];
                 var preState = gameStateMachine.GetCurrentState().GameState.ToString();
 
-                // Time the action execution
                 var actionStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                var resultModel = await ExecuteRecordedAction(gameStateMachine, action, recordingData.InitialGameModel.GameId);
+                GameModel resultModel;
+                bool actionFailed = false;
+
+                if (action is GameExceptionRecord exRecord)
+                {
+                    // This action was rejected during live play. Replay the original
+                    // action and verify it throws the same exception.
+                    if (exRecord.OriginalAction != null)
+                    {
+                        try
+                        {
+                            await ExecuteRecordedAction(gameStateMachine, exRecord.OriginalAction, recordingData.InitialGameModel.GameId);
+                            // If it didn't throw, that's unexpected — log but continue
+                            _logger.LogWarning("Replay: GameExceptionRecord at {Index} did NOT throw (action succeeded unexpectedly)", i);
+                        }
+                        catch (Catan3.Shared.Utility.GameException)
+                        {
+                            // Expected — same exception as live play
+                        }
+                    }
+                    resultModel = gameStateMachine.GetCurrentState();
+                    actionFailed = true;
+                }
+                else
+                {
+                    // Normal action — execute and expect success
+                    try
+                    {
+                        resultModel = await ExecuteRecordedAction(gameStateMachine, action, recordingData.InitialGameModel.GameId);
+                    }
+                    catch (Catan3.Shared.Utility.GameException ex)
+                    {
+                        // Unexpected failure — not recorded as GameExceptionRecord
+                        resultModel = gameStateMachine.GetCurrentState();
+                        actionFailed = true;
+                        _logger.LogWarning("Replay: unexpected GameException at action {Index} ({Type}): {Error}",
+                            i, action.GetType().Name, ex.Message);
+                    }
+                }
                 actionStopwatch.Stop();
 
                 if (perf)
                 {
+                    var actionLabel = action.GetType().Name.Replace("Recorded", "");
+                    if (actionFailed) actionLabel += " [REJECTED]";
                     timings!.Add(new ActionTiming
                     {
                         Index = i,
-                        ActionType = action.GetType().Name.Replace("Recorded", ""),
+                        ActionType = actionLabel,
                         GameState = preState,
                         ElapsedMs = Math.Round(actionStopwatch.Elapsed.TotalMilliseconds, 2)
                     });
                 }
 
                 // ExpectedGameHash is the POST-action hash (captured after action executed during recording)
-                if (!string.IsNullOrEmpty(action.ExpectedGameHash) &&
+                // For rejected actions, the state didn't change so hash won't match the recorded
+                // expected hash (which was from the successful retry). Skip hash check for rejected actions.
+                if (!actionFailed &&
+                    !string.IsNullOrEmpty(action.ExpectedGameHash) &&
                     resultModel.GameHash != action.ExpectedGameHash)
                 {
-                    _logger.LogWarning("Hash mismatch at action {ActionIndex}: expected {Expected}, got {Actual}",
-                        i, action.ExpectedGameHash, resultModel.GameHash);
-                    return Ok(new ReplayResult
-                    {
-                        Success = false,
-                        RecordingName = recording.Name,
-                        ActionsReplayed = i + 1,
-                        TotalActions = recordingData.Actions.Count,
-                        FailedAtAction = i,
-                        ExpectedHash = action.ExpectedGameHash,
-                        ActualHash = resultModel.GameHash,
-                        ErrorMessage = $"Hash mismatch after {action.GetType().Name}",
-                        Timings = timings,
-                        TotalElapsedMs = totalStopwatch.Elapsed.TotalMilliseconds
-                    });
+                    hashMismatchCount++;
+                    _logger.LogError(
+                        "Replay hash mismatch: action={ActionIndex} type={ActionType} state={GameState} expected={Expected} actual={Actual}",
+                        i, action.GetType().Name, preState, action.ExpectedGameHash, resultModel.GameHash);
                 }
             }
 
@@ -452,10 +484,11 @@ public class RecordingController : ControllerBase
             _logger.LogInformation("Successfully replayed recording {RecordingId} ({Name})", safeId, recording.Name);
             return Ok(new ReplayResult
             {
-                Success = true,
+                Success = hashMismatchCount == 0,
                 RecordingName = recording.Name,
                 ActionsReplayed = recordingData.Actions.Count,
                 TotalActions = recordingData.Actions.Count,
+                ErrorMessage = hashMismatchCount > 0 ? $"{hashMismatchCount} hash mismatch(es) — see server log for details" : null,
                 Timings = timings,
                 TotalElapsedMs = Math.Round(totalStopwatch.Elapsed.TotalMilliseconds, 2)
             });

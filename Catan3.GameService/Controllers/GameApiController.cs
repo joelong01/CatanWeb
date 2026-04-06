@@ -270,7 +270,7 @@ namespace Catan3.GameService.Controllers
 
                 // Use the GameStateMachine to create the fully initialized game
                 // Pass client-provided HouseRules if present, otherwise use defaults from gameInfo
-                var gameModel = await gameStateMachine.HandleNewGameAsync(gameInfo, newGameMessage.PlayerIds, newGameMessage.GameName ?? "Untitled Game", newGameMessage.HouseRules);
+                var gameModel = await gameStateMachine.HandleNewGameAsync(gameInfo, newGameMessage.PlayerIds, newGameMessage.GameName ?? "Untitled Game", newGameMessage.HouseRules, newGameMessage.Seed);
 
                 // Set SaveLifetimeStats from request (default is true)
                 gameModel.SaveLifetimeStats = newGameMessage.SaveLifetimeStats;
