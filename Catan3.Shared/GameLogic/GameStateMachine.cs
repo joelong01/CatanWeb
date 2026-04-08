@@ -292,7 +292,7 @@ namespace Catan3.Shared.GameLogic
         /// <param name="houseRulesOverride">Optional house rules to override defaults from gameInfo.</param>
         /// <returns>The newly created GameModel in initial state.</returns>
         /// <exception cref="GameException">Thrown when game creation fails.</exception>
-        public Task<GameModel> HandleNewGameAsync(IGameMetadata gameInfo, IList<string> playerIds, string gameName, HouseRules? houseRulesOverride = null)
+        public Task<GameModel> HandleNewGameAsync(IGameMetadata gameInfo, IList<string> playerIds, string gameName, HouseRules? houseRulesOverride = null, int? seed = null)
         {
             Debug.Assert((gameInfo.TileKeys.Count == gameInfo.Numbers.Count) && (gameInfo.TileKeys.Count == gameInfo.Resources.Count));
 
@@ -323,7 +323,7 @@ namespace Catan3.Shared.GameLogic
                 RollModel = new RollModel(),
                 ActionFlags = new ActionFlags(),
                 Robber = new RobberModel { Coordinates = HexCoordinates.Default },
-                Random = new ReplayableRandom()
+                Random = seed.HasValue ? new ReplayableRandom(seed.Value) : new ReplayableRandom()
             };
 
             // Initialize tiles

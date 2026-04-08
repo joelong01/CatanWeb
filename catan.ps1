@@ -97,6 +97,12 @@ param(
     [Parameter()]
     [switch]$Staging,
 
+    [Parameter()]
+    [int]$Moves = 0,
+
+    [Parameter()]
+    [int]$Skip = 0,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
@@ -224,13 +230,13 @@ function Start-GameService {
 
     if ($IsWindows) {
         $urlsArg = if ($NetworkBinding) { " --urls `"http://0.0.0.0:$GameServicePort`"" } else { "" }
-        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$gameServicePath'; dotnet run$urlsArg" -WindowStyle Normal -PassThru
+        $process = Start-Process pwsh -ArgumentList "-NoExit", "-Command", "cd '$gameServicePath'; dotnet watch run$urlsArg" -WindowStyle Normal -PassThru
         Save-Pids -GameServicePid $process.Id
     } else {
         # macOS: Open new Terminal window - use single quotes for URL to avoid AppleScript escaping issues
         $urlsArg = if ($NetworkBinding) { " --urls 'http://0.0.0.0:$GameServicePort'" } else { "" }
         $pidFile = Join-Path $PSScriptRoot ".gameservice.pid"
-        $script = "cd '$gameServicePath' && echo `$`$ > '$pidFile' && dotnet run$urlsArg"
+        $script = "cd '$gameServicePath' && echo `$`$ > '$pidFile' && dotnet watch run$urlsArg"
         & osascript -e "tell application `"Terminal`" to do script `"$script`""
         # Wait for PID file to be created
         Start-Sleep -Milliseconds 500
@@ -1270,6 +1276,55 @@ switch ($Verb) {
                 Write-Log -Level INFO -Message "All recording replay tests passed!" -NoLabel -ForegroundColor Green
             }
 
+            "play" {
+                # Replay a recording through the real game API (creates a new game, sends each action)
+                $reactUiPath = Join-Path $PSScriptRoot "react-ui"
+
+                # Build the recording file path
+                $recordingFile = $null
+                if ($Name) {
+                    # Find matching recording file
+                    $recordingsDir = Join-Path $PSScriptRoot "Catan3.GameService\Default Data\Recordings"
+                    $foundFiles = Get-ChildItem -Path $recordingsDir -Filter "*.json" | Where-Object {
+                        $content = Get-Content $_.FullName -Raw | ConvertFrom-Json
+                        $content.name -like $Name
+                    }
+                    if ($foundFiles.Count -eq 0) {
+                        Write-Log -Level ERROR -Message "No recording found matching '$Name'" -NoLabel
+                        exit 1
+                    }
+                    $recordingFile = $foundFiles[0].FullName
+                    Write-Log -Level INFO -Message "Found: $($foundFiles[0].Name)" -NoLabel
+                }
+
+                if (-not $recordingFile) {
+                    Write-Log -Level ERROR -Message "Specify a recording with -Name <pattern>" -NoLabel
+                    exit 1
+                }
+
+                # Build args for the Node script (use relative path from react-ui/)
+                $relPath = [System.IO.Path]::GetRelativePath((Join-Path $PSScriptRoot "react-ui"), $recordingFile)
+                $tsArgs = @($relPath)
+                if ($Moves -gt 0) { $tsArgs += "--moves", $Moves }
+                if ($Skip -gt 0) { $tsArgs += "--skip", $Skip }
+                $serviceUrl = if ($Azure) {
+                    $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
+                    $az.GameServiceUrl
+                } else { $GameServiceUrl }
+                $tsArgs += "--url", $serviceUrl
+                if ($TraceLevel -eq "DEBUG") { $tsArgs += "--verbose" }
+
+                Write-Log -Level INFO -Message "Replaying via real game API..." -NoLabel -ForegroundColor Cyan
+                Push-Location $reactUiPath
+                try {
+                    & npx tsx scripts/replay-recording.ts @tsArgs
+                    if ($LASTEXITCODE -ne 0) { exit 1 }
+                }
+                finally {
+                    Pop-Location
+                }
+            }
+
             default {
                 Write-Log -Level INFO -Message "" -NoLabel
                 Write-Log -Level INFO -Message "Recording Management Commands" -NoLabel -ForegroundColor Cyan
@@ -1283,6 +1338,7 @@ switch ($Verb) {
                 Write-Log -Level INFO -Message "  load     - Load recordings from JSON files" -NoLabel
                 Write-Log -Level INFO -Message "  delete   - Delete a recording" -NoLabel
                 Write-Log -Level INFO -Message "  replay   - Run replay tests" -NoLabel
+                Write-Log -Level INFO -Message "  play     - Replay via real game API (creates new game)" -NoLabel
                 Write-Log -Level INFO -Message "" -NoLabel
                 Write-Log -Level WARN -Message "Options:" -NoLabel
                 Write-Log -Level INFO -Message "  -Local        Target local GameService (default)" -NoLabel
@@ -1302,6 +1358,8 @@ switch ($Verb) {
                 Write-Log -Level INFO -Message "  ./catan.ps1 recording replay                  - Run all replay tests locally" -NoLabel
                 Write-Log -Level INFO -Message "  ./catan.ps1 recording replay -Azure           - Run replay tests on Azure" -NoLabel
                 Write-Log -Level INFO -Message "  ./catan.ps1 recording delete -Name 'Test*'    - Delete matching recording" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording play -Name 'Catan*'     - Replay via real API" -NoLabel
+                Write-Log -Level INFO -Message "  ./catan.ps1 recording play -Name 'Catan*' 10  - Play first 10 moves" -NoLabel
                 Write-Log -Level INFO -Message "" -NoLabel
 
                 if ($SubCommand) {

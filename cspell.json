@@ -134,6 +134,8 @@
     "omnisharp",
     "onclick",
     "oncontextmenu",
+    "onreconnected",
+    "onreconnecting",
     "ontype",
     "onwned",
     "OpenAPI",
