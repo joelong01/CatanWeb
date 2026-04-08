@@ -115,5 +115,11 @@ namespace Catan3.Shared.Interfaces
         /// Asynchronously saves the current log state to a specified file path.
         /// </summary>
         Task SaveAsAsync(string filePath);
+
+        /// <summary>
+        /// Sets the logger for diagnostics (e.g., PERF-SAVE timing).
+        /// Called after construction when the logger isn't available at creation time.
+        /// </summary>
+        void SetLogger(ICatanDebugTrace logger);
     }
 }

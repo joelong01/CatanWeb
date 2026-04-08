@@ -68,6 +68,7 @@ namespace Catan3.Shared.Models
     [JsonDerivedType(typeof(ParticipatingInSupplementalRecord), ParticipatingInSupplementalRecord.Discriminator)]
     [JsonDerivedType(typeof(BalanceBoardRecord), BalanceBoardRecord.Discriminator)]
     [JsonDerivedType(typeof(SwapTileResourcesRecord), SwapTileResourcesRecord.Discriminator)]
+    [JsonDerivedType(typeof(GameExceptionRecord), GameExceptionRecord.Discriminator)]
     public interface IRecordedMessage
     {
         /// <summary>
@@ -772,6 +773,48 @@ namespace Catan3.Shared.Models
             => new SwapTileResourcesRecord(gameModel, msg);
     }
 
+    /// <summary>
+    /// Records that a game action was attempted but rejected by the GameStateMachine.
+    /// During replay, the replay engine verifies the same exception occurs and that
+    /// the game state remains unchanged. This handles disconnect retries where the
+    /// client re-sent an action that the server had already processed.
+    /// </summary>
+    public sealed class GameExceptionRecord : IRecordedMessage
+    {
+        public const string Discriminator = "gameException";
 
+        /// <inheritdoc />
+        public string ExpectedGameHash { get; init; } = string.Empty;
+        /// <inheritdoc />
+        public GameState ExpectedGameState { get; init; } = GameState.Uninitialized;
+        /// <inheritdoc />
+        [JsonIgnore]
+        public string RecordType => Discriminator;
 
+        /// <summary>
+        /// The type name of the original action that was rejected.
+        /// </summary>
+        public string OriginalActionType { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The exception message from the GameStateMachine.
+        /// </summary>
+        public string ExceptionMessage { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The original recorded action (serialized) so replay can attempt it and verify the same failure.
+        /// </summary>
+        public IRecordedMessage? OriginalAction { get; init; }
+
+        [JsonConstructor]
+        public GameExceptionRecord(string expectedGameHash, GameState expectedGameState,
+            string originalActionType, string exceptionMessage, IRecordedMessage? originalAction)
+        {
+            ExpectedGameHash = expectedGameHash;
+            ExpectedGameState = expectedGameState;
+            OriginalActionType = originalActionType;
+            ExceptionMessage = exceptionMessage;
+            OriginalAction = originalAction;
+        }
+    }
 }

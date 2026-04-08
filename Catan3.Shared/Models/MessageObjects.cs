@@ -106,7 +106,7 @@ namespace Catan3.Shared.Models
         public override string ToString() => $"UpdateHouseRulesMessage: GoldTiles={HouseRules.GoldTiles}, SupplementalMinPlayers={HouseRules.SupplementalMinPlayers}";
     }
 
-    public class NewGameMessage(GameType GameType, IList<string> PlayerIds, string GameName, HouseRules? HouseRules = null, bool SaveLifetimeStats = true, string? TemplateId = null, bool RecordGame = false)
+    public class NewGameMessage(GameType GameType, IList<string> PlayerIds, string GameName, HouseRules? HouseRules = null, bool SaveLifetimeStats = true, string? TemplateId = null, bool RecordGame = false, int? Seed = null)
     {
         public GameType GameType { get; } = GameType;
         public IList<string> PlayerIds { get; set; } = PlayerIds;
@@ -129,6 +129,11 @@ namespace Catan3.Shared.Models
         /// Whether to record the game for later replay.
         /// </summary>
         public bool RecordGame { get; set; } = RecordGame;
+        /// <summary>
+        /// Optional random seed for deterministic game creation. Used by recording -Play
+        /// to recreate the exact same game from a recording. If null, uses a random seed.
+        /// </summary>
+        public int? Seed { get; set; } = Seed;
         public override string ToString() => $"NewGameMessage: {GameName} ({GameType}), Players: {PlayerIds.Count}";
     }
 
