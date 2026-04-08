@@ -549,6 +549,7 @@ public class RecordingController : ControllerBase
                     swap.DestinationCurrentResource)),
             DeclareWinnerRecord winner => await gameStateMachine.HandleDeclareWinnerAsync(
                 new DeclareWinnerMessage(winner.WinnerId, winner.VictoryPoints)),
+            GameExceptionRecord ex => await Task.FromResult(gameStateMachine.GetCurrentState()),  // Skip — action was rejected during recording
             _ => throw new NotImplementedException($"Action type {action.GetType().Name} not implemented for replay")
         };
     }

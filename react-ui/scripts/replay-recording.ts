@@ -85,7 +85,7 @@ interface ActionTiming {
 function mapAction(action: RecordingAction): {
   messageType: string;
   messageData: Record<string, unknown>;
-} {
+} | null {
   switch (action.type) {
     case 'roll':
       return { messageType: 'RollMessage', messageData: { roll: action.roll } };
@@ -120,6 +120,8 @@ function mapAction(action: RecordingAction): {
       return { messageType: 'GoFirstMessage', messageData: { playerId: action.playerId } };
     case 'declareWinner':
       return { messageType: 'DeclareWinnerMessage', messageData: { winnerId: action.playerId } };
+    case 'gameException':
+      return null; // Skip — action was rejected during recording
     default:
       throw new Error(`Unknown action type: ${action.type}`);
   }
@@ -390,10 +392,22 @@ Options:
   let failed = 0;
 
   let timeoutCount = 0;
+  let skipped = 0;
 
   for (let i = skipMoves; i < endIndex; i++) {
     const action = data.actions[i];
-    const { messageType, messageData } = mapAction(action);
+    const mapped = mapAction(action);
+
+    // Skip gameException records — the action was rejected during recording
+    if (mapped === null) {
+      skipped++;
+      console.log(
+        `  [${String(i).padStart(3)}/${endIndex}] ${timestamp()} -- SKIP gameException (${action.expectedGameState})`
+      );
+      continue;
+    }
+
+    const { messageType, messageData } = mapped;
 
     let success = true;
     let error: string | undefined;
@@ -478,7 +492,7 @@ Options:
   console.log();
   console.log(`─── Results ───`);
   console.log(
-    `  Actions: ${succeeded} succeeded, ${failed} failed, ${timeoutCount} timed out, ${movesToPlay} total`
+    `  Actions: ${succeeded} succeeded, ${failed} failed, ${skipped} skipped, ${timeoutCount} timed out, ${movesToPlay} total`
   );
   console.log(`  Game ID: ${gameId}`);
   console.log(`  Recording: ${record ? 'enabled' : 'disabled'}`);

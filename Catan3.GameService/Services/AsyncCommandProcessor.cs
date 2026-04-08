@@ -75,12 +75,33 @@ namespace Catan3.GameService.Services
             }
             catch (Exception ex)
             {
+                var messageType = request.OptionalString("messageType") ?? "unknown";
                 _logger.LogEvent("Command Failed", $"Command {commandId} failed for game {gameId}: {ex.Message}", LogLevel.Error);
 
-                // Notify about failure
                 if (!string.IsNullOrEmpty(gameId))
                 {
+                    // Notify client about failure
                     await _signalRNotification.NotifyCommandFailedAsync(gameId, commandId, ex.Message);
+
+                    // Record the exception so replay knows this action was attempted and rejected
+                    var currentState = GameState.Uninitialized;
+                    var currentHash = string.Empty;
+                    try
+                    {
+                        var gsm = getGameStateMachine(gameId);
+                        var model = gsm.GetCurrentState();
+                        currentState = model.GameState;
+                        currentHash = model.GameHash;
+                    }
+                    catch { /* game may not exist */ }
+
+                    var exceptionRecord = new GameExceptionRecord(
+                        expectedGameHash: currentHash,
+                        expectedGameState: currentState,
+                        originalActionType: messageType,
+                        exceptionMessage: ex.Message,
+                        originalAction: null);
+                    await TryRecordActionAsync(gameId, exceptionRecord);
                 }
             }
         }
