@@ -77,6 +77,7 @@ interface ActionTiming {
   timedOut: boolean;
   success: boolean;
   error?: string;
+  modelSizeBytes?: number;
 }
 
 // ─── Action Mapping ─────────────────────────────────────────────────────────
@@ -162,7 +163,7 @@ async function connectSignalR(
   playerId: string,
   verbose: boolean
 ): Promise<{
-  waitForUpdate: () => Promise<{ timedOut: boolean; error?: string }>;
+  waitForUpdate: () => Promise<{ timedOut: boolean; error?: string; modelSizeBytes?: number }>;
   prepareForUpdate: () => void;
   disconnect: () => Promise<void>;
 }> {
@@ -176,26 +177,32 @@ async function connectSignalR(
 
   // Buffered notification: resolve is set when we're waiting, buffered flag
   // is set when a callback fires before we start waiting.
-  let pendingResolve: ((result: { timedOut: boolean; error?: string }) => void) | null = null;
-  let updateBuffered: { error?: string } | null = null;
+  let pendingResolve:
+    | ((result: { timedOut: boolean; error?: string; modelSizeBytes?: number }) => void)
+    | null = null;
+  let updateBuffered: { error?: string; modelSizeBytes?: number } | null = null;
   let updateCount = 0;
 
-  function resolveWaiter(error?: string) {
+  function resolveWaiter(error?: string, modelSizeBytes?: number) {
     if (pendingResolve) {
       const resolve = pendingResolve;
       pendingResolve = null;
-      resolve({ timedOut: false, error });
+      resolve({ timedOut: false, error, modelSizeBytes });
     } else {
-      updateBuffered = { error };
+      updateBuffered = { error, modelSizeBytes };
     }
   }
 
-  connection.on('GameStateUpdated', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  connection.on('GameStateUpdated', (gameModel: any) => {
     updateCount++;
+    const sizeBytes = JSON.stringify(gameModel).length;
     if (verbose) {
-      console.log(`    [SignalR] GameStateUpdated #${updateCount} at ${timestamp()}`);
+      console.log(
+        `    [SignalR] GameStateUpdated #${updateCount} at ${timestamp()} (${sizeBytes} bytes)`
+      );
     }
-    resolveWaiter();
+    resolveWaiter(undefined, sizeBytes);
   });
 
   connection.on('CommandFailed', (_commandId: string, error: string) => {
@@ -232,12 +239,16 @@ async function connectSignalR(
 
     /** Call after REST action returns — resolves when GameStateUpdated or CommandFailed arrives */
     waitForUpdate: () =>
-      new Promise<{ timedOut: boolean; error?: string }>((resolve) => {
+      new Promise<{ timedOut: boolean; error?: string; modelSizeBytes?: number }>((resolve) => {
         // If callback already arrived while REST was in-flight, resolve immediately
         if (updateBuffered !== null) {
           const buffered = updateBuffered;
           updateBuffered = null;
-          resolve({ timedOut: false, error: buffered.error });
+          resolve({
+            timedOut: false,
+            error: buffered.error,
+            modelSizeBytes: buffered.modelSizeBytes,
+          });
           return;
         }
         pendingResolve = resolve;
@@ -389,6 +400,7 @@ Options:
     let restMs = 0;
     let signalrMs = 0;
     let timedOut = false;
+    let modelSizeBytes: number | undefined;
 
     // Start listening before the POST so we don't miss the callback
     prepareForUpdate();
@@ -415,6 +427,7 @@ Options:
       const t2 = performance.now();
       signalrMs = Math.round((t2 - t1) * 100) / 100;
       timedOut = result.timedOut;
+      modelSizeBytes = result.modelSizeBytes;
 
       if (timedOut) timeoutCount++;
       if (result.error) {
@@ -434,6 +447,7 @@ Options:
     }
 
     const totalMs = Math.round((performance.now() - t0) * 100) / 100;
+    const sizeKB = modelSizeBytes ? `${(modelSizeBytes / 1024).toFixed(1)}KB` : '—';
 
     timings.push({
       index: i,
@@ -445,12 +459,13 @@ Options:
       timedOut,
       success,
       error,
+      modelSizeBytes,
     });
 
     const status = success ? (timedOut ? 'T' : '✓') : '✗';
     const errorStr = error ? ` ERR: ${error.substring(0, 60)}` : '';
     console.log(
-      `           ${timestamp()} << ${status} rest=${restMs}ms signalr=${signalrMs}ms total=${totalMs}ms${errorStr}`
+      `           ${timestamp()} << ${status} rest=${restMs}ms signalr=${signalrMs}ms total=${totalMs}ms model=${sizeKB}${errorStr}`
     );
 
     if (delay > 0) await sleep(delay);

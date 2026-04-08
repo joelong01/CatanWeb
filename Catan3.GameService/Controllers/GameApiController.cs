@@ -116,6 +116,9 @@ namespace Catan3.GameService.Controllers
             var gameServiceLogger = _loggerFactory.CreateLogger<GameStateMachine>();
             var gameLogger = new GameServiceLogger(gameServiceLogger);
 
+            // Ensure the Log has a logger for PERF-SAVE diagnostics
+            gameLog.SetLogger(gameLogger);
+
             // Create and return GameStateMachine with GameService dependencies
             return new GameStateMachine(gameLog, gameLogger, _persistenceService);
         }

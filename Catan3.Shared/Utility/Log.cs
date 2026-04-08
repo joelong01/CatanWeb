@@ -25,7 +25,7 @@ namespace Catan3.Shared.Utility
     public partial class Log<T> : IGameLog
     {
         private IPersistenceService? PersistService { get; set; }
-        private readonly ICatanDebugTrace? _logger;
+        private ICatanDebugTrace? _logger;
         public string FilePath { get; private set; }
         private ObservableCollection<T> DoneStack { get; set; } = [];
         private ObservableCollection<T> RedoStack { get; set; } = [];
@@ -95,6 +95,9 @@ namespace Catan3.Shared.Utility
                 _logger?.TraceMessage($"Trace constructor: Test mode disabled for file: {localSaveFile}");
             }
         }
+
+        /// <inheritdoc/>
+        public void SetLogger(ICatanDebugTrace logger) => _logger = logger;
 
         /// <summary>
         /// Constructor for loading existing GameModel with proper file path generation.
@@ -306,9 +309,9 @@ namespace Catan3.Shared.Utility
         /// <param name="sLog">The SerializableLog instance to convert.</param>
         /// <returns>A new Trace<T> instance populated with the data from the SerializableLog's stacks and game type.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the JSON deserialization fails or if the JSON format is not compatible with type T.</exception>
-        public static Log<T> FromSerializableLog(SerializableLog sLog, IPersistenceService PersistenceService, string filePath)
+        public static Log<T> FromSerializableLog(SerializableLog sLog, IPersistenceService PersistenceService, string filePath, ICatanDebugTrace? logger = null)
         {
-            var log = new Log<T>(PersistenceService, filePath);
+            var log = new Log<T>(PersistenceService, filePath, logger);
             for (int i = sLog.DoneStack.Count - 1; i >= 0; i--)
             {
                 var json = sLog.DoneStack[i];
@@ -655,7 +658,7 @@ namespace Catan3.Shared.Utility
                 sw.Stop();
 
                 var dbMs = sw.ElapsedMilliseconds - getLogMs - serializeMs - compressMs;
-                _logger?.TraceMessage($"[PERF-SAVE] getLog={getLogMs}ms serialize={serializeMs}ms compress={compressMs}ms db={dbMs}ms total={sw.ElapsedMilliseconds}ms jsonSize={json.Length / 1024}kb compressed={compressedBytes.Length / 1024}kb turns={uncompressedLog.DoneCount}");
+                _logger?.TraceInfo($"[PERF-SAVE] getLog={getLogMs}ms serialize={serializeMs}ms compress={compressMs}ms db={dbMs}ms total={sw.ElapsedMilliseconds}ms jsonSize={json.Length / 1024}kb compressed={compressedBytes.Length / 1024}kb turns={uncompressedLog.DoneCount}");
             }
             catch (Exception ex)
             {

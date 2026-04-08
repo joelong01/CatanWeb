@@ -1307,15 +1307,15 @@ function Install-AzureAppServicePlan {
 
     $existing = Invoke-AzCommand "appservice plan show --name $PlanName --resource-group $ResourceGroup" -Check -JsonOutput
     if (-not $existing) {
-        Write-Log -Level "INFO" -Message "Creating App Service Plan: $PlanName (B1, single instance)"
-        Invoke-AzCommand "appservice plan create --name $PlanName --resource-group $ResourceGroup --location $Location --sku B1 --is-linux --number-of-workers 1" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Creating App Service Plan: $PlanName (B2, 2 cores)"
+        Invoke-AzCommand "appservice plan create --name $PlanName --resource-group $ResourceGroup --location $Location --sku B2 --is-linux --number-of-workers 1" -SuppressOutput
         Write-Log -Level "INFO" -Message "App Service Plan created: $PlanName"
     }
     else {
         $currentSku = $existing.sku.name
-        if ($currentSku -in @("F1", "D1")) {
-            Write-Log -Level "INFO" -Message "Upgrading App Service Plan from $currentSku to B1 (required for Always On)"
-            Invoke-AzCommand "appservice plan update --name $PlanName --resource-group $ResourceGroup --sku B1" -SuppressOutput
+        if ($currentSku -in @("F1", "D1", "B1", "S1")) {
+            Write-Log -Level "INFO" -Message "Upgrading App Service Plan from $currentSku to B2 (2 cores, $26/mo)"
+            Invoke-AzCommand "appservice plan update --name $PlanName --resource-group $ResourceGroup --sku B2" -SuppressOutput
         }
         else {
             Write-Log -Level "INFO" -Message "App Service Plan exists: $PlanName (SKU: $currentSku)"
