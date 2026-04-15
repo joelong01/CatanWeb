@@ -397,31 +397,98 @@ function Get-EmulatorState {
 
 <#
 .SYNOPSIS
-    Polls the emulator health endpoint until it responds or the timeout expires.
+    Polls the emulator until it's ready or the timeout expires.
+    Prefers Docker's built-in healthcheck (authoritative), falls back to the HTTP
+    probe if the container has no healthcheck defined. If Docker reports the
+    container as "unhealthy", tries one automatic stop/start recovery cycle
+    (empirically: the vnext-preview image sometimes wedges its first boot and
+    a simple restart clears it). After that fails, bails with diagnostics.
     Returns $true when healthy.
 #>
 function Wait-ForEmulatorHealth {
-    param([int]$TimeoutSeconds = 120, [int]$PollIntervalSeconds = 5)
+    param(
+        [int]$TimeoutSeconds = 240,
+        [int]$PollIntervalSeconds = 5,
+        [switch]$SkipRecovery  # prevents recursive recovery attempts
+    )
 
     Write-Log -Level "INFO" -Message "Waiting for emulator health (up to ${TimeoutSeconds}s)..."
-    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-    $attempt  = 0
+    $deadline  = (Get-Date).AddSeconds($TimeoutSeconds)
+    $started   = Get-Date
+    $attempt   = 0
+    $lastLog   = ""
 
     while ((Get-Date) -lt $deadline) {
         $attempt++
+        $elapsed = [int]((Get-Date) - $started).TotalSeconds
+
+        # Prefer Docker's own healthcheck result — authoritative and cheap.
+        $dockerHealth = (& docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' $ContainerName 2>$null | Out-String).Trim()
+
+        if ($dockerHealth -eq "healthy") {
+            Write-Log -Level "INFO" -Message "Emulator healthy after ${elapsed}s (docker health=healthy)."
+            return $true
+        }
+
+        if ($dockerHealth -eq "unhealthy") {
+            if ($SkipRecovery) {
+                Write-Log -Level "ERROR" -Message "Emulator still unhealthy after recovery attempt (${elapsed}s)."
+                Write-ContainerDiagnostics
+                return $false
+            }
+            Write-Log -Level "WARN" -Message "Docker reports emulator unhealthy after ${elapsed}s — attempting auto-recovery (stop + start)..."
+            & docker stop  $ContainerName 2>&1 | ForEach-Object { Write-Log -Level "DEBUG" -Message $_ }
+            Start-Sleep -Seconds 2
+            & docker start $ContainerName 2>&1 | ForEach-Object { Write-Log -Level "DEBUG" -Message $_ }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Log -Level "ERROR" -Message "docker start failed during auto-recovery (exit $LASTEXITCODE)."
+                Write-ContainerDiagnostics
+                return $false
+            }
+            Write-Log -Level "INFO" -Message "Container restarted — waiting for health again."
+            return (Wait-ForEmulatorHealth -TimeoutSeconds $TimeoutSeconds -PollIntervalSeconds $PollIntervalSeconds -SkipRecovery)
+        }
+
+        # "starting" or "none" — fall back to probing the HTTP endpoint ourselves.
+        # (When no healthcheck is defined, this is the only signal we have.)
         try {
             $r = Invoke-WebRequest -Uri $HealthEndpoint -TimeoutSec 4 -ErrorAction Stop
             if ($r.StatusCode -lt 300) {
-                Write-Log -Level "INFO" -Message "Emulator healthy after ~$($attempt * $PollIntervalSeconds)s."
+                Write-Log -Level "INFO" -Message "Emulator healthy after ${elapsed}s (http probe)."
                 return $true
             }
         } catch { }
-        Write-Log -Level "DEBUG" -Message "Attempt $attempt — not ready yet, waiting ${PollIntervalSeconds}s..."
+
+        # Progress line every ~15s at INFO, and each attempt at DEBUG.
+        $stateLabel = if ($dockerHealth -and $dockerHealth -ne "none") { $dockerHealth } else { "probing" }
+        $line = "  ...still waiting (${elapsed}s elapsed, state=$stateLabel)"
+        if ($attempt % 3 -eq 0 -and $line -ne $lastLog) {
+            Write-Log -Level "INFO" -Message $line
+            $lastLog = $line
+        } else {
+            Write-Log -Level "DEBUG" -Message "Attempt $attempt — state=$stateLabel, waiting ${PollIntervalSeconds}s..."
+        }
         Start-Sleep -Seconds $PollIntervalSeconds
     }
 
     Write-Log -Level "ERROR" -Message "Emulator did not become healthy within ${TimeoutSeconds}s."
+    Write-ContainerDiagnostics
     return $false
+}
+
+<#
+.SYNOPSIS
+    Dumps the last few lines of the emulator container logs and the docker
+    health history — called when Wait-ForEmulatorHealth gives up, so the user
+    sees the actual failure reason instead of a generic timeout.
+#>
+function Write-ContainerDiagnostics {
+    Write-Log -Level "WARN" -Message "--- Last 20 lines of container logs ---"
+    & docker logs --tail 20 $ContainerName 2>&1 | ForEach-Object { Write-Log -Level "WARN" -Message "  $_" }
+    Write-Log -Level "WARN" -Message "---"
+    Write-Log -Level "WARN" -Message "If the container is stuck unhealthy, recover with:"
+    Write-Log -Level "WARN" -Message "    docker rm -f $ContainerName"
+    Write-Log -Level "WARN" -Message "    ./catan.ps1 database install"
 }
 
 <#

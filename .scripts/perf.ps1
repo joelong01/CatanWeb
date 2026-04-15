@@ -23,6 +23,9 @@ param(
     [string]$TraceLevel = "INFO",
 
     [string]$Name,
+    [string]$Id,
+    [switch]$Azure,
+    [string]$Url,
     [switch]$Help
 )
 
@@ -33,7 +36,15 @@ Import-Module "$ScriptDir\utility-scripts.psm1" -Force
 Set-ModuleTraceLevel -TraceLevel $TraceLevel
 $PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
 
-$GameServiceUrl = "http://localhost:8080"
+if ($Url) {
+    $GameServiceUrl = $Url.TrimEnd('/')
+}
+elseif ($Azure) {
+    $GameServiceUrl = (Get-AzureResourceNames -ProjectRoot $ProjectRoot).GameServiceUrl
+}
+else {
+    $GameServiceUrl = "http://localhost:8080"
+}
 
 if ($Help) {
     Write-Host @"
@@ -44,15 +55,19 @@ Performance Benchmark
 Replays recordings with server-side per-action timing.
 Reports cost by action type and game state.
 
-Usage: perf.ps1 [-Name <pattern>] [-TraceLevel <level>]
+Usage: perf.ps1 [-Name <pattern>] [-Id <id>] [-Azure] [-Url <url>] [-TraceLevel <level>]
 
 Options:
   -Name <pattern>   Filter recordings by name (wildcard)
+  -Id <id>          Run a single recording by full or prefix ID (disambiguates duplicate names)
+  -Azure            Target the Azure GameService (URL resolved from .azure/catan-azure.json)
+  -Url <url>        Target an explicit GameService URL
   -TraceLevel       Output: ERROR, WARN, INFO (default), DEBUG
   -Help             Show this message
 
 Prerequisites:
-  GameService must be running: ./catan.ps1 run
+  Local (default): GameService running via ./catan.ps1 run
+  -Azure: network access to the configured Azure GameService
 
 "@
     exit 0
@@ -71,12 +86,25 @@ try {
     Write-Log -Level INFO -Message "GameService: running" -NoLabel -ForegroundColor Green
 }
 catch {
-    Write-Log -Level ERROR -Message "GameService not running on $GameServiceUrl. Start with: ./catan.ps1 run" -NoLabel
+    if ($Azure -or $Url) {
+        Write-Log -Level ERROR -Message "GameService unreachable at $GameServiceUrl`: $($_.Exception.Message)" -NoLabel
+    }
+    else {
+        Write-Log -Level ERROR -Message "GameService not running on $GameServiceUrl. Start with: ./catan.ps1 run" -NoLabel
+    }
     exit 1
 }
 
 # 2. Get recordings
 $recordings = Invoke-RestMethod -Uri "$GameServiceUrl/api/recordings" -TimeoutSec 10
+if ($Id) {
+    $recordings = $recordings | Where-Object { $_.id -eq $Id -or $_.id -like "$Id*" }
+    if ($recordings.Count -gt 1) {
+        Write-Log -Level ERROR -Message "Ambiguous -Id '$Id' matched $($recordings.Count) recordings. Use a longer prefix:" -NoLabel
+        foreach ($r in $recordings) { Write-Log -Level INFO -Message "  $($r.id)  $($r.name)  ($($r.actionCount) actions)" -NoLabel }
+        exit 1
+    }
+}
 if ($Name) { $recordings = $recordings | Where-Object { $_.name -like $Name } }
 $recordings = $recordings | Sort-Object actionCount -Descending
 
