@@ -248,33 +248,28 @@ export default function LoadGame(): React.ReactElement {
     }
   }, []);
 
-  const handleReplayGame = useCallback(async (gameId: string) => {
-    setOpenMenuGameId(null);
-    setErrorMessage(null);
-    try {
-      const result = await gameApi.replayGame(gameId);
-      if (!result.success || !result.data) {
-        setErrorMessage(result.error ?? 'Failed to create replay');
-        return;
-      }
-      const newGameId = result.data.newGameId;
-      const listResult = await gameApi.getSavedGames();
-      if (listResult.success && listResult.data) {
-        setSavedGames(listResult.data);
-        setSelectedGameId(newGameId);
-        const newGame = listResult.data.find((g) => g.gameId === newGameId);
-        if (newGame) {
-          setOriginalName(newGame.gameName);
-          setEditingName(newGame.gameName);
-          setEditingGameId(newGameId);
+  const handleReplayGame = useCallback(
+    async (gameId: string) => {
+      setOpenMenuGameId(null);
+      setErrorMessage(null);
+      try {
+        const result = await gameApi.replayGame(gameId);
+        if (!result.success || !result.data) {
+          setErrorMessage(result.error ?? 'Failed to create replay');
+          return;
         }
+        // The replay endpoint already registered the new game in the
+        // GameStateMachineRegistry, so navigate straight in — the game page
+        // joins via SignalR (mirrors the openGame path).
+        router.push(`/game/${result.data.newGameId}`);
+      } catch (error) {
+        setErrorMessage(
+          `Error creating replay: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
-    } catch (error) {
-      setErrorMessage(
-        `Error creating replay: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
-  }, []);
+    },
+    [router]
+  );
 
   const deleteCheckedGames = useCallback(async () => {
     if (checkedGameIds.size === 0) return;
