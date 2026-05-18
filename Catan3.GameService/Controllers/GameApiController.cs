@@ -757,8 +757,10 @@ namespace Catan3.GameService.Controllers
         }
 
         /// <summary>
-        /// Creates a copy of the game reset to the first WaitingForRollForOrder state,
-        /// so the same group can play again on the same board without setup.
+        /// Creates a new game from an actually-played game (at least one roll),
+        /// reset to its first WaitingForRollForOrder state, so the same group can
+        /// play again on the same board and players without setup. The replay gets
+        /// a fresh GameId, name, and randomness, and a single-entry history.
         /// POST /api/game/{gameId}/replay
         /// </summary>
         [HttpPost("game/{gameId}/replay")]
@@ -773,7 +775,20 @@ namespace Catan3.GameService.Controllers
                     return NotFound(new { success = false, error = $"Game {gameId} not found" });
 
                 var sourceLog = sourceGameStateMachine.GetSerializableLog();
-                var originalName = sourceGameStateMachine.GetCurrentState().GameName;
+                var sourceCurrent = sourceGameStateMachine.GetCurrentState();
+                var originalName = sourceCurrent.GameName;
+
+                // Eligibility: only games that were actually played (at least one
+                // roll) can be replayed. TotalRolls is judged from the CURRENT
+                // state — it is always 0 at the WaitingForRollForOrder snapshot.
+                if (sourceCurrent.RollModel.GameRollModel.TotalRolls <= 0)
+                {
+                    return UnprocessableEntity(new
+                    {
+                        success = false,
+                        error = "Game has no rolls — it was never played, nothing to replay."
+                    });
+                }
 
                 // Find the first WaitingForRollForOrder state in game history.
                 // DoneStack[0] = most recent, DoneStack[Count-1] = oldest.
@@ -791,6 +806,8 @@ namespace Catan3.GameService.Controllers
 
                 if (replayIndex < 0)
                 {
+                    // Defensive: unreachable once the rolls guard passes (a rolled
+                    // game must have passed through the logged WaitingForRollForOrder).
                     return UnprocessableEntity(new
                     {
                         success = false,
@@ -803,32 +820,33 @@ namespace Catan3.GameService.Controllers
                     ? newName
                     : $"{originalName} (Replay)";
 
-                // Truncate DoneStack to WaitingForRollForOrder (keep oldest states from replayIndex onward)
-                // and replace GameId / GameName in every entry.
-                var newDoneStack = new List<string>();
-                for (int i = replayIndex; i < sourceLog.DoneStack.Count; i++)
-                {
-                    var updatedJson = sourceLog.DoneStack[i]
-                        .Replace($"\"GameId\":\"{gameId}\"", $"\"GameId\":\"{newGameId}\"")
-                        .Replace($"\"GameName\":\"{originalName}\"", $"\"GameName\":\"{gameName}\"");
-                    newDoneStack.Add(updatedJson);
-                }
+                // Deserialize the WaitingForRollForOrder snapshot and reset its
+                // identity and randomness. The board and players are concrete data
+                // in this snapshot and are preserved as-is (Shuffle() is not
+                // re-run). A brand-new ReplayableRandom gives fresh dice that do
+                // not collide with the original game's sequence.
+                var model = JsonHelper.Deserialize<GameModel>(sourceLog.DoneStack[replayIndex])
+                    ?? throw new InvalidOperationException("Failed to deserialize WaitingForRollForOrder snapshot");
+                model.GameId = newGameId;
+                model.GameName = gameName;
+                model.Random = new ReplayableRandom();
+                model.Validate();
+                model.UpdateGameHash();
 
-                var newSerializableLog = new SerializableLog
-                {
-                    DoneStack = newDoneStack,
-                    RedoStack = [],
-                    GameType = sourceLog.GameType,
-                    DoneCount = newDoneStack.Count,
-                    RedoCount = 0
-                };
-
-                var newGameLog = Log<string>.FromSerializableLog(newSerializableLog, _persistenceService, string.Empty);
+                // Seed a fresh single-entry game from the snapshot using the same
+                // path loadmodel / HandleNewGameAsync use. InitializeLoggingState
+                // makes this snapshot the sole starting state — no undo back into
+                // board-pick, no stale Random promoted by undo/redo.
+                var newGameLog = new Log<string>(_persistenceService, string.Empty);
                 var newGameStateMachine = CreateGameStateMachineWithServiceDependencies(newGameLog);
-                var newGameModel = newGameStateMachine.GetCurrentState();
-
+                newGameStateMachine.InitializeLoggingState(model);
                 GameStateMachineRegistry.AddGameStateMachine(newGameId, newGameStateMachine);
 
+                var newGameModel = newGameStateMachine.GetCurrentState();
+
+                // Persist so the replay appears in the saved-games store —
+                // InitializeLoggingState only registers it in memory.
+                var newSerializableLog = newGameStateMachine.GetSerializableLog();
                 var json = JsonHelper.Serialize(newSerializableLog);
                 var compressed = JsonHelper.Compress(json);
 

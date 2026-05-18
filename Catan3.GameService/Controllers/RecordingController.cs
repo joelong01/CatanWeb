@@ -374,6 +374,11 @@ public class RecordingController : ControllerBase
         // Sanitize user-provided id for log safety
         var safeId = id?.Replace(Environment.NewLine, " ").Replace("\r", " ").Replace("\n", " ") ?? "";
 
+        if (string.IsNullOrEmpty(id))
+        {
+            return NotFound(new { message = $"Recording {safeId} not found" });
+        }
+
         // Load the recording
         var result = await _recordingService.GetRecordingAsync(id);
         if (result == null)
