@@ -8,6 +8,9 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useLayoutStore } from '@/lib/stores/layoutStore';
+
+const MODAL_ID = 'save-layout-dialog';
 
 interface SaveLayoutDialogProps {
   /** Pre-fill name (current layout name, if any) */
@@ -41,6 +44,16 @@ export function SaveLayoutDialog({
       el.select();
     }
   }, []);
+
+  // Register with the modal token-set so the global keyboard hook
+  // suppresses Enter/Backspace shortcuts while this dialog owns the
+  // keyboard. React guarantees cleanup runs on unmount.
+  const registerModal = useLayoutStore((s) => s.registerModal);
+  const unregisterModal = useLayoutStore((s) => s.unregisterModal);
+  useEffect(() => {
+    registerModal(MODAL_ID);
+    return () => unregisterModal(MODAL_ID);
+  }, [registerModal, unregisterModal]);
 
   // Escape key dismisses
   useEffect(() => {

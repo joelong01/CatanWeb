@@ -10,7 +10,7 @@
  * Wrapped in FloatingPanel for draggable/resizable behavior.
  */
 
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { HexGrid, type HexGridItem } from '@/components/hex-grid/HexGrid';
 import { HEX_LAYOUTS, cubicCoord } from '@/components/hex-grid/hex-geometry';
 import { serviceConfig } from '@/lib/config';
@@ -236,18 +236,10 @@ export function SupplementalOverlay({
     [eligiblePlayers, onToggle]
   );
 
-  // Keyboard handler for Enter key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        onDone();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onDone]);
+  // (Enter→Next keyboard handling lives in useGameKeyboard. During
+  //  PickSupplementalPlayers, `actionFlags.nextEnabled` is true whenever
+  //  the player has no unspent entitlements — see GameStateMachine.cs
+  //  AllowNext — so Enter naturally advances the state via Next.)
 
   // Build hex grid items: center (Next button) + surrounding player hexes
   const hexItems = useMemo((): HexGridItem[] => {

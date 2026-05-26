@@ -14,7 +14,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
 import { useGameConnection } from '@/lib/hooks/useGameConnection';
 import { useGameStore } from '@/lib/stores/gameStore';
-import { useLayoutStore, selectPanel } from '@/lib/stores/layoutStore';
+import { useLayoutStore, selectPanel, useAnyModalOpen } from '@/lib/stores/layoutStore';
+import { useGameKeyboard } from '@/lib/hooks/useGameKeyboard';
 import {
   useGameState,
   usePlayers,
@@ -410,15 +411,26 @@ export default function GamePage(): React.ReactElement {
   // setLastRoll hook is called earlier with other store hooks
   const rollDimTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Keyboard roll: tracks whether "1" was pressed, waiting for second digit (0, 1, 2 → 10, 11, 12)
-  const pendingRollPrefixRef = useRef(false);
-
-  // Clear pending "1" when leaving WaitingForRoll (mouse roll, state change, etc.)
-  useEffect(() => {
-    if (gameState !== 'WaitingForRoll') {
-      pendingRollPrefixRef.current = false;
-    }
-  }, [gameState]);
+  // Keyboard shortcuts — all game keys routed through one hook.
+  // The 1-prefix state lives inside the hook; we surface
+  // rollPrefixPending here to render the small "1_" indicator.
+  // See issue #181 and .design/keyboard-shortcuts.md.
+  const anyModalOpen = useAnyModalOpen();
+  const { rollPrefixPending } = useGameKeyboard({
+    proxy,
+    gameState,
+    roads,
+    buildings,
+    currentPlayer,
+    actionFlags,
+    canPurchaseSettlement,
+    canPurchaseCity,
+    canPurchaseRoad,
+    canPurchaseDevCard,
+    canPlaySoldier,
+    anyModalOpen,
+    onRoll: handleRollClick,
+  });
 
   // Helper: Get players with buildings adjacent to a tile coordinate
   // Returns simple { id, name } objects matching Blazor's RobberTarget record
@@ -579,163 +591,7 @@ export default function GamePage(): React.ReactElement {
     setRobberTargetPlayers([]);
   }, []);
 
-  // Keyboard shortcuts for dice roll, road building (1-9), and city upgrades (A-Z)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input field
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      // Keyboard roll: when WaitingForRoll, number keys trigger a roll
-      // Keys 2-9 roll immediately. Key "1" waits for a second digit:
-      //   1+0 → 10, 1+1 → 11, 1+2 → 12, 1+(3-9) → that digit
-      if (gameState === 'WaitingForRoll') {
-        const num = parseInt(e.key);
-        if (!isNaN(num)) {
-          if (pendingRollPrefixRef.current) {
-            // Second key after "1"
-            pendingRollPrefixRef.current = false;
-            if (num >= 0 && num <= 2) {
-              handleRollClick(10 + num);
-            } else {
-              handleRollClick(num);
-            }
-          } else if (num === 1) {
-            // "1" pressed — wait for second digit
-            pendingRollPrefixRef.current = true;
-          } else if (num >= 2 && num <= 9) {
-            handleRollClick(num);
-          }
-          return;
-        }
-        // Non-digit key clears any pending "1"
-        pendingRollPrefixRef.current = false;
-      }
-
-      const key = e.key.toUpperCase();
-      const lowerKey = e.key.toLowerCase();
-
-      // Handle number keys (1-9) for road building or settlement placement
-      const num = parseInt(e.key);
-      if (!isNaN(num) && num >= 1 && num <= 9) {
-        // First try roads (they have buildIndex from server)
-        const road = roads?.find((r) => r.roadState === 'Buildable' && r.buildIndex === num);
-        if (road) {
-          proxy.purchaseRoad(road.roadKey);
-          return;
-        }
-
-        // Then try settlements (only during regular gameplay, not allocation)
-        const hasSettlementEntitlement = currentPlayer?.unspentEntitlements?.includes('Settlement');
-        const inAllocation =
-          gameState === 'AllocateResourceForward' || gameState === 'AllocateResourceReverse';
-
-        if (hasSettlementEntitlement && !inAllocation && buildings) {
-          // Build list of possible settlements (same order as GameBoard)
-          const possibleSettlements = buildings.filter(
-            (b) => b.buildingState === 'PossibleSettlement' && b.ownerId === null
-          );
-
-          // 1-based index (num=1 -> index 0)
-          const settlementIndex = num - 1;
-
-          if (settlementIndex >= 0 && settlementIndex < possibleSettlements.length) {
-            const settlement = possibleSettlements[settlementIndex];
-            proxy.upgradeBuilding(settlement.buildingKey);
-          }
-        }
-        return;
-      }
-
-      // Handle letter keys (A-Z) for roads or city upgrades
-      if (key >= 'A' && key <= 'Z') {
-        const letterIndex = key.charCodeAt(0) - 65; // 'A' = 65 -> 0, 'Z' = 90 -> 25
-        const buildIndexForLetter = letterIndex + 10; // A=10, B=11, ..., Z=35 (for roads)
-
-        // First try roads (forward alphabet: A=10, B=11, etc.)
-        const road = roads?.find(
-          (r) => r.roadState === 'Buildable' && r.buildIndex === buildIndexForLetter
-        );
-        if (road) {
-          proxy.purchaseRoad(road.roadKey);
-          return;
-        }
-
-        // Then try city upgrades (reverse alphabet: Z=0, Y=1, X=2, etc.)
-        const hasCityEntitlement = currentPlayer?.unspentEntitlements?.includes('City');
-        if (hasCityEntitlement && buildings && currentPlayer) {
-          const upgradeableSettlements = buildings.filter(
-            (b) => b.buildingState === 'Settlement' && b.ownerId === currentPlayer.id
-          );
-
-          // Reverse alphabet mapping: Z=0, Y=1, X=2, etc.
-          const cityIndex = 25 - letterIndex; // Z (25) -> 0, Y (24) -> 1, etc.
-
-          if (cityIndex >= 0 && cityIndex < upgradeableSettlements.length) {
-            const settlement = upgradeableSettlements[cityIndex];
-            proxy.upgradeBuilding(settlement.buildingKey);
-            return;
-          }
-        }
-        // Letter didn't match any road or city — fall through to purchase shortcuts
-      }
-
-      // Purchase shortcuts — only fire AFTER placement logic above has had a chance.
-      // Priority: place already-purchased entitlements first, buy new ones second.
-      // No game-state gating here — the canPurchase* flags already encode whether
-      // the purchase is valid in the current state (server sets enabled:false when not).
-      // Works in WaitingForNext, WaitingForRoll (soldier), Supplemental, etc.
-      switch (lowerKey) {
-        case 's':
-          if (canPurchaseSettlement) {
-            e.preventDefault();
-            handleAction('settlement');
-          }
-          return;
-        case 'c':
-          if (canPurchaseCity) {
-            e.preventDefault();
-            handleAction('city');
-          }
-          return;
-        case 'k':
-          if (canPlaySoldier) {
-            e.preventDefault();
-            handleAction('soldier');
-          }
-          return;
-        case 'r':
-          if (canPurchaseRoad) {
-            e.preventDefault();
-            handleAction('road');
-          }
-          return;
-        case 'd':
-          if (canPurchaseDevCard) {
-            e.preventDefault();
-            handleAction('devcard');
-          }
-          return;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    roads,
-    buildings,
-    gameState,
-    currentPlayer,
-    proxy,
-    handleRollClick,
-    handleAction,
-    canPurchaseSettlement,
-    canPurchaseCity,
-    canPlaySoldier,
-    canPurchaseRoad,
-    canPurchaseDevCard,
-  ]);
+  // (Keyboard shortcuts are owned by useGameKeyboard, called above.)
 
   // Star filter changed handler (stores in layoutStore for board filtering)
   const setStarFilter = useLayoutStore((state) => state.setStarFilter);
@@ -955,6 +811,18 @@ export default function GamePage(): React.ReactElement {
         {/* Dice Panel - Roll statistics and click-to-roll */}
         <FloatingPanel panelId="dice" title="Dice" className="bg-white/5 border-white/10">
           <RollRing rollStats={rollStats} onRollClick={handleRollClick} colors={playerColors} />
+          {/* Pending "1"-prefix indicator: visible after pressing "1", cleared
+              when the second digit (or non-digit / Escape / focus shift) arrives.
+              Issue #181 — UX clarity, not part of the root-cause fix. */}
+          {rollPrefixPending && (
+            <div
+              className="absolute top-1 right-1 bg-amber-600/90 text-white text-xs font-mono px-2 py-0.5 rounded shadow z-10 pointer-events-none"
+              aria-live="polite"
+              aria-label="Roll prefix 1 pending; press 0, 1, or 2 for 10/11/12"
+            >
+              1_
+            </div>
+          )}
         </FloatingPanel>
 
         {/* Action Controls Panel */}

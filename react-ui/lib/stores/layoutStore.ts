@@ -714,6 +714,15 @@ interface LayoutState {
 
   /** Name of the currently active saved layout (null = unnamed) */
   currentLayoutName: string | null;
+
+  /**
+   * IDs of modals currently open. Used by the global keyboard hook to
+   * suppress shortcuts while a modal owns the keyboard. Token-set
+   * rather than counter so a missed unregister is diagnosable
+   * (inspect which IDs are stuck) and recoverable via
+   * resetModalRegistry. Transient — never persisted.
+   */
+  openModals: Set<string>;
 }
 
 interface LayoutActions {
@@ -764,6 +773,19 @@ interface LayoutActions {
 
   /** Arrange layout based on game state -- game-aware optimal positioning */
   arrangeLayout: (gameState?: GameState | null) => void;
+
+  /** Register that a modal with this ID is now open. Idempotent. */
+  registerModal: (id: string) => void;
+
+  /** Unregister a modal. Safe to call even if id wasn't registered. */
+  unregisterModal: (id: string) => void;
+
+  /**
+   * Defensive recovery: clear the modal registry. Call this if a modal
+   * unmount path was skipped (e.g. error during render) and shortcuts
+   * are stuck disabled.
+   */
+  resetModalRegistry: () => void;
 }
 
 export type LayoutStore = LayoutState & LayoutActions;
@@ -777,6 +799,7 @@ const initialState: LayoutState = {
   version: 8,
   savedLayouts: [],
   currentLayoutName: null,
+  openModals: new Set<string>(),
 };
 
 /**
@@ -1006,6 +1029,28 @@ export const useLayoutStore = create<LayoutStore>()(
           currentLayoutName: null,
         });
       },
+
+      registerModal: (id) => {
+        set((state) => {
+          if (state.openModals.has(id)) return state;
+          const next = new Set(state.openModals);
+          next.add(id);
+          return { openModals: next };
+        });
+      },
+
+      unregisterModal: (id) => {
+        set((state) => {
+          if (!state.openModals.has(id)) return state;
+          const next = new Set(state.openModals);
+          next.delete(id);
+          return { openModals: next };
+        });
+      },
+
+      resetModalRegistry: () => {
+        set({ openModals: new Set<string>() });
+      },
     }),
     {
       name: 'catan-layout',
@@ -1152,6 +1197,13 @@ export const selectStarFilter = (state: LayoutStore) => state.starFilter;
 
 /** Select resource filters */
 export const selectResourceFilters = (state: LayoutStore) => state.resourceFilters;
+
+/**
+ * True iff any modal is currently registered. Read by the keyboard
+ * hook to suppress global shortcuts when a modal owns the keyboard.
+ */
+export const useAnyModalOpen = (): boolean =>
+  useLayoutStore((s) => s.openModals.size > 0);
 
 /** Info about a minimized panel for the MinimizedBar */
 export interface MinimizedPanelInfo {
