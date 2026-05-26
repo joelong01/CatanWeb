@@ -98,51 +98,32 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Deploy React to the staging slot (inactive)
-      # Points at PRODUCTION GameService since this will become production
+      # Deploy React to the staging slot (inactive). The script derives the
+      # GameService URL from .azure/catan-azure.json — no hardcoded hostnames
+      # in this workflow (Finding I of the cicd-robustness review). Until the
+      # GameService gets its own staging slot (Step 6), the script defaults
+      # to the production GameService URL.
       - name: Deploy React to staging slot
         shell: pwsh
-        run: |
-          ./.scripts/catan-azure.ps1 ui deploy-staging -Force -TraceLevel INFO `
-            -GameServiceUrl https://catan-api.azurewebsites.net
+        run: ./.scripts/catan-azure.ps1 ui deploy-staging -Force -TraceLevel INFO
 
-      # Verify the staging slot is healthy before swapping
+      # Verify the staging slot is healthy before swapping.
+      # The script derives the URL from config.
       - name: Verify staging slot
-        run: |
-          for i in $(seq 1 30); do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 10 \
-              https://catan-staging.azurewebsites.net 2>/dev/null || echo "000")
-            echo "Staging ($((i*10))s): HTTP $CODE"
-            [ "$CODE" = "200" ] && exit 0
-            sleep 10
-          done
-          echo "::error::Staging slot did not respond within 5 minutes"
-          exit 1
+        shell: pwsh
+        run: ./.scripts/catan-azure.ps1 ui verify -Slot staging -TraceLevel INFO
 
-      # Swap: staging becomes production, production becomes staging
+      # Swap: staging becomes production, production becomes staging.
+      # The script derives app/RG names from config; the workflow carries no
+      # resource names (Finding I).
       - name: Swap slots
-        run: |
-          echo "Swapping staging → production..."
-          az webapp deployment slot swap \
-            --name catan \
-            --resource-group rg-catan \
-            --slot staging \
-            --target-slot production
-          echo "Swap complete"
+        shell: pwsh
+        run: ./.scripts/catan-azure.ps1 ui swap -TraceLevel INFO
 
-      # Verify production is serving the new version
+      # Verify production is serving the new version.
       - name: Verify production
-        run: |
-          sleep 10  # brief settle time after swap
-          for i in $(seq 1 18); do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 10 \
-              https://catan.azurewebsites.net 2>/dev/null || echo "000")
-            echo "Production ($((i*10))s): HTTP $CODE"
-            [ "$CODE" = "200" ] && exit 0
-            sleep 10
-          done
-          echo "::warning::Production did not respond within 3 minutes after swap"
-          exit 1
+        shell: pwsh
+        run: ./.scripts/catan-azure.ps1 ui verify -Slot production -TraceLevel INFO
 
   verify:
     name: Verify production
@@ -150,20 +131,34 @@ jobs:
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      # Summary derives URLs from .azure/catan-azure.json — no hardcoded
+      # resource names in this workflow (Finding I). Health gates are
+      # performed in the deploy-react job via `ui verify`; this job is
+      # informational. Versioned readiness and explicit rollback are
+      # introduced by Steps 3, 4, and 7 of the cicd-robustness plan.
       - name: Production summary
+        shell: pwsh
         run: |
-          echo "=== Production Deployment Summary ==="
-          echo ""
-          echo "Backend deployed: ${{ needs.changes.outputs.backend }}"
-          echo "Frontend deployed: ${{ needs.changes.outputs.frontend }}"
-          echo ""
-          echo "=== Production URLs ==="
-          echo "React UI:    https://catan.azurewebsites.net"
-          echo "GameService: https://catan-api.azurewebsites.net"
-          echo ""
-          echo "=== Health Check ==="
-          curl -sf https://catan-api.azurewebsites.net/health | jq . || echo "GameService not responding"
-          echo ""
-          curl -sf -o /dev/null -w "React UI: HTTP %{http_code}\n" https://catan.azurewebsites.net || echo "React UI not responding"
-          echo ""
-          echo "To rollback React: az webapp deployment slot swap --name catan --resource-group rg-catan --slot staging --target-slot production"
+          $cfg = Get-Content .azure/catan-azure.json | ConvertFrom-Json
+          $base = $cfg.baseName
+          $ui = "https://$base.azurewebsites.net"
+          $api = "https://$base-api.azurewebsites.net"
+          Write-Host "=== Production Deployment Summary ==="
+          Write-Host "Backend deployed:  ${{ needs.changes.outputs.backend }}"
+          Write-Host "Frontend deployed: ${{ needs.changes.outputs.frontend }}"
+          Write-Host ""
+          Write-Host "React UI:    $ui"
+          Write-Host "GameService: $api"
+          try {
+            $r = Invoke-WebRequest -Uri "$api/health" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+            Write-Host "GameService /health: HTTP $($r.StatusCode)"
+          } catch {
+            Write-Host "GameService /health: not responding"
+          }
+          try {
+            $r = Invoke-WebRequest -Uri $ui -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+            Write-Host "React UI:            HTTP $($r.StatusCode)"
+          } catch {
+            Write-Host "React UI:            not responding"
+          }
