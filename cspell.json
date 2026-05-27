@@ -64,6 +64,7 @@
     "expando",
     "Flippable",
     "FluentAssertions",
+    "focusin",
     "focusinfocus",
     "focusoutblur",
     "foreach",

@@ -21,7 +21,7 @@
  * - Soldier shows available count (unspent Soldier entitlements from dev cards in hand)
  */
 
-import { memo, useState, useMemo, useEffect, useCallback, type ReactNode } from 'react';
+import { memo, useState, useMemo, useCallback, type ReactNode } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRotateLeft, faRotateRight, faReceipt } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -310,28 +310,8 @@ export const ActionCluster = memo(function ActionCluster({
     [onAction]
   );
 
-  // Add keyboard handler for Enter key to trigger Next button
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle Enter key
-      if (e.key !== 'Enter') return;
-
-      // Don't trigger if user is typing in an input field
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return;
-      }
-
-      // Trigger Next action if enabled
-      if (enabledButtons.next !== false) {
-        e.preventDefault();
-        onAction?.('next');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [enabledButtons.next, handleAction, onAction]);
+  // (Enter→Next keyboard handling lives in useGameKeyboard; this
+  //  component is now click-only.)
 
   const formatStats = (stats?: EntityStats) =>
     stats ? `${stats.spent} of ${stats.max}` : undefined;
