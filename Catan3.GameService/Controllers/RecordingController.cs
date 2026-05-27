@@ -410,6 +410,13 @@ public class RecordingController : ControllerBase
             var timings = perf ? new List<ActionTiming>() : null;
             var totalStopwatch = System.Diagnostics.Stopwatch.StartNew();
             var hashMismatchCount = 0;
+            // Track first divergence so the API caller can diagnose without
+            // scraping server logs.
+            int? firstMismatchIndex = null;
+            string? firstMismatchExpected = null;
+            string? firstMismatchActual = null;
+            string? firstMismatchActionType = null;
+            string? firstMismatchPreState = null;
 
             for (int i = 0; i < recordingData.Actions.Count; i++)
             {
@@ -479,6 +486,14 @@ public class RecordingController : ControllerBase
                     resultModel.GameHash != action.ExpectedGameHash)
                 {
                     hashMismatchCount++;
+                    if (firstMismatchIndex == null)
+                    {
+                        firstMismatchIndex = i;
+                        firstMismatchExpected = action.ExpectedGameHash;
+                        firstMismatchActual = resultModel.GameHash;
+                        firstMismatchActionType = action.GetType().Name;
+                        firstMismatchPreState = preState;
+                    }
                     _logger.LogError(
                         "Replay hash mismatch: action={ActionIndex} type={ActionType} state={GameState} expected={Expected} actual={Actual}",
                         i, action.GetType().Name, preState, action.ExpectedGameHash, resultModel.GameHash);
@@ -493,7 +508,12 @@ public class RecordingController : ControllerBase
                 RecordingName = recording.Name,
                 ActionsReplayed = recordingData.Actions.Count,
                 TotalActions = recordingData.Actions.Count,
-                ErrorMessage = hashMismatchCount > 0 ? $"{hashMismatchCount} hash mismatch(es) — see server log for details" : null,
+                FailedAtAction = firstMismatchIndex,
+                ExpectedHash = firstMismatchExpected,
+                ActualHash = firstMismatchActual,
+                ErrorMessage = hashMismatchCount > 0
+                    ? $"{hashMismatchCount} hash mismatch(es); first divergence at action {firstMismatchIndex} ({firstMismatchActionType}, state={firstMismatchPreState}): expected={firstMismatchExpected} actual={firstMismatchActual}"
+                    : null,
                 Timings = timings,
                 TotalElapsedMs = Math.Round(totalStopwatch.Elapsed.TotalMilliseconds, 2)
             });
