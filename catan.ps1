@@ -1230,19 +1230,54 @@ switch ($Verb) {
                 $passed = 0
                 $failed = 0
                 $failedTests = @()
+                $totalReplayMs = 0.0
+                $timedCount    = 0   # recordings that returned a valid duration
+
+                # Format a duration in ms for display. Sub-second -> "NNNms",
+                # otherwise "N.NNs". Keeps short recordings readable while
+                # giving long ones the precision that matters for regressions.
+                function Format-ReplayDuration([double]$ms) {
+                    if ($ms -lt 1000) { return ('{0}ms' -f [int]$ms) }
+                    return ('{0:F2}s' -f ($ms / 1000))
+                }
+
+                # Print the table header once, then stream one row per
+                # recording as it completes. The "live table" IS the
+                # progress output -- no duplicate per-line + final-table
+                # views. Same column shape as `./catan.ps1 recording list`
+                # plus Result and Time.
+                $tableFmt = "{0,-10} {1,-10} {2,-22} {3,-8} {4,-8} {5,-10} {6,-7} {7,8}"
+                Write-Log -Level INFO -Message ($tableFmt -f "RecID", "GameID", "Name", "Actions", "Players", "Type", "Result", "Time") -NoLabel
+                Write-Log -Level INFO -Message ($tableFmt -f "----------", "----------", "----------------------", "--------", "--------", "----------", "-------", "--------") -NoLabel
 
                 foreach ($recording in $recordings) {
-                    Write-Log -Level INFO -Message "  Running: $($recording.name) ($($recording.actionCount) actions)... " -NoLabel -NoNewline
+                    $clientStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+                    $rowResult  = 'ERROR'
+                    $rowTimeStr = '-'
 
                     try {
                         $result = Invoke-RestMethod -Uri "$targetUrl/api/recording/$($recording.id)/replay" -Method Post -TimeoutSec 120
+                        $clientStopwatch.Stop()
+
+                        # Prefer server-reported time (pure compute, no
+                        # network); fall back to client-observed time if the
+                        # server didn't include one (older binary, error
+                        # path before #188 landed).
+                        $elapsedMs = if ($result.totalElapsedMs) {
+                            [double]$result.totalElapsedMs
+                        } else {
+                            [double]$clientStopwatch.Elapsed.TotalMilliseconds
+                        }
+                        $totalReplayMs += $elapsedMs
+                        $timedCount++
+                        $rowTimeStr = Format-ReplayDuration $elapsedMs
 
                         if ($result.success) {
-                            Write-Log -Level INFO -Message "PASS" -NoLabel -ForegroundColor Green
                             $passed++
+                            $rowResult = 'PASS'
                         } else {
-                            Write-Log -Level ERROR -Message "FAIL" -NoLabel
                             $failed++
+                            $rowResult = 'FAIL'
                             $errorMsg = if ($result.failedAtAction) {
                                 "Failed at action $($result.failedAtAction): $($result.errorMessage)"
                             } else {
@@ -1256,17 +1291,34 @@ switch ($Verb) {
                             }
                         }
                     } catch {
-                        Write-Log -Level ERROR -Message "ERROR" -NoLabel
+                        $clientStopwatch.Stop()
                         $failed++
+                        $rowResult = 'ERROR'
                         $failedTests += @{
                             Name = $recording.name
                             Error = $_.Exception.Message
                         }
                     }
+
+                    # Emit the row now -- user sees rows appear as
+                    # recordings complete instead of waiting for the loop
+                    # to finish.
+                    $displayName = if ($recording.name.Length -gt 21) { $recording.name.Substring(0, 18) + '...' } else { $recording.name }
+                    $shortRecId  = if ($recording.id.Length -ge 8) { $recording.id.Substring(0, 8) } else { $recording.id }
+                    $shortGameId = if ($recording.gameId -and $recording.gameId.Length -ge 8) { $recording.gameId.Substring(0, 8) } else { $recording.gameId }
+                    $rowColor    = if ($rowResult -eq 'PASS') { 'Green' } else { 'Red' }
+                    Write-Log -Level INFO -Message ($tableFmt -f $shortRecId, $shortGameId, $displayName, $recording.actionCount, $recording.playerCount, $recording.gameType, $rowResult, $rowTimeStr) -NoLabel -ForegroundColor $rowColor
                 }
 
+                # Surface wall-clock totals so regressions are visible
+                # without external tooling (#193).
+                $totalStr = Format-ReplayDuration $totalReplayMs
+                $avgStr   = if ($timedCount -gt 0) {
+                    Format-ReplayDuration ($totalReplayMs / $timedCount)
+                } else { 'n/a' }
+
                 Write-Log -Level INFO -Message "" -NoLabel
-                Write-Log -Level INFO -Message "Results: $passed passed, $failed failed ($targetName)" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" }) -NoLabel
+                Write-Log -Level INFO -Message "Results: $passed passed, $failed failed ($targetName)  total=$totalStr  avg=$avgStr/recording" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" }) -NoLabel
 
                 if ($failedTests.Count -gt 0) {
                     Write-Log -Level INFO -Message "" -NoLabel
