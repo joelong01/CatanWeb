@@ -865,14 +865,22 @@ switch ($Verb) {
     }
 
     "recording" {
-        # Determine target URL (local or Azure)
+        # Determine target URL and environment label.
+        # -Staging targets the GameService staging slot when combined with
+        # -Azure; ignored otherwise. The env label flows into every header
+        # and Results line so the user always knows what was hit (#191).
         $targetUrl = $GameServiceUrl
         $targetName = "Local"
 
         if ($Azure) {
             $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
-            $targetUrl = $az.GameServiceUrl
-            $targetName = "Azure"
+            if ($Staging) {
+                $targetUrl  = "https://$($az.GameServiceAppName)-staging.azurewebsites.net"
+                $targetName = "Staging"
+            } else {
+                $targetUrl  = $az.GameServiceUrl
+                $targetName = "Production"
+            }
         }
 
         # Default recordings directory
@@ -920,7 +928,7 @@ switch ($Verb) {
                     }
                 }
                 Write-Log -Level INFO -Message "" -NoLabel
-                Write-Log -Level INFO -Message "Total: $($recordings.Count) recording(s)" -NoLabel -ForegroundColor Green
+                Write-Log -Level INFO -Message "Total: $($recordings.Count) recording(s) ($targetName)" -NoLabel -ForegroundColor Green
             }
 
             "save" {
@@ -996,7 +1004,7 @@ switch ($Verb) {
                 }
 
                 Write-Log -Level INFO -Message "" -NoLabel
-                Write-Log -Level INFO -Message "Saved $saved recording(s) to: $recordingsDir" -NoLabel -ForegroundColor Green
+                Write-Log -Level INFO -Message "Saved $saved recording(s) to: $recordingsDir ($targetName)" -NoLabel -ForegroundColor Green
             }
 
             "load" {
@@ -1258,7 +1266,7 @@ switch ($Verb) {
                 }
 
                 Write-Log -Level INFO -Message "" -NoLabel
-                Write-Log -Level INFO -Message "Results: $passed passed, $failed failed" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" }) -NoLabel
+                Write-Log -Level INFO -Message "Results: $passed passed, $failed failed ($targetName)" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" }) -NoLabel
 
                 if ($failedTests.Count -gt 0) {
                     Write-Log -Level INFO -Message "" -NoLabel
