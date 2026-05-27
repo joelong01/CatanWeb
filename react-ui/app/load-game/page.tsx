@@ -476,7 +476,7 @@ export default function LoadGame(): React.ReactElement {
                 openGame(game.gameId);
               }}
             >
-              <span>▶</span> Load
+              <span>▶</span> Open
             </button>
             <button
               className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
