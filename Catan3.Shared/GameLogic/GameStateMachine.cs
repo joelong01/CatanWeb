@@ -1880,15 +1880,38 @@ namespace Catan3.Shared.GameLogic
                 throw new GameException($"Bad CurrentPlayerId: {playerId}");
             }
         }
+        /// <summary>
+        /// Server-side gate on transitioning out of the current state via
+        /// <see cref="NextState"/>. Mirrors <see cref="AllowNext"/> (which
+        /// gates the UI button via <c>actionFlags.NextEnabled</c>), but
+        /// enforced server-side so a stale/replayed/raced
+        /// <c>NextMessage</c> cannot violate the invariant
+        /// "0 unspent entitlements at turn start AND end."
+        ///
+        /// Without this, a client that bypasses the UI gate (SignalR
+        /// reconnect replay, stale tab with old actionFlags, older client
+        /// version, direct API call) could advance the turn while the
+        /// current player has unspent entitlements — and those would
+        /// persist in the game log forever, corrupting the game. See
+        /// issue #182.
+        /// </summary>
         private bool CanTransitionToNext(GameModel gameModel)
         {
-            //GameModel gameModel = _gameLog.CurrentState();
-            //var currentPlayer = CurrentPlayer(gameModel);
-            //
-            //  when entitlement are added make sure they don't have any
-            //switch (gameModel.GameState)
-            //{
-            //}
+            // Only WaitingForNext and Supplemental allow purchases that
+            // accumulate as unspent entitlements. Other states either
+            // don't allow purchases, or consume entitlements
+            // synchronously (e.g. allocation phases consume the
+            // Settlement/Road pair as part of the state machine's own
+            // progression).
+            var state = gameModel.GameState;
+            if (state == Shared.Models.GameState.WaitingForNext ||
+                state == Shared.Models.GameState.Supplemental)
+            {
+                if (gameModel.CurrentPlayer().UnspentEntitlements.Count > 0)
+                {
+                    return false;
+                }
+            }
             return true;
         }
         /// <summary>
