@@ -58,7 +58,9 @@ jobs:
         shell: pwsh
         run: |
           dotnet test Tests/Shared -c Release --no-build
-          # Skip CatanDb contract tests in CI (require Cosmos emulator or Azure)
-          # Run them locally via: ./catan.ps1 database test [-Azure]
-          dotnet test Tests/GameService -c Release --no-build --filter "FullyQualifiedName!~CatanDb"
+          # Skip tests that require the Cosmos emulator (or Azure) in CI:
+          #   - CatanDb contract tests
+          #   - ReplayEndpointTests (integration tests that hit /api/games + /api/game/new)
+          # Run them locally with the emulator via: ./catan.ps1 test
+          dotnet test Tests/GameService -c Release --no-build --filter "FullyQualifiedName!~CatanDb&FullyQualifiedName!~ReplayEndpointTests"
           # Note: Tests/Desktop requires a GUI and can only run locally
