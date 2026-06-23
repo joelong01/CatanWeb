@@ -680,7 +680,7 @@ namespace Catan3.GameService.Controllers
                     StartedAt = gameModel.CreatedTime,
                     PlayerCount = gameModel.Players.Count,
                     PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
-                    TurnCount = serializableLog.DoneCount,
+                    TurnCount = gameModel.RollModel.GameRollModel.TotalRolls,
                     CompressedData = compressed,
                     Size = compressed.Length
                 };
@@ -790,21 +790,26 @@ namespace Catan3.GameService.Controllers
                     });
                 }
 
-                // Find the first WaitingForRollForOrder state in game history.
-                // DoneStack[0] = most recent, DoneStack[Count-1] = oldest.
-                // Search from the oldest end to find the first (chronologically) occurrence.
-                int replayIndex = -1;
-                for (int i = sourceLog.DoneStack.Count - 1; i >= 0; i--)
+                // The setup snapshot is persisted as AnchorState (captured when the game first
+                // reached WaitingForRollForOrder) so it survives undo-stack eviction. Fall back
+                // to scanning the DoneStack only for very old saves where it was not salvaged.
+                string? anchorJson = sourceLog.AnchorState;
+                if (string.IsNullOrEmpty(anchorJson))
                 {
-                    var gm = JsonHelper.Deserialize<GameModel>(sourceLog.DoneStack[i]);
-                    if (gm?.GameState == GameState.WaitingForRollForOrder)
+                    // DoneStack[0] = most recent, DoneStack[Count-1] = oldest. Scan from the
+                    // oldest end for the first (chronologically) WaitingForRollForOrder snapshot.
+                    for (int i = sourceLog.DoneStack.Count - 1; i >= 0; i--)
                     {
-                        replayIndex = i;
-                        break;
+                        var gm = JsonHelper.Deserialize<GameModel>(sourceLog.DoneStack[i]);
+                        if (gm?.GameState == GameState.WaitingForRollForOrder)
+                        {
+                            anchorJson = sourceLog.DoneStack[i];
+                            break;
+                        }
                     }
                 }
 
-                if (replayIndex < 0)
+                if (string.IsNullOrEmpty(anchorJson))
                 {
                     // Defensive: unreachable once the rolls guard passes (a rolled
                     // game must have passed through the logged WaitingForRollForOrder).
@@ -825,7 +830,7 @@ namespace Catan3.GameService.Controllers
                 // in this snapshot and are preserved as-is (Shuffle() is not
                 // re-run). A brand-new ReplayableRandom gives fresh dice that do
                 // not collide with the original game's sequence.
-                var model = JsonHelper.Deserialize<GameModel>(sourceLog.DoneStack[replayIndex])
+                var model = JsonHelper.Deserialize<GameModel>(anchorJson)
                     ?? throw new InvalidOperationException("Failed to deserialize WaitingForRollForOrder snapshot");
                 model.GameId = newGameId;
                 model.GameName = gameName;
@@ -858,7 +863,7 @@ namespace Catan3.GameService.Controllers
                     PlayerCount = newGameModel.Players.Count,
                     GameType = newGameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
                     PlayerNames = string.Join(", ", newGameModel.Players.Select(p => p.Name)),
-                    TurnCount = newSerializableLog.DoneCount
+                    TurnCount = newGameModel.RollModel.GameRollModel.TotalRolls
                 };
 
                 await _gamePersistence.SaveAsync(newGameId, compressed, metadata);
@@ -1686,7 +1691,7 @@ namespace Catan3.GameService.Controllers
                         PlayerCount = updatedGameModel.Players.Count,
                         GameType = updatedGameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
                         PlayerNames = string.Join(", ", updatedGameModel.Players.Select(p => p.Name)),
-                        TurnCount = updatedSerializableLog.DoneCount
+                        TurnCount = updatedGameModel.RollModel.GameRollModel.TotalRolls
                     };
 
                     await _gamePersistence.SaveAsync(gameId, compressed, metadata);
@@ -1918,7 +1923,7 @@ namespace Catan3.GameService.Controllers
                     PlayerCount = newGameModel.Players.Count,
                     GameType = newGameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
                     PlayerNames = string.Join(", ", newGameModel.Players.Select(p => p.Name)),
-                    TurnCount = newSerializableLog.DoneCount
+                    TurnCount = newGameModel.RollModel.GameRollModel.TotalRolls
                 };
 
                 await _gamePersistence.SaveAsync(newGameId, compressed, metadata);
@@ -2004,7 +2009,7 @@ namespace Catan3.GameService.Controllers
                         gameId = gameId,
                         gameName = gameModel.GameName,
                         playerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
-                        turnCount = serializableLog.DoneCount,
+                        turnCount = gameModel.RollModel.GameRollModel.TotalRolls,
                         message = "Game already exists"
                     });
                 }
@@ -2018,7 +2023,7 @@ namespace Catan3.GameService.Controllers
                     PlayerCount = gameModel.Players.Count,
                     GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
                     PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
-                    TurnCount = serializableLog.DoneCount
+                    TurnCount = gameModel.RollModel.GameRollModel.TotalRolls
                 };
 
                 // Save to database

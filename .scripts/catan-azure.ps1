@@ -35,7 +35,7 @@ param(
     [string]$Noun,
 
     [Parameter(Position = 1)]
-    [ValidateSet("install", "deploy", "deploy-staging", "deploy-staging-access", "doctor", "clean", "fix")]
+    [ValidateSet("install", "deploy", "deploy-staging", "deploy-staging-access", "doctor", "clean", "fix", "swap", "verify")]
     [string]$Verb,
 
     [Parameter()]
@@ -1456,6 +1456,60 @@ function Install-GameService {
 .OUTPUTS
     Boolean - $true on success
 #>
+<#
+.SYNOPSIS
+    Ensures a `staging` deployment slot exists for the given app, creating it
+    idempotently if missing.
+.DESCRIPTION
+    Looks up the app's App Service Plan via the app itself, so callers pass
+    only the app + resource group. Deployment slots require Standard (S1) or
+    higher; if the plan is below that tier, the plan is upgraded to S1 before
+    the slot is created. Safe to call repeatedly.
+
+    Step 1 of the cicd-robustness plan extracts this from Install-UI so the
+    React CI deploy path can self-heal a missing slot instead of hard-failing
+    (the literal cause of run 26066071823 / issue #175).
+.PARAMETER AppName
+    The App Service name (e.g. the UI or GameService app).
+.PARAMETER RgName
+    The resource group containing the app.
+.OUTPUTS
+    Boolean — $true if the slot is present (existing or freshly created).
+#>
+function Install-StagingSlot {
+    param(
+        [Parameter(Mandatory = $true)][string]$AppName,
+        [Parameter(Mandatory = $true)][string]$RgName
+    )
+
+    # Resolve plan name from the app so callers don't need to know it
+    $planId = Invoke-AzCommand "webapp show --name $AppName --resource-group $RgName --query appServicePlanId -o tsv" -FailOnError $false
+    if (-not $planId) {
+        Write-Log -Level "ERROR" -Message "App '$AppName' not found in resource group '$RgName' — cannot ensure staging slot"
+        return $false
+    }
+    $planName = Split-Path $planId -Leaf
+
+    Write-Log -Level "INFO" -Message "Checking staging slot for $AppName..."
+    $stagingSlot = Invoke-AzCommand "webapp deployment slot list --name $AppName --resource-group $RgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
+    if (-not $stagingSlot -or $stagingSlot.Count -eq 0) {
+        # Deployment slots require Standard (S1) tier or higher — upgrade if needed
+        $planSku = Invoke-AzCommand "appservice plan show --name $planName --resource-group $RgName --query sku.tier -o tsv" -FailOnError $false
+        if ($planSku -and $planSku -notin @('Standard', 'Premium', 'PremiumV2', 'PremiumV3', 'Isolated', 'IsolatedV2')) {
+            Write-Log -Level "INFO" -Message "App Service Plan '$planName' is '$planSku' tier — upgrading to Standard (S1) for deployment slot support..."
+            Invoke-AzCommand "appservice plan update --name $planName --resource-group $RgName --sku S1" -SuppressOutput
+            Write-Log -Level "INFO" -Message "Plan upgraded to S1"
+        }
+        Write-Log -Level "INFO" -Message "Creating staging slot for $AppName..."
+        Invoke-AzCommand "webapp deployment slot create --name $AppName --resource-group $RgName --slot staging" -SuppressOutput
+        Write-Log -Level "INFO" -Message "Staging slot created for $AppName"
+    }
+    else {
+        Write-Log -Level "INFO" -Message "Staging slot exists for $AppName"
+    }
+    return $true
+}
+
 function Install-UI {
     param([hashtable]$Config)
 
@@ -1497,31 +1551,8 @@ function Install-UI {
     Write-Log -Level "INFO" -Message "Configuring app settings..."
     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings GAMESERVICE_URL=$($Config.gameService.url)" -SuppressOutput
 
-    # Create staging deployment slot (used by GitHub Actions and swap-slots)
-    # Requires Standard (S1) tier or higher — upgrade from Basic if needed
-    Write-Log -Level "INFO" -Message "Checking staging slot..."
-    $stagingSlot = Invoke-AzCommand "webapp deployment slot list --name $appName --resource-group $rgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
-    if (-not $stagingSlot -or $stagingSlot.Count -eq 0) {
-        # Check if plan SKU supports slots (Standard S1+ required)
-        $planSku = Invoke-AzCommand "appservice plan show --name $planName --resource-group $rgName --query sku.tier -o tsv" -FailOnError $false
-        if ($planSku -and $planSku -notin @('Standard', 'Premium', 'PremiumV2', 'PremiumV3', 'Isolated', 'IsolatedV2')) {
-            Write-Log -Level "INFO" -Message "App Service Plan is '$planSku' tier — upgrading to Standard (S1) for deployment slot support..."
-            Invoke-AzCommand "appservice plan update --name $planName --resource-group $rgName --sku S1" -SuppressOutput
-            Write-Log -Level "INFO" -Message "Plan upgraded to S1"
-        }
-        Write-Log -Level "INFO" -Message "Creating staging slot for $appName..."
-        Invoke-AzCommand "webapp deployment slot create --name $appName --resource-group $rgName --slot staging" -SuppressOutput
-        Write-Log -Level "INFO" -Message "Staging slot created"
-    }
-    else {
-        Write-Log -Level "INFO" -Message "Staging slot exists"
-    }
-
-    # Configure staging slot for Node.js with anti-Oryx settings (idempotent)
-    # This prevents Kudu from running Oryx builds on pre-built standalone Next.js deployments
-    Write-Log -Level "INFO" -Message "Configuring staging slot for Node.js..."
-    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --slot staging --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
-    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings WEBSITE_NODE_DEFAULT_VERSION=~22 SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
+    # Staging retired (epic #197): the plan runs on Basic (no deployment slots) and
+    # deploys go directly to production. No staging slot is created or configured.
 
     return $true
 }
@@ -2002,13 +2033,16 @@ function Deploy-ReactStaging {
     $reactDir = Join-Path $ProjectRoot "react-ui"
     $deployDir = Join-Path $ProjectRoot ".publish/react-staging"
     $zipPath = Join-Path $ProjectRoot ".publish/react-ui.zip"
-    # Default to staging GameService URL (not production) since this deploys to a staging slot
-    $gameServiceUrl = if ($GameServiceUrl) { $GameServiceUrl } else { "https://$($Config.gameService.appName)-staging.azurewebsites.net" }
+    # Default to the production GameService URL: GameService has no staging slot yet,
+    # so the staging React slot must talk to the production GameService for now.
+    # (Step 6 of cicd-robustness will add a GS staging slot + pair the staging React
+    # against it so we verify the new-React ↔ new-GS combination that ships.)
+    $gameServiceUrl = if ($GameServiceUrl) { $GameServiceUrl } else { "https://$($Config.gameService.appName).azurewebsites.net" }
 
-    # Check staging slot exists
-    $stagingSlot = Invoke-AzCommand "webapp deployment slot list --name $appName --resource-group $rgName --query `"[?name=='staging']`"" -FailOnError $false -JsonOutput
-    if (-not $stagingSlot -or $stagingSlot.Count -eq 0) {
-        Write-Log -Level "ERROR" -Message "Staging slot does not exist. Run './catan.ps1 azure install' first."
+    # Ensure staging slot exists (idempotent — creates with plan-SKU upgrade if needed).
+    # This replaces the prior hard-fail that broke run 26066071823 / issue #175.
+    if (-not (Install-StagingSlot -AppName $appName -RgName $rgName)) {
+        Write-Log -Level "ERROR" -Message "Failed to ensure staging slot for $appName"
         return $false
     }
 
@@ -2102,6 +2136,84 @@ function Deploy-ReactStaging {
 
     Write-Log -Level "INFO" -Message "React UI deployed to staging: https://$appName-staging.azurewebsites.net"
     return $true
+}
+
+<#
+.SYNOPSIS
+    Swaps the React UI staging slot into production.
+.DESCRIPTION
+    Performs a plain Azure slot swap (staging → production) using
+    config-derived resource names so the workflow carries no hardcoded
+    names (Finding I of the cicd-robustness review).
+
+    Step 2 of the cicd-robustness plan keeps the operation simple; Step 4
+    will replace this with the two-phase `--action preview|swap|reset`
+    primitive that gives state-checked retry/rollback at the Azure layer.
+.PARAMETER Config
+    Azure configuration hashtable.
+.OUTPUTS
+    Boolean — $true on success.
+#>
+function Invoke-UISwap {
+    param([hashtable]$Config)
+
+    $rgName = $Config.resourceGroup
+    $appName = $Config.ui.appName
+
+    Write-Log -Level "INFO" -Message "Swapping staging -> production for $appName..."
+    Invoke-AzCommand "webapp deployment slot swap --name $appName --resource-group $rgName --slot staging --target-slot production" -SuppressOutput
+    Write-Log -Level "INFO" -Message "Swap complete: https://$appName.azurewebsites.net"
+    return $true
+}
+
+<#
+.SYNOPSIS
+    Verifies a UI slot is serving HTTP 200 within a bounded retry window.
+.DESCRIPTION
+    Config-derived URL so the workflow carries no hardcoded hostnames
+    (Finding I). HTTP 200 is the bar for Step 2; Step 3/6 of the
+    cicd-robustness plan will introduce versioned readiness (expected
+    commit/releaseId + API smoke test) and pairing checks.
+.PARAMETER Config
+    Azure configuration hashtable.
+.PARAMETER Slot
+    Which slot to verify: 'staging' or 'production'. Defaults to
+    'production'.
+.OUTPUTS
+    Boolean — $true if the slot returned HTTP 200 within the retry window.
+#>
+function Invoke-UIVerify {
+    param(
+        [hashtable]$Config,
+        [ValidateSet("staging", "production")]
+        [string]$Slot = "production"
+    )
+
+    $appName = $Config.ui.appName
+    $url = if ($Slot -eq "staging") {
+        "https://$appName-staging.azurewebsites.net"
+    }
+    else {
+        "https://$appName.azurewebsites.net"
+    }
+
+    Write-Log -Level "INFO" -Message "Verifying $Slot at $url..."
+    for ($i = 1; $i -le 30; $i++) {
+        try {
+            $resp = Invoke-WebRequest -Uri $url -TimeoutSec 10 -UseBasicParsing -ErrorAction Stop
+            if ($resp.StatusCode -eq 200) {
+                Write-Log -Level "INFO" -Message "$Slot OK after $($i * 10)s (HTTP 200)"
+                return $true
+            }
+            Write-Log -Level "DEBUG" -Message "  HTTP $($resp.StatusCode) ($($i * 10)s)..."
+        }
+        catch {
+            Write-Log -Level "DEBUG" -Message "  not responding ($($i * 10)s)..."
+        }
+        Start-Sleep -Seconds 10
+    }
+    Write-Log -Level "ERROR" -Message "$Slot did not respond with HTTP 200 within 5 minutes ($url)"
+    return $false
 }
 
 <#
@@ -3230,6 +3342,11 @@ switch ($Noun) {
             "install" { $success = Install-UI -Config $config }
             "deploy" { $success = Deploy-UI -Config $config -Force $Force -NoBuild $NoBuild }
             "deploy-staging" { $success = Deploy-ReactStaging -Config $config -Force $Force -TraceLevel $TraceLevel -GameServiceUrl $GameServiceUrl }
+            "swap" { $success = Invoke-UISwap -Config $config }
+            "verify" {
+                $verifySlot = if ($Slot) { $Slot } else { "production" }
+                $success = Invoke-UIVerify -Config $config -Slot $verifySlot
+            }
             "doctor" {
                 $result = Get-UIDoctor -Config $config -TraceLevel $TraceLevel -Staging:$Staging
                 if ($Json) {

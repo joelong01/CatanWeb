@@ -122,12 +122,19 @@ namespace Catan3.Shared.Utility
         }
 
         /// <summary>
-        /// Decompresses Brotli-compressed data to a text string.
+        /// Decompresses Brotli-compressed data to a text string. Tolerant of plain
+        /// (uncompressed) UTF-8 JSON: if the payload begins with a JSON token ('{' or '['),
+        /// it is returned as-is. This lets the live save path persist uncompressed JSON
+        /// while still reading legacy Brotli-compressed saves (epic #197).
         /// </summary>
-        /// <param name="data">The compressed data to decompress</param>
+        /// <param name="data">The compressed (or plain JSON) data</param>
         /// <returns>Decompressed text string</returns>
         public static string Decompress(byte[] data)
         {
+            if (data.Length > 0 && (data[0] == (byte)'{' || data[0] == (byte)'['))
+            {
+                return System.Text.Encoding.UTF8.GetString(data);
+            }
             using var compressedStream = new System.IO.MemoryStream(data);
             using var brotliStream = new System.IO.Compression.BrotliStream(compressedStream, System.IO.Compression.CompressionMode.Decompress);
             using var resultStream = new System.IO.MemoryStream();

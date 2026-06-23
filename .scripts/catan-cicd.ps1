@@ -176,21 +176,14 @@ function Invoke-DeployReact {
 
 function Invoke-Verify {
     Write-Step 6 "Verify$slotLabel"
-    $apiBase = if ($Slot -eq "staging") {
-        "https://catan-api-staging.azurewebsites.net"
-    } else {
-        $config.gameService.url
-    }
+    # Staging retired (epic #197): always verify production URLs.
+    $apiBase = $config.gameService.url
+    $uiBase = $config.ui.url
 
-    $uiBase = if ($Slot -eq "staging") {
-        "https://catan-staging.azurewebsites.net"
-    } else {
-        $config.ui.url
-    }
-
-    # Health check with retry
+    # Health check with retry. Allow up to 10 minutes — a Basic-tier (B2) cold
+    # start after a deploy/restart can take several minutes.
     $healthy = $false
-    for ($i = 1; $i -le 30; $i++) {
+    for ($i = 1; $i -le 60; $i++) {
         try {
             $resp = Invoke-RestMethod -Uri "$apiBase/health" -TimeoutSec 10 -ErrorAction Stop
             $status = $resp.status
@@ -206,7 +199,7 @@ function Invoke-Verify {
         Start-Sleep -Seconds 10
     }
     if (-not $healthy) {
-        Write-Fail "GameService did not become healthy within 5 minutes"
+        Write-Fail "GameService did not become healthy within 10 minutes"
         # Show last health response for debugging
         try {
             $resp = Invoke-RestMethod -Uri "$apiBase/health" -TimeoutSec 10 -ErrorAction Stop
