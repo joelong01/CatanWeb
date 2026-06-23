@@ -12,6 +12,14 @@ namespace Catan3.Shared.Interfaces
         public GameType GameType { get; set; } = GameType.Regular;
         public int DoneCount { get; set; } = 0;
         public int RedoCount { get; set; } = 0;
+
+        /// <summary>
+        /// The first WaitingForRollForOrder snapshot (serialized GameModel JSON), used by the
+        /// "play again" replay feature. Null for games that have not reached that state and for
+        /// legacy saves (recovered on load by scanning the DoneStack). Additive and backward
+        /// compatible — absent in old saves, deserializes as null.
+        /// </summary>
+        public string? AnchorState { get; set; }
     }
 
     /// <summary>
@@ -103,13 +111,6 @@ namespace Catan3.Shared.Interfaces
         /// Asynchronously saves the current log state to persistent storage.
         /// </summary>
         Task SaveAsync();
-
-        /// <summary>
-        /// Requests a coalesced background save. Rapid calls are coalesced so
-        /// only the latest state is persisted. This is the primary entry point
-        /// for persistence — called by GameStateMachine after each action.
-        /// </summary>
-        void RequestSave();
 
         /// <summary>
         /// Asynchronously saves the current log state to a specified file path.

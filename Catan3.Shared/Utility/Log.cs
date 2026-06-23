@@ -22,6 +22,30 @@ namespace Catan3.Shared.Utility
         public string? Description { get; set; }
     }
 
+    /// <summary>
+    /// Shared constants for the game log. Non-generic so callers can reference them
+    /// without supplying a type argument.
+    /// </summary>
+    public static class LogConstants
+    {
+        /// <summary>
+        /// Maximum number of undo steps retained. The DoneStack holds at most
+        /// MaxUndoDepth + 1 snapshots (the current state plus this many prior states).
+        /// Bounds per-save serialize+compress cost so it no longer grows with game length.
+        /// </summary>
+        public const int MaxUndoDepth = 25;
+
+        /// <summary>
+        /// Whether to Brotli-compress the persisted log. The bounded undo stack keeps the
+        /// payload small and constant, so compression is optional — but measured to be the
+        /// clear winner: at the cap, compressing yields a 7 KB blob that writes to Cosmos in
+        /// ~15ms, vs a 1.1 MB plain-JSON blob at ~60ms (≈3x slower, 160x larger) for only
+        /// ~2ms of compress CPU saved. Reads stay tolerant of both formats
+        /// (see JsonHelper.Decompress). Epic #197.
+        /// </summary>
+        public static readonly bool CompressSaves = true;
+    }
+
     public partial class Log<T> : IGameLog
     {
         private IPersistenceService? PersistService { get; set; }
@@ -37,18 +61,13 @@ namespace Catan3.Shared.Utility
         public bool InTestMode { get; set; } = false;
 
         /// <summary>
-        /// Save coalescing: rapid calls to RequestSave() are coalesced so only
-        /// the latest state is persisted. This prevents O(N) serialize+compress
-        /// from running on every action in a fast sequence.
-        ///
-        /// Thread safety: The DoneStack/RedoStack are ObservableCollection (not thread-safe).
-        /// This is safe because game actions are processed sequentially by the GameStateMachine —
-        /// only one action modifies the stacks at a time. The background save reads the stacks
-        /// via GetSerializableLog() which iterates them, but new actions don't arrive until
-        /// the current action's Done() + RequestSave() completes.
+        /// The first WaitingForRollForOrder snapshot (serialized GameModel JSON), captured
+        /// once in Done(). Persisted via SerializableLog.AnchorState so the "play again"
+        /// replay feature retains the setup board + roster even after the undo stack is
+        /// bounded and the original snapshot has been evicted.
+        /// See .design/remove-compression.md.
         /// </summary>
-        private int _saveRequested = 0; // 0 = no pending save, 1 = save requested
-        private int _saveRunning = 0;   // 0 = idle, 1 = save in progress
+        private string? _anchorState;
 
         /// <summary>
         /// Gets or sets whether the log is currently active for tracking operations.
@@ -299,6 +318,7 @@ namespace Catan3.Shared.Utility
             log.GameType = GameType;
             log.DoneCount = DoneStack.Count;
             log.RedoCount = RedoStack.Count;
+            log.AnchorState = _anchorState;
             return log;
         }
         /// <summary>
@@ -325,6 +345,8 @@ namespace Catan3.Shared.Utility
                 log.RedoStack.Add(data);  // Corrected to add to RedoStack
             }
             log.GameType = sLog.GameType;  // Assign game type from SerializableLog
+            log.RestoreAnchor(sLog.AnchorState);  // recover anchor BEFORE trimming
+            log.EnforceUndoLimit();
             return log;
         }
 
@@ -349,6 +371,7 @@ namespace Catan3.Shared.Utility
             // Clear existing stacks
             DoneStack.Clear();
             RedoStack.Clear();
+            _anchorState = null;
 
             // Load Done stack
             for (int i = serializableLog.DoneStack.Count - 1; i >= 0; i--)
@@ -368,6 +391,9 @@ namespace Catan3.Shared.Utility
 
             // Restore game type
             GameType = serializableLog.GameType;
+
+            RestoreAnchor(serializableLog.AnchorState);  // recover anchor BEFORE trimming
+            EnforceUndoLimit();
 
             // Return current state
             return CurrentState();
@@ -426,11 +452,62 @@ namespace Catan3.Shared.Utility
                 throw new InvalidOperationException("Failed to serialize the GameModel.", ex);
             }
             DoneStack.Push(val);
+            EnforceUndoLimit();
             RedoStack.Clear();
 
-
-
+            // Capture the setup snapshot once for the "play again" replay feature.
+            // This snapshot survives undo-stack eviction (persisted via AnchorState).
+            if (_anchorState is null && model.GameState == GameState.WaitingForRollForOrder)
+            {
+                _anchorState = ToJson(val);
+            }
         }
+
+        /// <summary>
+        /// Enforces the undo-depth cap by dropping the oldest snapshot(s) from the bottom
+        /// of the DoneStack until it holds at most MaxUndoDepth + 1 entries. The current
+        /// state (top of stack) is never removed. RemoveAt(0) raises CollectionChanged,
+        /// which keeps CanUndo correct.
+        /// </summary>
+        private void EnforceUndoLimit()
+        {
+            while (DoneStack.Count > LogConstants.MaxUndoDepth + 1)
+                DoneStack.RemoveAt(0);
+        }
+
+        /// <summary>
+        /// Restores the replay anchor on load. If the persisted value is present it is used
+        /// directly; otherwise (legacy saves) the first WaitingForRollForOrder snapshot is
+        /// salvaged from the freshly-rebuilt DoneStack. MUST be called before EnforceUndoLimit()
+        /// so the anchor is recovered before any eviction.
+        /// </summary>
+        private void RestoreAnchor(string? persistedAnchor)
+        {
+            if (!string.IsNullOrEmpty(persistedAnchor))
+            {
+                _anchorState = persistedAnchor;
+                return;
+            }
+
+            for (int i = 0; i < DoneStack.Count; i++)
+            {
+                GameModel? gm;
+                try { gm = ToGameModel(DoneStack[i]); }
+                catch { continue; }
+
+                if (gm?.GameState == GameState.WaitingForRollForOrder)
+                {
+                    _anchorState = ToJson(DoneStack[i]);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The captured WaitingForRollForOrder snapshot (serialized GameModel JSON), or null
+        /// if the game has not reached that state. Used by the replay feature.
+        /// </summary>
+        public string? AnchorState => _anchorState;
 
         /// <summary>
         /// Initializes the log with an existing GameModel without any modifications.
@@ -583,58 +660,13 @@ namespace Catan3.Shared.Utility
 
         /// <summary>
         ///     Calls the FileService.Save passing in the full serialized stack.
-        ///     the name of the file that is saved owned by the FileService
+        ///     the name of the file that is saved owned by the FileService.
+        ///     Saving is synchronous on the action thread (no background coalescing):
+        ///     the undo stack is bounded (LogConstants.MaxUndoDepth), so serialize+compress
+        ///     is cheap and constant. Transient failures are logged and swallowed; because
+        ///     each save writes the full bounded snapshot, the next successful save self-heals
+        ///     any brief in-memory-ahead-of-store window.
         /// </summary>
-        /// <returns></returns>
-        /// <summary>
-        /// Requests a save. Coalesces rapid calls — if a save is already in progress,
-        /// the request is noted and the save will run again after the current one completes
-        /// with the latest state. This is the primary entry point for persistence.
-        /// Called by GameStateMachine.LogGameModel() after each action.
-        /// </summary>
-        public void RequestSave()
-        {
-            if (PersistService is null || InTestMode) return;
-
-            // Mark that a save is needed
-            Interlocked.Exchange(ref _saveRequested, 1);
-
-            // If no save is running, start one
-            if (Interlocked.CompareExchange(ref _saveRunning, 1, 0) == 0)
-            {
-                _ = Task.Run(RunSaveLoopAsync);
-            }
-        }
-
-        /// <summary>
-        /// Background save loop. Runs as long as saves are requested.
-        /// Each iteration saves the current state. If new requests arrive
-        /// during a save, the loop runs again with the latest state.
-        /// </summary>
-        private async Task RunSaveLoopAsync()
-        {
-            try
-            {
-                while (Interlocked.CompareExchange(ref _saveRequested, 0, 1) == 1)
-                {
-                    await SaveAsync();
-                }
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _saveRunning, 0);
-
-                // Check if another request arrived while we were finishing
-                if (Volatile.Read(ref _saveRequested) == 1)
-                {
-                    if (Interlocked.CompareExchange(ref _saveRunning, 1, 0) == 0)
-                    {
-                        _ = Task.Run(RunSaveLoopAsync);
-                    }
-                }
-            }
-        }
-
         public async Task SaveAsync()
         {
             if (PersistService is null) return;
@@ -650,15 +682,19 @@ namespace Catan3.Shared.Utility
                 var json = JsonHelper.Serialize(uncompressedLog);
                 var serializeMs = sw.ElapsedMilliseconds - getLogMs;
 
-                var compressedBytes = JsonHelper.Compress(json);
+                // The undo stack is bounded, so the payload is small and constant. Compression
+                // is optional (LogConstants.CompressSaves). Reads are tolerant of both formats.
+                var storedBytes = LogConstants.CompressSaves
+                    ? JsonHelper.Compress(json)
+                    : System.Text.Encoding.UTF8.GetBytes(json);
                 var compressMs = sw.ElapsedMilliseconds - getLogMs - serializeMs;
 
                 var gameModel = CurrentState();
-                await PersistService.SaveAsync(gameModel.GameId, compressedBytes);
+                await PersistService.SaveAsync(gameModel.GameId, storedBytes);
                 sw.Stop();
 
                 var dbMs = sw.ElapsedMilliseconds - getLogMs - serializeMs - compressMs;
-                _logger?.TraceInfo($"[PERF-SAVE] getLog={getLogMs}ms serialize={serializeMs}ms compress={compressMs}ms db={dbMs}ms total={sw.ElapsedMilliseconds}ms jsonSize={json.Length / 1024}kb compressed={compressedBytes.Length / 1024}kb turns={uncompressedLog.DoneCount}");
+                _logger?.TraceInfo($"[PERF-SAVE] compress={LogConstants.CompressSaves} getLog={getLogMs}ms serialize={serializeMs}ms compressMs={compressMs}ms db={dbMs}ms total={sw.ElapsedMilliseconds}ms jsonSize={json.Length / 1024}kb stored={storedBytes.Length / 1024}kb turns={uncompressedLog.DoneCount} totalRolls={gameModel.RollModel.GameRollModel.TotalRolls}");
             }
             catch (Exception ex)
             {

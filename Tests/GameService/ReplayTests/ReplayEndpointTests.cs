@@ -142,10 +142,10 @@ namespace Tests.GameService
             Assert.Equal(0, replay.Random.Iterations);
             Assert.NotEqual(original.Random.Seed, replay.Random.Seed);
 
-            // 4f. Single-entry history — the replay is persisted with
-            //     TurnCount = DoneCount, so the new game has exactly one log
-            //     entry (nothing to undo back into board-pick). The old buggy
-            //     behavior kept the whole setup history (turnCount > 1).
+            // 4f. Fresh reset — TurnCount is now sourced from RollModel.TotalRolls
+            //     (epic #197). A replay reset to WaitingForRollForOrder has not rolled
+            //     yet, so turnCount == 0. (Pre-#197 this asserted == 1, when TurnCount
+            //     tracked DoneCount/log-entry count.)
             var listResp2 = await http.GetAsync("/api/games?playerId=*");
             var listBody2 = await listResp2.Content.ReadAsStringAsync();
             Assert.True(listResp2.IsSuccessStatusCode,
@@ -160,7 +160,7 @@ namespace Tests.GameService
                     break;
                 }
             }
-            Assert.Equal(1, replayTurns);
+            Assert.Equal(0, replayTurns);
         }
 
         [Fact]

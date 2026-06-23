@@ -1480,10 +1480,12 @@ namespace Catan3.Shared.GameLogic
             // this.TraceMessage($"GameState: {gameModel.GameState} OldHash={oldHash} newHash={gameModel.GameHash}");
             _gameLog.Done(gameModel);
 
-            // Request a coalesced background save. The Log owns persistence —
-            // rapid calls are coalesced so only the latest state is saved.
-            _gameLog.RequestSave();
-
+            // Save synchronously on the action thread. The undo stack is bounded
+            // (LogConstants.MaxUndoDepth), so serialize+compress is cheap and constant;
+            // no background coalescing is needed. ASP.NET Core has no SynchronizationContext,
+            // so blocking here does not deadlock. SaveAsync logs and swallows transient
+            // failures and self-heals on the next save (full-snapshot writes).
+            _gameLog.SaveAsync().GetAwaiter().GetResult();
         }
         private void UpdatePurchaseUi(GameModel gameModel)
         {
@@ -2004,7 +2006,8 @@ namespace Catan3.Shared.GameLogic
                 RedoStack = desktopLog.RedoStack,
                 GameType = desktopLog.GameType,
                 DoneCount = desktopLog.DoneCount,
-                RedoCount = desktopLog.RedoCount
+                RedoCount = desktopLog.RedoCount,
+                AnchorState = desktopLog.AnchorState
             };
         }
 

@@ -1,4 +1,4 @@
-name: Deploy to Production (Blue-Green)
+name: Deploy to Production
 
 on:
   push:
@@ -75,7 +75,7 @@ jobs:
           pwsh .scripts/catan-cicd.ps1 gameservice -Slot production -TraceLevel INFO
 
   deploy-react:
-    name: Deploy React + Swap
+    name: Deploy React (production)
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
@@ -98,27 +98,12 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Deploy React to the staging slot (inactive). The script derives the
-      # GameService URL from .azure/catan-azure.json — no hardcoded hostnames
-      # in this workflow (Finding I of the cicd-robustness review). Until the
-      # GameService gets its own staging slot (Step 6), the script defaults
-      # to the production GameService URL.
-      - name: Deploy React to staging slot
+      # Direct-to-production deploy. Staging slots were removed when the plan
+      # dropped to Basic (no slots); merges are gated by CI tests, and the
+      # post-deploy health check below guards production. (epic #197)
+      - name: Deploy React to production
         shell: pwsh
-        run: ./.scripts/catan-azure.ps1 ui deploy-staging -Force -TraceLevel INFO
-
-      # Verify the staging slot is healthy before swapping.
-      # The script derives the URL from config.
-      - name: Verify staging slot
-        shell: pwsh
-        run: ./.scripts/catan-azure.ps1 ui verify -Slot staging -TraceLevel INFO
-
-      # Swap: staging becomes production, production becomes staging.
-      # The script derives app/RG names from config; the workflow carries no
-      # resource names (Finding I).
-      - name: Swap slots
-        shell: pwsh
-        run: ./.scripts/catan-azure.ps1 ui swap -TraceLevel INFO
+        run: ./.scripts/catan-azure.ps1 ui deploy -Force -TraceLevel INFO
 
       # Verify production is serving the new version.
       - name: Verify production

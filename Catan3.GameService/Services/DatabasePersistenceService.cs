@@ -150,7 +150,7 @@ public class DatabaseBackedPersistenceService : IPersistenceService
                 PlayerCount = gameModel.Players.Count,
                 GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
                 PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
-                TurnCount = gameStateMachine.GetSerializableLog().DoneCount
+                TurnCount = gameModel.RollModel.GameRollModel.TotalRolls
             };
 
             var result = await gamePersistence.SaveAsync(gameId, data, metadata);

@@ -1551,16 +1551,8 @@ function Install-UI {
     Write-Log -Level "INFO" -Message "Configuring app settings..."
     Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --settings GAMESERVICE_URL=$($Config.gameService.url)" -SuppressOutput
 
-    # Ensure staging deployment slot exists (idempotent; upgrades plan to S1 if needed)
-    if (-not (Install-StagingSlot -AppName $appName -RgName $rgName)) {
-        return $false
-    }
-
-    # Configure staging slot for Node.js with anti-Oryx settings (idempotent)
-    # This prevents Kudu from running Oryx builds on pre-built standalone Next.js deployments
-    Write-Log -Level "INFO" -Message "Configuring staging slot for Node.js..."
-    Invoke-AzCommand "webapp config set --name $appName --resource-group $rgName --slot staging --linux-fx-version `"NODE|22-lts`" --startup-file `"node server.js`"" -SuppressOutput
-    Invoke-AzCommand "webapp config appsettings set --name $appName --resource-group $rgName --slot staging --settings WEBSITE_NODE_DEFAULT_VERSION=~22 SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_CONTAINER_START_TIME_LIMIT=600" -SuppressOutput
+    # Staging retired (epic #197): the plan runs on Basic (no deployment slots) and
+    # deploys go directly to production. No staging slot is created or configured.
 
     return $true
 }

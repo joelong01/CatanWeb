@@ -115,6 +115,13 @@ Set-ModuleTraceLevel -TraceLevel $TraceLevel
 
 $PSDefaultParameterValues = @{ 'Write-Log:TraceLevel' = $TraceLevel }
 
+# Staging was retired in epic #197: the App Service plan runs on Basic (no deployment
+# slots) and all deploys go directly to production. -Staging is no longer supported.
+if ($Staging) {
+    Write-Log -Level ERROR -Message "-Staging is retired (epic #197): staging slots were removed; deploys go directly to production." -NoLabel
+    exit 1
+}
+
 # Platform detection (use built-in automatic variables in PS Core, fallback for PS 5.1)
 if (-not (Test-Path variable:IsMacOS)) { $script:IsMacOS = $false }
 if (-not (Test-Path variable:IsLinux)) { $script:IsLinux = $false }
@@ -865,22 +872,16 @@ switch ($Verb) {
     }
 
     "recording" {
-        # Determine target URL and environment label.
-        # -Staging targets the GameService staging slot when combined with
-        # -Azure; ignored otherwise. The env label flows into every header
-        # and Results line so the user always knows what was hit (#191).
+        # Determine target URL and environment label. -Azure targets production
+        # (staging was retired in epic #197). The env label flows into every header
+        # and Results line so the user always knows what was hit.
         $targetUrl = $GameServiceUrl
         $targetName = "Local"
 
         if ($Azure) {
             $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
-            if ($Staging) {
-                $targetUrl  = "https://$($az.GameServiceAppName)-staging.azurewebsites.net"
-                $targetName = "Staging"
-            } else {
-                $targetUrl  = $az.GameServiceUrl
-                $targetName = "Production"
-            }
+            $targetUrl  = $az.GameServiceUrl
+            $targetName = "Production"
         }
 
         # Default recordings directory
@@ -1387,13 +1388,13 @@ switch ($Verb) {
         Write-Log -Level INFO -Message "" -NoLabel
 
         if ($Azure) {
-            # Azure doctor: show URLs and check all resources
+            # Azure doctor: show URLs and check all resources (production only;
+            # staging was retired in epic #197)
             $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
-            $envLabel = if ($Staging) { "staging" } else { "production" }
-            $gsUrl = if ($Staging) { "https://$($az.GameServiceAppName)-staging.azurewebsites.net" } else { $az.GameServiceUrl }
-            $uiUrl = if ($Staging) { "https://$($az.UiAppName)-staging.azurewebsites.net" } else { $az.UiUrl }
+            $gsUrl = $az.GameServiceUrl
+            $uiUrl = $az.UiUrl
 
-            Write-Log -Level INFO -Message "Environment: Azure ($envLabel)" -NoLabel -ForegroundColor Cyan
+            Write-Log -Level INFO -Message "Environment: Azure (production)" -NoLabel -ForegroundColor Cyan
             Write-Log -Level INFO -Message "  GameService: $gsUrl" -NoLabel
             Write-Log -Level INFO -Message "  UI:          $uiUrl" -NoLabel
             Write-Log -Level INFO -Message "  CosmosDB:    $($az.CosmosEndpoint)" -NoLabel
@@ -1402,7 +1403,7 @@ switch ($Verb) {
             # Check GameService
             Write-Log -Level WARN -Message "Checking GameService..." -NoLabel
             $azureScript = Join-Path $PSScriptRoot ".scripts/catan-azure.ps1"
-            & $azureScript game-service doctor -TraceLevel $TraceLevel -Staging:$Staging
+            & $azureScript game-service doctor -TraceLevel $TraceLevel
             Write-Log -Level INFO -Message "" -NoLabel
 
             # Check Database (shared between production and staging)
@@ -1413,7 +1414,7 @@ switch ($Verb) {
 
             # Check UI
             Write-Log -Level WARN -Message "Checking UI..." -NoLabel
-            & $azureScript ui doctor -TraceLevel $TraceLevel -Staging:$Staging
+            & $azureScript ui doctor -TraceLevel $TraceLevel
         }
         else {
             # Local doctor: check dependencies, npm packages, database
@@ -2037,9 +2038,6 @@ switch ($Verb) {
                             Write-Log -Level INFO -Message "  UI: Up to date - skipping" -NoLabel -ForegroundColor Green
                         }
 
-                        # React staging is deployed by the deploy-react-staging.yml workflow
-                        # Use './catan.ps1 azure ui deploy-staging' to deploy manually
-
                         Write-Log -Level INFO -Message "" -NoLabel
                         Write-Log -Level INFO -Message "UI deployment complete!" -NoLabel -ForegroundColor Green
                     }
@@ -2133,10 +2131,9 @@ switch ($Verb) {
                             Write-Log -Level INFO -Message "  UI: OK - skipping" -NoLabel -ForegroundColor Green
                         }
 
-                        # React UI staging is deployed by the deploy-react-staging.yml workflow
-                        # (triggered on push to main when react-ui/** changes). Don't duplicate
-                        # that here — it requires Node.js which the deploy-azure.yml workflow
-                        # doesn't set up, and would hang the deploy pipeline.
+                        # React UI is deployed by deploy-azure.yml directly to production
+                        # (on push to main when react-ui/** changes). Not duplicated here —
+                        # it requires Node.js which the deploy pipeline sets up in its own job.
 
                         Write-Log -Level INFO -Message "" -NoLabel
                         Write-Log -Level INFO -Message "All deployments complete!" -NoLabel -ForegroundColor Green
@@ -2160,7 +2157,6 @@ switch ($Verb) {
                 # Config comes from .azure/catan-azure.json — no env vars needed.
                 # Uses DefaultAzureCredential (picks up az login session).
                 $tsArgs = @()
-                if ($Staging)  { $tsArgs += "--staging" }
                 if ($Json)     { $tsArgs += "--json" }
                 if (-not $Yes) { $tsArgs += "--no-fix" }
 
@@ -2169,127 +2165,10 @@ switch ($Verb) {
                 exit $LASTEXITCODE
             }
             "swap-slots" {
-                Write-Log -Level INFO -Message "Swap Azure Deployment Slots" -NoLabel -ForegroundColor Cyan
-                Write-Log -Level INFO -Message "==========================" -NoLabel -ForegroundColor Cyan
-                Write-Log -Level INFO -Message "" -NoLabel
-
-                # Load config via module
-                $az = Get-AzureResourceNames -ProjectRoot $PSScriptRoot
-                $appName = $az.UiAppName
-                $rgName = $az.ResourceGroup
-
-                # Use doctor to get complete picture of the system
-                Write-Log -Level INFO -Message "Running UI health check..." -NoLabel
-                $uiDoctor = & $azureScript ui doctor -HashTable -TraceLevel $TraceLevel
-
-                if ($uiDoctor.needsInstall) {
-                    Write-Log -Level ERROR -Message "UI is not installed. Run './catan.ps1 azure install' first." -NoLabel
-                    exit 1
-                }
-
-                # Show current state from doctor
-                Write-Log -Level WARN -Message "This will swap the staging slot into production." -NoLabel
-                Write-Log -Level INFO -Message "" -NoLabel
-                Write-Log -Level INFO -Message "  App:         $appName" -NoLabel
-                Write-Log -Level INFO -Message "  Production:  https://$appName.azurewebsites.net" -NoLabel
-                Write-Log -Level INFO -Message "  Staging:     https://$appName-staging.azurewebsites.net" -NoLabel
-                Write-Log -Level INFO -Message "" -NoLabel
-
-                # Show what's currently in each slot
-                if ($uiDoctor.prodRuntime -or $uiDoctor.stagingRuntime) {
-                    function Get-SwapRuntimeLabel {
-                        param([string]$Runtime)
-                        if ([string]::IsNullOrWhiteSpace($Runtime)) { return "unknown" }
-                        if ($Runtime -like "DOTNETCORE*") { return "Blazor ($Runtime)" }
-                        if ($Runtime -like "NODE*") { return "React/Next.js ($Runtime)" }
-                        return $Runtime
-                    }
-                    Write-Log -Level WARN -Message "Current configuration:" -NoLabel
-                    Write-Log -Level INFO -Message "  Production: $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -NoLabel
-                    Write-Log -Level INFO -Message "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
-                    Write-Log -Level INFO -Message "" -NoLabel
-                    Write-Log -Level WARN -Message "After swap:" -NoLabel
-                    Write-Log -Level INFO -Message "  Production: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
-                    Write-Log -Level INFO -Message "  Staging:    $(Get-SwapRuntimeLabel $uiDoctor.prodRuntime)" -NoLabel
-                    Write-Log -Level INFO -Message "" -NoLabel
-                }
-
-                # Check staging slot exists
-                if (-not $uiDoctor.checks.stagingSlot) {
-                    Write-Log -Level ERROR -Message "Staging slot does not exist." -NoLabel
-                    Write-Log -Level INFO -Message "  Run: ./catan.ps1 azure install" -NoLabel -ForegroundColor Cyan
-                    exit 1
-                }
-
-                # Check staging has code deployed
-                if (-not $uiDoctor.checks.stagingCodeDeployed) {
-                    Write-Log -Level ERROR -Message "Staging slot has no code deployed." -NoLabel
-                    Write-Log -Level INFO -Message "  Run: ./catan.ps1 azure deploy ui" -NoLabel -ForegroundColor Cyan
-                    exit 1
-                }
-
-                # Show staging commit info
-                if ($uiDoctor.stagingDeployedCommit) {
-                    Write-Log -Level INFO -Message "  Staging commit: $($uiDoctor.stagingDeployedCommit)" -NoLabel
-                }
-
-                # Check staging runtime is correct (NODE for React)
-                if (-not $uiDoctor.checks.stagingRuntime) {
-                    Write-Log -Level ERROR -Message "Staging slot runtime is not configured for Node.js." -NoLabel
-                    Write-Log -Level INFO -Message "  Current: $($uiDoctor.stagingRuntime)" -NoLabel
-                    Write-Log -Level INFO -Message "  Run: ./catan.ps1 azure ui deploy-staging" -NoLabel -ForegroundColor Cyan
-                    exit 1
-                }
-
-                # Check staging is responding (with retry for cold starts)
-                if (-not $uiDoctor.checks.stagingResponding) {
-                    Write-Log -Level WARN -Message "Staging slot is not responding. Warming up..." -NoLabel
-                    $stagingUrl = "https://$appName-staging.azurewebsites.net"
-                    $healthy = $false
-                    for ($attempt = 1; $attempt -le 3; $attempt++) {
-                        try {
-                            $response = Invoke-WebRequest -Uri $stagingUrl -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
-                            Write-Log -Level INFO -Message "  Staging slot is responding (HTTP $($response.StatusCode))" -NoLabel -ForegroundColor Green
-                            $healthy = $true
-                            break
-                        }
-                        catch {
-                            if ($attempt -lt 3) {
-                                Write-Log -Level WARN -Message "  Attempt $attempt/3: staging not ready, retrying..." -NoLabel
-                                Start-Sleep -Seconds 5
-                            }
-                        }
-                    }
-                    if (-not $healthy) {
-                        Write-Log -Level ERROR -Message "Staging slot is not responding after 3 attempts." -NoLabel
-                        Write-Log -Level INFO -Message "" -NoLabel
-                        Write-Log -Level WARN -Message "Try:" -NoLabel
-                        Write-Log -Level INFO -Message "  1. Wait a minute and retry (cold start can be slow)" -NoLabel
-                        Write-Log -Level INFO -Message "  2. Redeploy: ./catan.ps1 azure deploy ui -Force" -NoLabel
-                        exit 1
-                    }
-                }
-
-                # Confirm
-                if (-not $Yes) {
-                    $confirm = Read-Host "Proceed with swap? (y/N)"
-                    if ($confirm -ne 'y' -and $confirm -ne 'Y') {
-                        Write-Log -Level WARN -Message "Swap cancelled." -NoLabel
-                        exit 0
-                    }
-                }
-
-                Write-Log -Level INFO -Message "Swapping staging -> production..." -NoLabel -ForegroundColor Cyan
-                az webapp deployment slot swap --name $appName --resource-group $rgName --slot staging
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Log -Level ERROR -Message "Slot swap failed!" -NoLabel
-                    exit 1
-                }
-
-                Write-Log -Level INFO -Message "" -NoLabel
-                Write-Log -Level INFO -Message "Slot swap complete!" -NoLabel -ForegroundColor Green
-                Write-Log -Level INFO -Message "  Production is now serving: $(Get-SwapRuntimeLabel $uiDoctor.stagingRuntime)" -NoLabel
-                Write-Log -Level INFO -Message "  To swap back: ./catan.ps1 azure swap-slots" -NoLabel
+                # Retired (epic #197): staging slots were removed; the plan runs on Basic
+                # (no deployment slots) and deploys go directly to production. Nothing to swap.
+                Write-Log -Level WARN -Message "swap-slots is retired - staging slots were removed (epic #197). Deploys go directly to production: ./catan.ps1 azure deploy ui" -NoLabel
+                exit 1
             }
             "start" {
                 Write-Log -Level INFO -Message "Starting Azure services..." -NoLabel -ForegroundColor Cyan
@@ -2428,14 +2307,12 @@ switch ($Verb) {
                 Write-Log -Level INFO -Message "  deploy      - Deploy everything to Azure" -NoLabel
                 Write-Log -Level INFO -Message "  doctor      - Check health of all Azure resources" -NoLabel
                 Write-Log -Level INFO -Message "  clean       - Delete all Azure resources" -NoLabel
-                Write-Log -Level INFO -Message "  swap-slots  - Swap staging and production slots" -NoLabel
                 Write-Log -Level INFO -Message "" -NoLabel
                 Write-Log -Level WARN -Message "Targeted (verb + target or target + verb):" -NoLabel
                 Write-Log -Level INFO -Message "  deploy ui              - Deploy UI" -NoLabel
                 Write-Log -Level INFO -Message "  deploy game-service    - Deploy GameService only" -NoLabel
                 Write-Log -Level INFO -Message "  deploy database        - Deploy database config only" -NoLabel
                 Write-Log -Level INFO -Message "  ui doctor              - Check UI health only" -NoLabel
-                Write-Log -Level INFO -Message "  ui deploy-staging      - Deploy React to staging only" -NoLabel
                 Write-Log -Level INFO -Message "  game-service deploy    - Deploy GameService only" -NoLabel
                 Write-Log -Level INFO -Message "  github install         - Setup GitHub Actions OIDC" -NoLabel
                 Write-Log -Level INFO -Message "" -NoLabel
@@ -2451,9 +2328,7 @@ switch ($Verb) {
                 Write-Log -Level INFO -Message "  ./catan.ps1 azure deploy ui -Force    - Force deploy UI" -NoLabel
                 Write-Log -Level INFO -Message "  ./catan.ps1 azure ui doctor            - Check UI health" -NoLabel
                 Write-Log -Level INFO -Message "  ./catan.ps1 azure doctor               - Check all resources" -NoLabel
-                Write-Log -Level INFO -Message "  ./catan.ps1 azure swap-slots           - Swap staging <-> production" -NoLabel
                 Write-Log -Level INFO -Message "  ./catan.ps1 azure game-service deploy -Slot staging  - Deploy to staging slot" -NoLabel
-                Write-Log -Level INFO -Message "  ./catan.ps1 azure ui deploy-staging -AzureGameServiceUrl https://catan-api-staging.azurewebsites.net" -NoLabel
                 Write-Log -Level INFO -Message "" -NoLabel
 
                 if ($SubCommand) {
@@ -2493,7 +2368,6 @@ switch ($Verb) {
         Write-Log -Level INFO -Message "  ./catan.ps1 doctor           - Check dependencies and database health" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 install          - Install all dependencies and database" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 deploy -Azure    - Deploy code to production (fast, skips infra)" -NoLabel
-        Write-Log -Level INFO -Message "  ./catan.ps1 deploy -Azure -Staging - Deploy code to staging slot" -NoLabel
         Write-Log -Level INFO -Message "" -NoLabel
         Write-Log -Level WARN -Message "Recording:" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 recording list   - List all recordings (add -Azure for Azure)" -NoLabel
@@ -2532,7 +2406,6 @@ switch ($Verb) {
         Write-Log -Level INFO -Message "  ./catan.ps1 azure doctor     - Check Azure deployment health" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 azure install    - Create Azure resources and deploy code" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 azure deploy     - Deploy code only (no infrastructure changes)" -NoLabel
-        Write-Log -Level INFO -Message "  ./catan.ps1 azure swap-slots - Swap staging <-> production" -NoLabel
         Write-Log -Level INFO -Message "  ./catan.ps1 azure clean      - Delete all Azure resources" -NoLabel
         Write-Log -Level INFO -Message "" -NoLabel
         Write-Log -Level WARN -Message "Typical workflow:" -NoLabel
