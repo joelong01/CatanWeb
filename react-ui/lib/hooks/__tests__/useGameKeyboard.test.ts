@@ -275,11 +275,14 @@ describe('useGameKeyboard — unit', () => {
   describe('placement & letter shortcuts', () => {
     function buildableRoad(buildIndex: number): RoadModel {
       return {
-        roadKey: { hexCoordinates: { q: 0, r: 0 }, position: 'Top' } as RoadModel['roadKey'],
+        roadKey: {
+          hexCoordinates: { q: 0, r: 0 },
+          position: 'Top',
+        } as unknown as RoadModel['roadKey'],
         roadState: 'Buildable',
         ownerId: null,
         buildIndex,
-      } as RoadModel;
+      } as unknown as RoadModel;
     }
 
     function possibleSettlement(): BuildingModel {
@@ -290,7 +293,7 @@ describe('useGameKeyboard — unit', () => {
         } as BuildingModel['buildingKey'],
         buildingState: 'PossibleSettlement',
         ownerId: null,
-      } as BuildingModel;
+      } as unknown as BuildingModel;
     }
 
     function ownedSettlement(playerId: string): BuildingModel {
@@ -311,9 +314,7 @@ describe('useGameKeyboard — unit', () => {
     it('digit places a buildable road by buildIndex', () => {
       const proxy = makeFakeProxy();
       const roads = [buildableRoad(3)];
-      renderHook(() =>
-        useGameKeyboard(buildState({ gameState: 'WaitingForNext', roads, proxy }))
-      );
+      renderHook(() => useGameKeyboard(buildState({ gameState: 'WaitingForNext', roads, proxy })));
       press('3');
       expect(proxy.purchaseRoad).toHaveBeenCalledTimes(1);
     });
@@ -355,9 +356,7 @@ describe('useGameKeyboard — unit', () => {
     it('letter A places road buildIndex 10', () => {
       const proxy = makeFakeProxy();
       const roads = [buildableRoad(10)];
-      renderHook(() =>
-        useGameKeyboard(buildState({ gameState: 'WaitingForNext', roads, proxy }))
-      );
+      renderHook(() => useGameKeyboard(buildState({ gameState: 'WaitingForNext', roads, proxy })));
       press('A');
       expect(proxy.purchaseRoad).toHaveBeenCalledTimes(1);
     });
@@ -382,18 +381,14 @@ describe('useGameKeyboard — unit', () => {
 
     it('S fires Purchase Settlement when canPurchaseSettlement is true', () => {
       const proxy = makeFakeProxy();
-      renderHook(() =>
-        useGameKeyboard(buildState({ proxy, canPurchaseSettlement: true }))
-      );
+      renderHook(() => useGameKeyboard(buildState({ proxy, canPurchaseSettlement: true })));
       press('s');
       expect(proxy.purchase).toHaveBeenCalledWith('Settlement');
     });
 
     it('S does NOT fire when canPurchaseSettlement is false', () => {
       const proxy = makeFakeProxy();
-      renderHook(() =>
-        useGameKeyboard(buildState({ proxy, canPurchaseSettlement: false }))
-      );
+      renderHook(() => useGameKeyboard(buildState({ proxy, canPurchaseSettlement: false })));
       press('s');
       expect(proxy.purchase).not.toHaveBeenCalled();
     });
@@ -725,7 +720,11 @@ describe('useGameKeyboard — integration with layoutStore', () => {
           proxy,
           gameState: 'PickSupplementalPlayers',
           actionFlags: makeFlags({ nextEnabled: true }),
-          currentPlayer: { id: 'me', name: 'me', unspentEntitlements: [] } as PlayerModel,
+          currentPlayer: {
+            id: 'me',
+            name: 'me',
+            unspentEntitlements: [],
+          } as unknown as PlayerModel,
         })
       )
     );

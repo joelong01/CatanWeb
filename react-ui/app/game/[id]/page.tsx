@@ -134,6 +134,11 @@ export default function GamePage(): React.ReactElement {
   // Handle roll click - convert roll sum to two dice values
   const handleRollClick = useCallback(
     (rollSum: number) => {
+      // Ignore rolls when rolling isn't enabled (game state != WaitingForRoll).
+      // Keeps mouse in parity with the already-gated keyboard path and avoids a
+      // rejected proxy.roll() round-trip.
+      if (!actionFlags?.rollsEnabled) return;
+
       // Split into two dice values (prefer balanced split)
       const die1 = Math.max(1, Math.min(6, Math.ceil(rollSum / 2)));
       const die2 = rollSum - die1;
@@ -155,7 +160,7 @@ export default function GamePage(): React.ReactElement {
         }, 5000);
       }
     },
-    [proxy, setLastRoll]
+    [proxy, setLastRoll, actionFlags?.rollsEnabled]
   );
 
   // Helper to get enabled state from entitlementPurchaseModel (matches Blazor GetIsFaceUp)
@@ -810,7 +815,12 @@ export default function GamePage(): React.ReactElement {
         {/* Floating Panels - overlay on top of GameBoard */}
         {/* Dice Panel - Roll statistics and click-to-roll */}
         <FloatingPanel panelId="dice" title="Dice" className="bg-white/5 border-white/10">
-          <RollRing rollStats={rollStats} onRollClick={handleRollClick} colors={playerColors} />
+          <RollRing
+            rollStats={rollStats}
+            onRollClick={handleRollClick}
+            colors={playerColors}
+            rollsEnabled={actionFlags?.rollsEnabled ?? false}
+          />
           {/* Pending "1"-prefix indicator: visible after pressing "1", cleared
               when the second digit (or non-digit / Escape / focus shift) arrives.
               Issue #181 — UX clarity, not part of the root-cause fix. */}

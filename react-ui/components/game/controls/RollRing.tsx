@@ -30,6 +30,12 @@ export interface RollRingProps {
   onRollClick?: (roll: number) => void;
   /** Player colors for styling */
   colors?: PlayerColorsWithGradient;
+  /**
+   * Whether rolling is currently enabled. Defaults to true.
+   * When false, tiles show a muted background and a not-allowed cursor, and
+   * clicks are ignored. Stats (count/percentage/number) stay fully legible.
+   */
+  rollsEnabled?: boolean;
 }
 
 // ============================================================================
@@ -41,6 +47,8 @@ interface RollHexContentProps {
   count: number;
   percentage: number;
   colors?: PlayerColorsWithGradient;
+  /** When true, the tile is muted, non-interactive, and shows not-allowed. */
+  disabled?: boolean;
 }
 
 const RollHexContent = memo(function RollHexContent({
@@ -48,28 +56,39 @@ const RollHexContent = memo(function RollHexContent({
   count,
   percentage,
   colors,
+  disabled = false,
 }: RollHexContentProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
 
-  const gradient = colors?.cssGradient || 'var(--hex-content-gradient)';
   const foreground = colors?.foreground || '#ffffff';
-  const borderColor = isHovered ? 'var(--hex-border-hover)' : 'var(--hex-border-idle)';
 
-  // Button scale: normal 0.96, hover 0.94, pressed 0.90
-  const scale = isPressed ? 0.9 : isHovered ? 0.94 : 0.96;
+  // Disabled: swap to the muted resting fill, drop the hover border, and hold
+  // the resting scale so the tile no longer reacts to the mouse. Only the
+  // background/border/cursor change — the stat layers below are untouched.
+  const gradient = disabled
+    ? 'var(--hex-content-gradient-disabled)'
+    : colors?.cssGradient || 'var(--hex-content-gradient)';
+  const borderColor = disabled
+    ? 'var(--hex-disabled-border)'
+    : isHovered
+      ? 'var(--hex-border-hover)'
+      : 'var(--hex-border-idle)';
+
+  // Button scale: normal 0.96, hover 0.94, pressed 0.90 (frozen when disabled)
+  const scale = disabled ? 0.96 : isPressed ? 0.9 : isHovered ? 0.94 : 0.96;
 
   return (
     <div
-      className="absolute inset-0 cursor-pointer"
-      onMouseEnter={() => setIsHovered(true)}
+      className={`absolute inset-0 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      onMouseEnter={() => !disabled && setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
         setIsPressed(false);
       }}
-      onMouseDown={() => setIsPressed(true)}
+      onMouseDown={() => !disabled && setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
-      onTouchStart={() => setIsPressed(true)}
+      onTouchStart={() => !disabled && setIsPressed(true)}
       onTouchEnd={() => setIsPressed(false)}
     >
       {/* Outer border */}
@@ -122,6 +141,7 @@ export const RollRing = memo(function RollRing({
   rollStats,
   onRollClick,
   colors,
+  rollsEnabled = true,
 }: RollRingProps): React.ReactElement {
   // Roll numbers 2-12 mapped to 4-3-4 column layout
   // Visual layout (probabilities match across rows):
@@ -140,15 +160,21 @@ export const RollRing = memo(function RollRing({
     return {
       id: `roll-${roll}`,
       coord,
+      // disabled removes the HexTile's onClick and applies cursor-not-allowed on
+      // the tile wrapper; the closure below is a redundant safety gate.
+      disabled: !rollsEnabled,
       content: (
         <RollHexContent
           rollNumber={roll}
           count={stats.count}
           percentage={stats.percentage}
           colors={colors}
+          disabled={!rollsEnabled}
         />
       ),
-      onClick: () => onRollClick?.(roll),
+      onClick: () => {
+        if (rollsEnabled) onRollClick?.(roll);
+      },
     };
   });
 

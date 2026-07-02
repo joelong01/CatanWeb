@@ -202,9 +202,11 @@ export function useHealthCheck(): HealthResult {
     }
   }, [healthUrl]);
 
-  // Run on mount — runCheck sets state (intentional, it's the initialization path)
-
+  // Run on mount — runCheck sets state (intentional, it's the initialization
+  // path: the health check must start automatically and report progress via
+  // state as it retries).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional init
     runCheck();
   }, [runCheck]);
 
