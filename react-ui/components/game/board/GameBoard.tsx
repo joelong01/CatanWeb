@@ -169,6 +169,74 @@ const DOCK_COLORS = {
   highlight: '#A08060', // Lighter wood accent
 };
 
+/** Harbor capture-hint geometry (viewBox units). Circle matches HarborHexContent. */
+const HINT_CIRCLE = { cx: 50, cy: 43.3, r: 26 };
+/** Arc bow as a fraction of chord length; 0 = straight lines. */
+const HINT_BOW = 0.16;
+
+/**
+ * Capture hint for an UNOWNED harbor: two arcs from the marker circle to the
+ * two settlement corners (SIDE_TO_VERTICES[side]) that would claim it, each
+ * ending in a target dot. Rendered inside the harbor's SVG (viewBox 0 0 100 86.6).
+ *
+ * Every hex corner sits distance 50 from the circle center, so an arc's start on
+ * the circle perimeter toward a vertex is lerp(center, vertex, r/50). Because the
+ * water hex shares those corners with the owning tile, each arc ends exactly
+ * where the on-board Building marker renders (issue #201).
+ */
+export function HarborCaptureArcs({ side }: { side: HexSide }) {
+  const verts = SIDE_TO_VERTICES[side];
+  const { cx, cy, r } = HINT_CIRCLE;
+  // Edge midpoint: bow each arc away from this so the pair splays apart.
+  const ex = (verts[0][0] + verts[1][0]) / 2;
+  const ey = (verts[0][1] + verts[1][1]) / 2;
+
+  return (
+    <g className="harbor-capture-hint" fill="none" pointerEvents="none">
+      {verts.map(([vx, vy], i) => {
+        const sx = cx + (vx - cx) * (r / 50);
+        const sy = cy + (vy - cy) * (r / 50);
+        const mx = (sx + vx) / 2;
+        const my = (sy + vy) / 2;
+        const dx = vx - sx;
+        const dy = vy - sy;
+        const len = Math.hypot(dx, dy) || 1;
+        // Perpendicular to the chord, normalized.
+        let px = -dy / len;
+        let py = dx / len;
+        // Flip so the control point moves away from the edge midpoint E.
+        if ((mx - ex) * px + (my - ey) * py < 0) {
+          px = -px;
+          py = -py;
+        }
+        const bow = HINT_BOW * len;
+        const ctrlX = mx + px * bow;
+        const ctrlY = my + py * bow;
+        return (
+          <path
+            key={`arc-${i}`}
+            d={`M ${sx} ${sy} Q ${ctrlX} ${ctrlY} ${vx} ${vy}`}
+            stroke="var(--harbor-hint)"
+            strokeWidth={2.5}
+            strokeOpacity={0.85}
+            strokeLinecap="round"
+          />
+        );
+      })}
+      {verts.map(([vx, vy], i) => (
+        <circle
+          key={`dot-${i}`}
+          cx={vx}
+          cy={vy}
+          r={3.5}
+          fill="var(--harbor-hint)"
+          fillOpacity={0.9}
+        />
+      ))}
+    </g>
+  );
+}
+
 /** Map faIcon string names from theme.json to FA icon SVG path data. */
 const FA_ICON_PATHS: Record<string, string> = {
   coins: faCoins.icon[4] as string,
@@ -280,6 +348,9 @@ function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
             strokeLinecap="butt"
           />
 
+          {/* Capture hint: arcs to the two settlement spots (unowned harbors only) */}
+          {!ownerColors && <HarborCaptureArcs side={side} />}
+
           {/* Center circle: owner's primary color border when owned, theme color when unowned */}
           <circle
             cx={cx}
@@ -351,6 +422,9 @@ function HarborHexContent({ harbor, ownerColors }: HarborHexContentProps) {
           strokeWidth="14"
           strokeLinecap="round"
         />
+
+        {/* Capture hint: arcs to the two settlement spots (unowned harbors only) */}
+        {!ownerColors && <HarborCaptureArcs side={side} />}
 
         {/* Harbor circle */}
         <circle
