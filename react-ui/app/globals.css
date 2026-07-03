@@ -54,6 +54,10 @@
   --hex-border-idle: rgba(255, 255, 255, 0.3);
   --hex-border-hover: #3b82f6;
   --hex-disabled-border: rgba(255, 255, 255, 0.1);
+  /* Harbor capture hint (#201): arcs from an unowned harbor marker to the two
+     settlement spots that would claim it. Amber reads on blue water and does not
+     collide with player colors. */
+  --harbor-hint: #facc15;
 
   /* Layout Proportions (match XAML Grid.ColumnDefinitions) */
   --left-panel-width: 25fr;
