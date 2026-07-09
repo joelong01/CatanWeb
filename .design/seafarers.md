@@ -225,7 +225,12 @@ other actions):
 
 + **`BeginMoveShip`** — valid in `WaitingForNext` when ships enabled, a movable
   ship exists, and `!ShipMovedThisTurn`. Stores `PreviousGameState`, sets
-  `GameState = MustMoveShip`.
+  `GameState = MustMoveShip`. **Surfaced as a free turn action, not a purchase:**
+  an `ActionFlags.MoveShipEnabled` button (sibling to Next/Undo) emits
+  `BeginMoveShipMessage`; the flag is set in `SetActionFlags`/`OnRecompute` under
+  the same guard. There is **no `Entitlement.MoveShip`** (movement costs nothing);
+  this is the non-purchase analog of the `Soldier` → `MustMoveRobber` precedent
+  (`GameStateMachine.cs:770`). Ship *purchase* is separate (D3, `Entitlement.Ship`).
 + **`CancelMoveShip`** — from `MustMoveShip`: clears `PendingShipMoveFrom`, restores
   `PreviousGameState`, no move.
 + **`MoveShip(from, to)`** — from `MustMoveShip`: validates and moves, sets
@@ -344,7 +349,7 @@ adjacency, and hit-testing — the single source of truth feeding `BuildableKind
 | 5 | `OnTurnAdvanced` | hook | `UpdateStateOnNextPlayer` | reset `ShipsBuiltThisTurn` / `ShipMovedThisTurn` | New Shores |
 | 6 | Expansion descriptor dispatch (`CommandContext`) | core edit | `AsyncCommandProcessor` default `:154`; expose `Modules`; caller validation | `ShipPurchase`, `BeginMoveShip`, `CancelMoveShip`, `MoveShip` (+ records) | New Shores |
 | 7 | `IsRouteSegmentTraversable` predicate | core edit (not DFS) | `OwnedAdjacentRoadsNotCounted :17` + early-exit count `:2216` | road-or-ship + junction-through-building (D6) | New Shores |
-| 8 | `GameState.MustMoveShip` + Next/Roll-disabled entry + label | core edit (data) | `GameEnums.cs`; `SetActionFlags :1062`; `GameModel.cs:337` | ship-move flow (D4) | New Shores |
+| 8 | `GameState.MustMoveShip` + `ActionFlags.MoveShipEnabled` trigger + Next/Roll-disabled entry + label | core edit (data) | `GameEnums.cs`; `SetActionFlags :1062`; `GameModel.cs:337` | ship-move flow (D4); movement is a free action, not `Entitlement.MoveShip` | New Shores |
 | 9 | `RoadModel.BuildableKinds` (flags) | core edit (data) | `MarkBuildableRoads` sets `Road`; module sets `Ship` | road/ship/both affordance (D3) | New Shores |
 | 10 | `Scenario` + `ResourceRules.MaxShips` + `MaxEntitlementCount(Ship)` + `Ship` `EntitlementPurchaseModel` + `GameHashVersion` | core edit (data) | `GameModel.cs`, `GameModels.cs`, hash `:252` | limit + purchase UI + hash policy (D2/D8) | New Shores |
 | 11 | `OnSevenRolled` | hook | seven path `:1051` | pirate move | Later |
@@ -400,6 +405,7 @@ cached field on `RoadModel`. Default plan: **compute-only**, no stored field.
 | `GameModel` | `ShipsBuiltThisTurn` | `List<RoadKey>` | `[]` | ships ineligible to move this turn (D4); cleared `OnTurnAdvanced` | yes |
 | `GameModel` | `ShipMovedThisTurn` | `bool` | `false` | once-per-turn move gate (D4) | yes |
 | `GameModel` | `PendingShipMoveFrom` | `RoadKey?` | `null` | in-flight `MustMoveShip` source edge (D4) | yes |
+| `ActionFlags` (`GameModel.cs`) | `MoveShipEnabled` | `bool` | `false` | free once-per-turn ship-move affordance (D4); a turn action, **not** an entitlement | no |
 | `TileModel` (`TileModel.cs`) | `IslandGroup` | `int` | `0` | shuffle-partition key; `0` = main board (D1/D5) | yes (scenario) |
 | `TileModel` | `Fixed` | `bool` | `false` | never-shuffle marker; sea tiles treated fixed regardless (D5) | no |
 | `RoadModel` (`RoadModel.cs`) | `BuildableKinds` | `BuildableKind` | `BuildableKind.None` | can this edge take a road / ship / both (D3) | no (transient marking) |
@@ -410,6 +416,16 @@ Notes:
 
 + `PlayerModel` already has `IslandsPlayed`, `LongestRoad`, `HasLongestRoad` —
   reused, no new fields for those.
++ **Ship *movement* is not an entitlement — there is no `Entitlement.MoveShip`.**
+  Entitlements are *purchases* (spend resources, held in `UnspentEntitlements`);
+  movement is free and holds nothing. **Buying** a ship uses the existing
+  `Entitlement.Ship` as a two-step, exactly like `Entitlement.Road`: the purchase
+  button adds `Ship` to `UnspentEntitlements` + marks `BuildableKinds.Ship` edges,
+  then clicking a ship-buildable edge **consumes** it via `ShipPurchaseMessage`
+  (mirrors `RoadPurchase` `GameStateMachine.cs:1387/1410`). **Moving** a ship is a
+  free turn action surfaced by `ActionFlags.MoveShipEnabled` → `BeginMoveShipMessage`
+  (sibling to Next/Undo) — the non-purchase analog of the `Soldier`-purchase →
+  `MustMoveRobber` precedent (`GameStateMachine.cs:770`).
 + `ResourceRules` uses a positional primary ctor for JSON; `MaxShips` is added as a
   plain `{ get; set; } = 0` **auto-property** (not a ctor parameter), so the
   existing ctor-name-matching contract is untouched.
