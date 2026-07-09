@@ -213,38 +213,67 @@ that a coastal edge is buildable as *road, ship, or both*. Add
 purchase validation, and replay tests read `BuildableKinds`. Regular games only
 ever get `Road`, so behavior is unchanged.
 
-### D4. Ship movement — robber-idiom flow with explicit state + enforced legality
+### D4. Ship movement — an **optional per-turn entitlement**, click-to-move
 
-Reuses the "must-do-X" pattern (Soldier sets `MustMoveRobber` `:776`;
-`MoveRobberMessage` valid only there `:1779`). New explicit `GameModel`
-turn-scoped state (not `BuildIndex`, which is display-only): **`ShipsBuiltThisTurn`**
-(marks), **`ShipMovedThisTurn`** (bool), **`PendingShipMoveFrom`** (RoadKey?).
+Ship movement is modeled as an **entitlement**, so it rides the *existing*
+once-per-turn machinery instead of a bespoke ship flag. (Rationale: a
+`ShipMovedThisTurn` bool special-cases ships — and every ship-like mechanic we add
+later would need its own such flag. `ConsumeEntitlement` already moves a used
+entitlement into `SpentEntitlementsThisTurn`, which is cleared at turn advance —
+that *is* "once per turn," done "just like everything else." Only **one** new
+enum value, `Entitlement.MoveShip`, and one small generalization — optional
+entitlements — are added; nothing ship-specific enters core control flow.)
 
-State chart (all server-authoritative; `MoveShip`/`BeginMoveShip` are logged like
-other actions):
+**New generic concept: optional entitlements.** Today `AllowNext`
+(`GameStateMachine.cs:1079`) and the turn-end gate (`:1912`) block "Next" while
+`UnspentEntitlements.Count > 0` ("you can't advance holding something unplayed").
+A ship move is *optional* — it must **not** block turn-end. Add a generic
+classifier `Entitlement.IsOptional` (data about the entitlement, not an expansion
+branch); both gates change to `UnspentEntitlements.Any(e => !e.IsOptional())`, and
+`UpdateStateOnNextPlayer` **expires** unused optional entitlements. This is a
+reusable seam: any future optional per-turn action classifies its entitlement
+optional — no new special case.
 
-+ **`BeginMoveShip`** — valid in `WaitingForNext` when ships enabled, a movable
-  ship exists, and `!ShipMovedThisTurn`. Stores `PreviousGameState`, sets
-  `GameState = MustMoveShip`. **Surfaced as a free turn action, not a purchase:**
-  an `ActionFlags.MoveShipEnabled` button (sibling to Next/Undo) emits
-  `BeginMoveShipMessage`; the flag is set in `SetActionFlags`/`OnRecompute` under
-  the same guard. There is **no `Entitlement.MoveShip`** (movement costs nothing);
-  this is the non-purchase analog of the `Soldier` → `MustMoveRobber` precedent
-  (`GameStateMachine.cs:770`). Ship *purchase* is separate (D3, `Entitlement.Ship`).
-+ **`CancelMoveShip`** — from `MustMoveShip`: clears `PendingShipMoveFrom`, restores
-  `PreviousGameState`, no move.
-+ **`MoveShip(from, to)`** — from `MustMoveShip`: validates and moves, sets
-  `ShipMovedThisTurn = true`, restores `PreviousGameState`.
-+ **Undo**: after `BeginMoveShip` → back to `WaitingForNext`; after `MoveShip` →
-  back to `MustMoveShip`. **`OnTurnAdvanced`** clears `ShipsBuiltThisTurn` +
-  `ShipMovedThisTurn`.
+**Grant / gate / consume (all via the existing entitlement system):**
 
-**Enforced (frequent) legality:** a ship is movable iff (a) not built this turn,
-(b) it has an **open end** — a vertex not continuing to another owned ship/road
-through the route — and (c) it is not the sole segment joining two of the player's
-buildings. This is a bounded traversal of the player's ship graph. **Only genuinely
-pathological multi-loop disconnection cases are table-enforced** — the common rule
-above is always enforced. Undo/cancel/turn-reset are covered by tests in Phase 5.
++ **Grant** — `SeafarersRules.OnTurnAdvanced` grants the new current player one
+  `Entitlement.MoveShip` (gated by `Scenario.ShipMovementEnabled`); core
+  turn-advance has already expired the prior optional grant. "Can I move a ship
+  this turn?" is exactly *"do I hold `MoveShip`?"* — no `ShipMovedThisTurn` field,
+  no `ActionFlags.MoveShipEnabled`.
++ **Initiate (click the ship, no button)** — while holding `MoveShip`, clicking one
+  of your movable ships sends **`SelectShipToMoveMessage {shipKey}`**. The server
+  (client owns no rules — [[client-two-responsibilities]]) validates the ship is
+  movable, stores `PreviousGameState`, sets `GameState = MustMoveShip` and
+  `PendingShipMoveFrom = shipKey`, and **marks the legal destinations by reusing
+  `BuildableKinds.Ship`** (same affordance as placement). The entitlement is **not**
+  consumed yet. The pending ship renders at reduced opacity (`RoadState == Ship &&
+  key == PendingShipMoveFrom`) — **no `RoadState.ReadyToMove`** (that would conflate
+  "is a ship" with "is being moved," the orthogonality trap `BuildableKinds` avoids).
++ **Complete** — clicking a marked destination sends **`MoveShipMessage {to}`** (the
+  source is `PendingShipMoveFrom`, server-side). Validate `to` is legal; move the
+  ship; **`ConsumeEntitlement(MoveShip)`** (→ `SpentEntitlementsThisTurn`, so it
+  cannot recur this turn); clear `PendingShipMoveFrom`; restore `PreviousGameState`.
++ **Dismiss** — a non-destination click / Escape sends **`CancelMoveShipMessage`**:
+  clear `PendingShipMoveFrom`, restore `PreviousGameState`. Entitlement stays held,
+  so the player can click a ship again. (`MustMoveShip`'s interaction session owns
+  all clicks, so dismiss logic is centralized — not scattered across handlers.)
++ **Undo** — snapshot-based: after `SelectShipToMove` → back to `WaitingForNext`;
+  after `MoveShip` → back to `MustMoveShip` with the entitlement restored.
+
+**Minimal ship-specific state that remains:** `ShipsBuiltThisTurn` (`List<RoadKey>`
+on `GameModel`, cleared in `OnTurnAdvanced`) — needed only for the movability rule
+"a ship built this turn cannot move," which is a per-*ship* property the entitlement
+system can't express. (Under the table-assistant principle this rule could be
+relaxed and the field dropped; kept for now — decided at Phase 8.)
+
+**Enforced (frequent) legality:** a ship is movable iff (a) not built this turn
+(`ShipsBuiltThisTurn`), (b) it has an **open end** — a vertex not continuing to
+another owned ship/road through the route — and (c) it is not the sole segment
+joining two of the player's buildings. This is a bounded traversal of the player's
+ship graph. **Only genuinely pathological multi-loop disconnection cases are
+table-enforced** — the common rule above is always enforced. Undo/cancel/turn-reset
+are covered by tests in Phase 8.
 
 ### D5. Fixed/shuffleable, island-partitioned, bounded shuffle
 
@@ -273,12 +302,31 @@ a **road↔ship transition only occurs through the owner's building**. Also fix 
 early-exit `max == gameModel.Roads.Count` to count eligible route segments. UI
 renames the award "Longest Trade Route" when ships are enabled.
 
-### D7. New-island bonus VP
+### D7. New-island discovery bonus VP
 
-`SeafarersRules.OnBuildingPlaced`: if a settlement is the player's **first**
-building in a non-main `IslandGroup`, add the scenario's island bonus to the
-player's `GameModel` scenario-bonus-VP field (guarded by `NewIslandBonusVp`).
-`OnScore`/`UpdateScore` include it; it is part of the hash (D8).
+The "points for discovering a new island" are a first-class scenario score. To be
+**undo/redo- and replay-safe**, they are **computed deterministically during
+recompute**, not accumulated on an event: `SeafarersRules.OnScore` (inside
+`UpdateScore`) sets each player's `ScenarioBonusVp` from current
+building/island-group state, and `UpdateScore` adds it to the total. Because it is
+re-derived from `Buildings` every `LogGameModel`, undo/redo and replay reproduce it
+exactly; the value is stored on the player (D2) and included in the scenario hash
+(D8). `SeafarersRules.OnBuildingPlaced` bumps `PlayerModel.IslandsPlayed` for the
+stat/UI when a settlement first reaches a new group.
+
+**Scoring rule — follow the rulebook (decided).** Per the official "Heading for New
+Shores" rule: **each player scores `NewIslandBonusVpAmount` (2) VP for their first
+settlement on *each* island other than the main island** — i.e. **per island, per
+player** (a player settling three foreign islands earns 6). It is **not** a race
+(later settlers on an island the player themselves reaches still score their own
+first-settlement there) and it is **not** capped at one island.
+
+`OnScore` computes it directly from `Buildings` + `TileModel.IslandGroup`: `2 ×
+(count of distinct non-main IslandGroups where the player holds ≥1 settlement)`,
+guarded by `Scenario.NewIslandBonusVp`. `Scenario.NewIslandBonusVpAmount` keeps the
+per-island value configurable for other scenarios. (If a future scenario needs a
+different rule — once-per-player, or a first-discoverer race using `BuildIndex`
+order — it is the same one-predicate seam; New Shores uses per-island.)
 
 ### D8. Backwards compatibility + versioned hash policy
 
@@ -338,6 +386,163 @@ buildability (excludes SeaEdge), ship buildability, purchase validation, route
 adjacency, and hit-testing — the single source of truth feeding `BuildableKinds`
 (D3) and the UI distinction (D9).
 
+## Message-flow swimlanes (for review)
+
+All client actions travel the **same authoritative backbone**: the React proxy
+`executeCommand(messageType, data)` POSTs to `/api/game/action`
+(`GameServiceProxy.ts:693`); `AsyncCommandProcessor` switches on `messageType`;
+the handler mutates a copy; `LogGameModel` runs the single recompute pipeline,
+persists, and broadcasts `GameStateUpdated` to the game group; the caller gets
+`CommandCompleted`/`CommandFailed`. **Core** messages hit an existing
+`GameStateMachine` handler; **expansion** messages take the module-descriptor path
+(D0). The four flows below differ only in *which handler runs* and *what state it
+sets* — no new endpoints or hub methods.
+
+### 1. Buying a ship (acquire the entitlement — a purchase)
+
+Buying is a **core** flow (`PurchaseMessage`, existing `HandlePurchase`) with a new
+`Ship` case; the module only marks buildable sea edges during recompute. This is
+the "hold the entitlement" step — placement is flow 2.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Player
+    participant Client
+    participant API as Action API
+    participant Proc as AsyncCommandProcessor
+    participant Core as GameStateMachine
+    participant Mod as SeafarersRules
+    participant Sync as Recompute + Broadcast
+
+    U->>Client: click Ship button, entitlement enabled
+    Client->>API: POST api/game/action, PurchaseMessage Ship
+    API->>Proc: dispatch, messageType PurchaseMessage
+    Proc->>Core: HandlePurchase, core existing
+    Note over Core: ValidatePurchase Ship case, MaxShips not exceeded, deduct 1 wood and 1 sheep, add Ship to UnspentEntitlements
+    Core-->>Proc: GameModel
+    Proc->>Sync: LogGameModel
+    Sync->>Mod: OnRecompute
+    Mod-->>Sync: MarkBuildableSeaRoutes sets BuildableKinds.Ship on sea and coastal edges
+    Note over Sync: UpdatePurchaseUi then GameHash then persist
+    Sync-->>Client: GameStateUpdated broadcast, CommandCompleted
+    Client-->>U: ship-buildable edges highlighted
+```
+
+### 2. Placing a ship (spend the held entitlement)
+
+Placement is an **expansion** flow: `ShipPurchaseMessage` is not a core case, so it
+takes the module-descriptor path — the reusable dispatch seam is the deliverable.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Player
+    participant Client
+    participant API as Action API
+    participant Proc as AsyncCommandProcessor
+    participant Mod as SeafarersRules
+    participant Sync as Recompute + Broadcast
+
+    U->>Client: click a ship-buildable edge, holds Ship entitlement
+    Client->>API: POST api/game/action, ShipPurchaseMessage roadKey
+    API->>Proc: dispatch, messageType ShipPurchaseMessage
+    Note over Proc: not a core case, take module-descriptor path D0, build CommandContext, enforce caller is current player
+    Proc->>Mod: descriptor.Apply ctx copy
+    Note over Mod: EdgeKind is Sea or Coastal, connected to own coastal building or own ship, consume Ship entitlement, set RoadState Ship, add edge to ShipsBuiltThisTurn
+    Mod-->>Proc: GameModel
+    Proc->>Sync: LogGameModel, logged exactly once
+    Sync->>Mod: OnRecompute, re-mark buildables and route
+    Note over Sync: GameHash includes RoadState, then persist
+    Proc->>Mod: descriptor.MakeRecord builds ShipPurchaseRecord
+    Sync-->>Client: GameStateUpdated, CommandCompleted
+    Client-->>U: ship rendered on the edge
+```
+
+### 3. Moving a ship (optional per-turn entitlement, click-to-move)
+
+Not a purchase, but **an entitlement** (D4): `Entitlement.MoveShip` is auto-granted
+each turn (optional — it never blocks Next), and consumed on a completed move so it
+can only happen once per turn "just like everything else." No button: clicking a
+movable ship initiates; the server marks legal destinations (client owns no rules).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Player
+    participant Client
+    participant API as Action API
+    participant Proc as AsyncCommandProcessor
+    participant Mod as SeafarersRules
+    participant Sync as Recompute + Broadcast
+
+    Note over Mod: at turn start OnTurnAdvanced granted current player Entitlement.MoveShip, optional, core expired the prior grant
+    Note over Client: holds MoveShip, so my ships are click-to-move
+    U->>Client: click one of my movable ships
+    Client->>API: POST api/game/action, SelectShipToMoveMessage shipKey
+    API->>Proc: dispatch, module-descriptor path, caller is current player
+    Proc->>Mod: SelectShipToMove descriptor
+    Note over Mod: validate ship movable, open end and not built this turn, store PreviousGameState, set GameState MustMoveShip, set PendingShipMoveFrom shipKey, MoveShip not consumed yet
+    Mod-->>Proc: GameModel
+    Proc->>Sync: LogGameModel
+    Sync->>Mod: OnRecompute marks legal destinations as BuildableKinds.Ship
+    Sync-->>Client: GameStateUpdated, MustMoveShip
+    Client-->>U: pending ship at 0.5 opacity, legal destinations glow
+
+    U->>Client: click a marked destination
+    Client->>API: POST api/game/action, MoveShipMessage to
+    API->>Proc: dispatch
+    Proc->>Mod: MoveShip descriptor, source is PendingShipMoveFrom
+    Note over Mod: validate to is legal, move ship, ConsumeEntitlement MoveShip into SpentEntitlementsThisTurn, clear PendingShipMoveFrom, restore PreviousGameState
+    Mod-->>Proc: GameModel
+    Proc->>Sync: LogGameModel, persist, broadcast
+    Sync-->>Client: GameStateUpdated, WaitingForNext, MoveShip spent
+
+    alt player dismisses, click elsewhere or Escape
+        U->>Client: click a non-destination
+        Client->>API: POST api/game/action, CancelMoveShipMessage
+        API->>Proc: dispatch
+        Proc->>Mod: CancelMoveShip, clear pending, restore PreviousGameState
+        Note over Mod: MoveShip stays held, player may click a ship again
+        Mod-->>Sync: LogGameModel, broadcast
+    end
+```
+
+**Why `MustMoveShip` (a sub-state) rather than staying in `WaitingForNext`:** its
+interaction session owns every click during the gesture, so "dismiss on
+non-destination click" lives in one place instead of being sprinkled through the
+other click handlers. `PendingShipMoveFrom` is the server-authoritative source
+(this resolves the earlier open point — it is **kept**, because the server, not the
+client, must compute legal destinations).
+
+### 4. Shuffling (sea-safe, per-island — pure core)
+
+Shuffle is a **core** flow with no module: the sea-safe/per-group behavior is a
+data-gated edit to `Shuffle()` (D5) that is inert for Regular (all tiles
+`IslandGroup 0`, no `Sea` tiles).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Player
+    participant Client
+    participant API as Action API
+    participant Proc as AsyncCommandProcessor
+    participant Core as GameStateMachine
+    participant Sync as Recompute + Broadcast
+
+    Note over Client: GameState is PickingBoard
+    U->>Client: click Shuffle
+    Client->>API: POST api/game/action, ShuffleMessage
+    API->>Proc: dispatch
+    Proc->>Core: HandleShuffle core existing, calls Shuffle D5
+    Note over Core: partition tiles by IslandGroup, Sea and Fixed tiles never move, permute shuffleable land within each group, ValidateGame per group, bounded retry with deterministic fallback, uses ReplayableRandom for replay safety
+    Core-->>Proc: GameModel
+    Proc->>Sync: LogGameModel, persist, broadcast
+    Sync-->>Client: GameStateUpdated, new board
+    Note over Core,Sync: no module, Regular is byte-identical, no Sea tiles and a single group
+```
+
 ## Extensibility points added to the core (consolidated)
 
 | # | Extension point | Kind | Core site | SeafarersRules use | Scope |
@@ -346,10 +551,10 @@ adjacency, and hit-testing — the single source of truth feeding `BuildableKind
 | 2 | `OnRecompute` | hook | `LogGameModel :1469` | `MarkBuildableSeaRoutes` → `BuildableKinds`; movable-ship marks; expansion-state flags | New Shores |
 | 3 | `OnBuildingPlaced` | hook | `BuildingUpgrade :1558` | `AwardNewIslandBonusIfFirst` (D7) | New Shores |
 | 4 | `OnScore` | hook | `UpdateScore :1463` | add per-player scenario bonus VP | New Shores |
-| 5 | `OnTurnAdvanced` | hook | `UpdateStateOnNextPlayer` | reset `ShipsBuiltThisTurn` / `ShipMovedThisTurn` | New Shores |
-| 6 | Expansion descriptor dispatch (`CommandContext`) | core edit | `AsyncCommandProcessor` default `:154`; expose `Modules`; caller validation | `ShipPurchase`, `BeginMoveShip`, `CancelMoveShip`, `MoveShip` (+ records) | New Shores |
+| 5 | `OnTurnAdvanced` | hook | `UpdateStateOnNextPlayer` | grant `MoveShip` entitlement; reset `ShipsBuiltThisTurn` | New Shores |
+| 6 | Expansion descriptor dispatch (`CommandContext`) | core edit | `AsyncCommandProcessor` default `:154`; expose `Modules`; caller validation | `ShipPurchase`, `SelectShipToMove`, `MoveShip`, `CancelMoveShip` (+ records) | New Shores |
 | 7 | `IsRouteSegmentTraversable` predicate | core edit (not DFS) | `OwnedAdjacentRoadsNotCounted :17` + early-exit count `:2216` | road-or-ship + junction-through-building (D6) | New Shores |
-| 8 | `GameState.MustMoveShip` + `ActionFlags.MoveShipEnabled` trigger + Next/Roll-disabled entry + label | core edit (data) | `GameEnums.cs`; `SetActionFlags :1062`; `GameModel.cs:337` | ship-move flow (D4); movement is a free action, not `Entitlement.MoveShip` | New Shores |
+| 8 | `Entitlement.MoveShip` + `Entitlement.IsOptional` + optional-entitlement gate/expiry + `GameState.MustMoveShip` | core edit (data + generic logic) | `GameEnums.cs`; `AllowNext :1079`; turn-gate `:1912`; `UpdateStateOnNextPlayer :1349` | optional per-turn ship move (D4); click-to-move, no button | New Shores |
 | 9 | `RoadModel.BuildableKinds` (flags) | core edit (data) | `MarkBuildableRoads` sets `Road`; module sets `Ship` | road/ship/both affordance (D3) | New Shores |
 | 10 | `Scenario` + `ResourceRules.MaxShips` + `MaxEntitlementCount(Ship)` + `Ship` `EntitlementPurchaseModel` + `GameHashVersion` | core edit (data) | `GameModel.cs`, `GameModels.cs`, hash `:252` | limit + purchase UI + hash policy (D2/D8) | New Shores |
 | 11 | `OnSevenRolled` | hook | seven path `:1051` | pirate move | Later |
@@ -385,12 +590,12 @@ the serialized GameModel shape becomes. Ground rules:
 | Enum | Change | File | Notes |
 |---|---|---|---|
 | `RoadState` | *(already has `Ship`)* — no change | `GameEnums.cs:31` | reused for ships (D3) |
-| `Entitlement` | *(already has `Ship`)* — no change | `GameEnums.cs:115` | reused (D3) |
+| `Entitlement` | `Ship` reused (buy+place); **add** `MoveShip` (optional, granted per turn) | `GameEnums.cs:115` | ship purchase (D3) + ship movement (D4) |
 | `ResourceType` | *(already has `Sea`, `GoldMine`)* — no change | `GameEnums.cs:5` | islands/gold (D1/D2) |
-| `GameState` | **add** `MustMoveShip` | `GameEnums.cs` | ship-move flow (D4) |
+| `GameState` | **add** `MustMoveShip` | `GameEnums.cs` | ship-move gesture sub-state (D4) |
 | `BuildableKind` | **new `[Flags]` enum**: `None=0, Road=1, Ship=2` | new, `GameEnums.cs` | road/ship/both affordance (D3) |
 | `EdgeKind` | **new enum**: `Land, Coastal, Sea` | new, `GameEnums.cs` | edge classifier (D10); may be compute-only, see note |
-| `ActionType` | **add** ship entries (`ShipPurchase`, `BeginMoveShip`, `CancelMoveShip`, `MoveShip`) | `ActionType.cs` | CLI/replay + dispatch (D0) |
+| `ActionType` | **add** (`ShipPurchase`, `SelectShipToMove`, `MoveShip`, `CancelMoveShip`) | `ActionType.cs` | CLI/replay + dispatch (D0) |
 
 `EdgeKind` is derived from the two adjacent tiles and may live purely as a computed
 classifier (not persisted) — decide at Phase-6 plan time whether it is worth a
@@ -402,10 +607,8 @@ cached field on `RoadModel`. Default plan: **compute-only**, no stored field.
 |---|---|---|---|---|---|
 | `GameModel` (`GameModel.cs`) | `Scenario` | `Scenario` | `Scenario.Regular` | scenario profile: VP target + mechanic flags (D2) | yes |
 | `GameModel` | `GameHashVersion` | `int` | `1` | hash policy selector; `≥2` opts into scenario hash (D8) | n/a (selector) |
-| `GameModel` | `ShipsBuiltThisTurn` | `List<RoadKey>` | `[]` | ships ineligible to move this turn (D4); cleared `OnTurnAdvanced` | yes |
-| `GameModel` | `ShipMovedThisTurn` | `bool` | `false` | once-per-turn move gate (D4) | yes |
-| `GameModel` | `PendingShipMoveFrom` | `RoadKey?` | `null` | in-flight `MustMoveShip` source edge (D4) | yes |
-| `ActionFlags` (`GameModel.cs`) | `MoveShipEnabled` | `bool` | `false` | free once-per-turn ship-move affordance (D4); a turn action, **not** an entitlement | no |
+| `GameModel` | `ShipsBuiltThisTurn` | `List<RoadKey>` | `[]` | ships ineligible to move this turn (D4 movability); cleared `OnTurnAdvanced` | yes |
+| `GameModel` | `PendingShipMoveFrom` | `RoadKey?` | `null` | server-authoritative selected ship during `MustMoveShip` (D4) | yes |
 | `TileModel` (`TileModel.cs`) | `IslandGroup` | `int` | `0` | shuffle-partition key; `0` = main board (D1/D5) | yes (scenario) |
 | `TileModel` | `Fixed` | `bool` | `false` | never-shuffle marker; sea tiles treated fixed regardless (D5) | no |
 | `RoadModel` (`RoadModel.cs`) | `BuildableKinds` | `BuildableKind` | `BuildableKind.None` | can this edge take a road / ship / both (D3) | no (transient marking) |
@@ -416,16 +619,21 @@ Notes:
 
 + `PlayerModel` already has `IslandsPlayed`, `LongestRoad`, `HasLongestRoad` —
   reused, no new fields for those.
-+ **Ship *movement* is not an entitlement — there is no `Entitlement.MoveShip`.**
-  Entitlements are *purchases* (spend resources, held in `UnspentEntitlements`);
-  movement is free and holds nothing. **Buying** a ship uses the existing
-  `Entitlement.Ship` as a two-step, exactly like `Entitlement.Road`: the purchase
-  button adds `Ship` to `UnspentEntitlements` + marks `BuildableKinds.Ship` edges,
-  then clicking a ship-buildable edge **consumes** it via `ShipPurchaseMessage`
-  (mirrors `RoadPurchase` `GameStateMachine.cs:1387/1410`). **Moving** a ship is a
-  free turn action surfaced by `ActionFlags.MoveShipEnabled` → `BeginMoveShipMessage`
-  (sibling to Next/Undo) — the non-purchase analog of the `Soldier`-purchase →
-  `MustMoveRobber` precedent (`GameStateMachine.cs:770`).
++ **Two distinct ship entitlements — both ride the existing system (D3/D4):**
+  **`Entitlement.Ship`** = *buy + place* a ship (a purchase, two-step like
+  `Entitlement.Road`: buying adds `Ship` to `UnspentEntitlements` + marks
+  `BuildableKinds.Ship`; clicking a ship-buildable edge **consumes** it via
+  `ShipPurchaseMessage`, mirroring `RoadPurchase` `GameStateMachine.cs:1387/1410`).
+  **`Entitlement.MoveShip`** = *move* a ship — **optional**, auto-granted each turn
+  (not bought), consumed on a completed move so it recurs only once per turn via
+  `ConsumeEntitlement` → `SpentEntitlementsThisTurn`. No `ShipMovedThisTurn` flag,
+  no `ActionFlags.MoveShipEnabled` — "can I move?" is "do I hold `MoveShip`?"
++ **Optional-entitlement support (generic core-logic edits, not a model field):**
+  `Entitlement.IsOptional()` classifier; `AllowNext` (`:1079`) and the turn-end gate
+  (`:1912`) change `UnspentEntitlements.Count > 0` → `.Any(e => !e.IsOptional())` so
+  an unused `MoveShip` never blocks Next; `UpdateStateOnNextPlayer` **expires** unused
+  optional entitlements. `SeafarersRules.OnTurnAdvanced` grants the fresh `MoveShip`.
+  Reusable by any future optional per-turn action — no ship reference in core.
 + `ResourceRules` uses a positional primary ctor for JSON; `MaxShips` is added as a
   plain `{ get; set; } = 0` **auto-property** (not a ctor parameter), so the
   existing ctor-name-matching contract is untouched.
@@ -443,7 +651,7 @@ Notes:
 | `Scenario` | class | `string Id`, `int VictoryPointTarget = 10`, `bool ShipsEnabled`, `bool ShipMovementEnabled`, `bool NewIslandBonusVp`, `int NewIslandBonusVpAmount = 2`, `bool ShipsCountForLongestRoute`, `bool PirateEnabled`, `bool FogEnabled`; static `Scenario Regular` (all-off) | D2 — flags select active modules; default = Regular |
 | `CommandContext` | record | `string GameId`, `string PlayerId`, `string MessageType`, `JsonElement Payload` | D0 — generic dispatch payload |
 | `ShipPurchaseMessage` + `ShipPurchaseRecord` | message/record | edge `RoadKey` | D3 |
-| `BeginMoveShipMessage`, `CancelMoveShipMessage`, `MoveShipMessage` (+ records) | messages/records | `MoveShip`: `from`/`to` `RoadKey` | D4 |
+| `SelectShipToMoveMessage`, `MoveShipMessage`, `CancelMoveShipMessage` (+ records) | messages/records | `SelectShipToMove`: `shipKey` `RoadKey`; `MoveShip`: `to` `RoadKey` (source = `PendingShipMoveFrom`) | D4 |
 
 `Scenario` is threaded: `GameTemplateData.Scenario` (authored) → `IGameMetadata` →
 `GameModel.Scenario`. `GameTemplateData` (and `TemplateTile`) also gain the island
@@ -463,8 +671,8 @@ authoring fields below.
 
 `AddEnum<BuildableKind>()`, `AddEnum<EdgeKind>()` *(if persisted)*;
 `AddInterface<Scenario>()`, `AddInterface<CommandContext>()`,
-`AddInterface<ShipPurchaseMessage>()`, `AddInterface<BeginMoveShipMessage>()`,
-`AddInterface<CancelMoveShipMessage>()`, `AddInterface<MoveShipMessage>()`. Then
+`AddInterface<ShipPurchaseMessage>()`, `AddInterface<SelectShipToMoveMessage>()`,
+`AddInterface<MoveShipMessage>()`, `AddInterface<CancelMoveShipMessage>()`. Then
 `pwsh ./catan.ps1 generate-types`. (`RoadKey`, `TemplateTile`, `GameTemplateData`,
 `GameModel`, `PlayerModel`, `TileModel`, `RoadModel`, `ResourceRules` are already
 registered — regeneration picks up their new fields automatically.)
@@ -537,9 +745,11 @@ is called "done."
   `MarkBuildableSeaRoutes`, Ship entitlement/button. *Verify:* buy a ship
   (1 wood + 1 sheep), place it on a sea/coastal edge connected to your coastal
   building; cannot place on land; 15-ship limit.
-+ **8. Ship movement.** Begin/Cancel/Move state chart + enforced open-ship
-  legality (D4). *Verify:* move an open ship once/turn; cannot move one built this
-  turn or a closed-route ship; undo/cancel/turn-reset.
++ **8. Ship movement.** `MoveShip` optional entitlement + Select/Move/Cancel state
+  chart + enforced open-ship legality (D4). *Verify:* move an open ship once/turn
+  (entitlement consumed); an unused `MoveShip` never blocks Next; cannot move one
+  built this turn or a closed-route ship; undo/cancel/turn-reset (fresh grant next
+  turn).
 + **9. Longest Trade Route.** `IsRouteSegmentTraversable` + UI rename (D6).
   *Verify:* a mixed road+ship route through a building counts; award flips;
   Regular longest-road unchanged.
@@ -564,8 +774,9 @@ New models (`Scenario`, `CommandContext` payloads, ship/move messages + records)
 + **Hash:** road vs ship distinguished; island bonus + pending ship-move affect
   the Seafarers hash; Regular hash-neutral.
 + **Ships:** purchase validation (edge kind, connectivity); `BuildableKinds` on
-  coastal edges; movement legality (open end, not this turn, once/turn);
-  undo-after-begin, undo-after-move, cancel, turn reset, supplemental reset.
+  coastal edges; movement legality (open end, not this turn, once/turn via the
+  `MoveShip` entitlement); optional entitlement does not block Next; expiry + fresh
+  grant on turn advance; undo-after-select, undo-after-move, cancel, turn reset.
 + **Longest Trade Route:** road→settlement→ship junction; ship-only and mixed routes.
 + **Client:** stateful ship-move session; React replay of ship actions; generated types.
 + **Editor:** create/save/load a Seafarers board and start a game from it.
@@ -580,5 +791,14 @@ Shores does not use them.)
 
 1. **Per-scenario VP target** — confirm New Shores' exact target from the rulebook
    at Phase 3; it is a config value.
-2. **Ship-movement pathological cases (D4)** — Phase 5 fixes the exact boundary
+2. **Ship-movement pathological cases (D4)** — Phase 8 fixes the exact boundary
    between code-enforced and table-enforced disconnection cases.
+
+**Decided (kept for the record):**
+
++ **New-island scoring (D7)** — **per island, per player** (rulebook rule): 2 VP for
+  each non-main island a player is first to settle themselves. Not a race, not
+  capped.
++ **Ship-move initiation (D4)** — **direct ship-click, no button**, modeled as an
+  **optional per-turn `Entitlement.MoveShip`**; pending selection is
+  server-authoritative via `PendingShipMoveFrom` (not a `RoadState`).
