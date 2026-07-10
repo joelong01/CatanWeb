@@ -314,7 +314,19 @@ passes. For Seafarers this would corrupt sea tiles. Change it to:
   `IslandGroup`** are permuted, independently per group.
 + Keep the existing no-adjacent-6/8 (`ValidateGame`) + desert rules **per group**,
   but make the retry loop **bounded** (iteration cap) with a deterministic
-  fallback if a small group can't satisfy constraints — no unbounded loop.
+  fallback if a small group can't satisfy constraints — no unbounded loop. (The
+  prior implementation's retry was **unbounded with no fallback** and could spin
+  forever — this cap is a real fix, not just parity.)
++ **Pool/target consistency (lesson from the old code).** Build the permutation
+  **pool** from the *same* filtered set you assign into: both must exclude `Sea`
+  **and** `Fixed` tiles. (The old `RandomizeTiles` drew its pool from all tiles
+  incl. sea but assigned only into non-sea slots, so a land slot could draw `Sea`
+  and a land resource was silently dropped.)
++ **Harbors are authored, not type-shuffled (default).** Harbor = tile + edge
+  (`TemplateHarbor.Side`) + `Type`, fixed as authored; `Shuffle` does **not** permute
+  harbor types. (The old code re-shuffled harbor *types* per group via a
+  `RandomHarborTypeList` — we deliberately don't, to keep authored New Shores
+  harbors stable; a variable-harbor-setup option is a future opt-in, not now.)
 
 This lands in **Phase 1** (before any game creation), not Phase 2.
 
@@ -329,6 +341,16 @@ that checks: same owner, `ShipsCountForLongestRoute` gate, shared vertex, and th
 a **road↔ship transition only occurs through the owner's building**. Also fix the
 early-exit `max == gameModel.Roads.Count` to count eligible route segments. UI
 renames the award "Longest Trade Route" when ships are enabled.
+
+**The through-building junction is net-new (no prior art) — highest-risk in D6.**
+The prior implementation joined road↔ship **geometrically at any shared vertex** and
+only broke a route on an **opponent's** building; it never required *your own*
+building at a road↔ship transition. So `IsRouteSegmentTraversable`'s
+through-building rule is being written from scratch and carries the tests. **Preserve
+the existing award semantics** the old code did have and got right: the **≥5
+minimum length** and **first-to-reach tie-break** (their `RoadRaceTracking` — the
+earliest player to reach the max length keeps the award on a tie) must carry over to
+the combined road+ship route, not just the traversal.
 
 ### D7. New-island discovery bonus VP
 
@@ -913,8 +935,54 @@ New models (`Scenario`, `CommandContext` payloads, ship/move messages + records)
 ## Non-goals (initial scope)
 
 Fog/exploration, Cloth, Wonders, and scenarios beyond New Shores. (Gold fields are
-*not* excluded — permanent `GoldMine` tiles already work — but New Shores does not
-use them. The **pirate is now in scope** — see D11 / step 11.)
+*not* excluded — permanent `GoldMine` tiles already work. Whether **New Shores
+itself** uses fixed gold is unconfirmed: the prior implementation's New Shores board
+authored **2 fixed `GoldMine` tiles**, but that may be a house variant — confirm
+against the rulebook. Either way it is authoring data our existing `GoldMine`
+mechanic handles; no new code. The **pirate is now in scope** — see D11 / step 11.
+The dynamic "random gold per roll" house rule remains out of scope.)
+
+## Prior-art review — old UWP "Catan10" (scanned read-only, not copied)
+
+A prior hot-seat implementation by the same author (`d:\GitHub\old\Catan`) was
+scanned to catch missed mechanics. **No code was copied.** Crucial framing: it was a
+score/state **tracker**, not a rules engine — it never deducted resources, had **no
+ship movement**, the pirate **blocked nothing**, and steals were human-adjudicated.
+So it confirms *shapes* but offers **no reference logic** for the hard mechanics.
+
+**Confirms our model.** Ship = a road in a `Ship` state; sea = a fixed `Sea` tile
+excluded from shuffling; islands = tagged tile ranges with the main island scoring
+nothing; pirate on a sea hex / robber on land, both triggered by a 7 **or** a played
+Soldier, sharing **one** "must move" flow that branches on land-vs-sea; pirate steals
+from an **adjacent-ship** owner; **15** ships/player; longest route counts
+roads+ships and breaks on an **opponent's** building; per-group independent shuffle
+with no-adjacent-6/8 + desert. Their winner tracking was *manual and got forgotten* —
+our scenario VP target + `DeclareWinner` is the fix.
+
+**Architecture lessons (what to avoid) — validate our approach.** Their "diffgram"
+log hand-authored per-field string deltas in ~14 bespoke classes, **entangled
+mutation with logging** (model setters emitted log entries as a side effect), and
+depended on fragile multi-entry ordering (a real undo bug was "fixed" by commenting
+out a log line). Our **snapshot + copy-mutate-recompute** model — one message = one
+recompute = one snapshot, recording ≠ mutating — eliminates all of it. Store only the
+genuinely non-recomputable values (their `MaxNoResourceRolls` tie problem); recompute
+the rest.
+
+**From-scratch, highest-risk (no reference implementation exists — carry the tests):**
+
++ **Ship movement (D4)** — the old app has none; all four movability predicates are
+  novel.
++ **Longest-route through-building junction (D6)** — theirs joined road↔ship at any
+  vertex and broke only on an opponent building; our own-building junction rule is
+  net-new. Keep their **≥5 minimum** and **first-to-reach tie-break**.
++ **Pirate blocking (D11)** — theirs blocked nothing; "no ship build/move adjacent to
+  the pirate" is novel.
++ **Coastal connectivity (D3/D10)** — theirs let a ship attach to a land road with no
+  building; our edge classifier + coastal-building/own-ship rule is stricter.
+
+**Open items surfaced** (folded into D5, D2, and Open questions): harbor handling on
+shuffle, `IslandGroup` shuffle-vs-VP double duty, and whether New Shores includes
+fixed gold.
 
 ## Open questions
 
@@ -922,6 +990,15 @@ use them. The **pirate is now in scope** — see D11 / step 11.)
    at Phase 3; it is a config value.
 2. **Ship-movement pathological cases (D4)** — Phase 8 fixes the exact boundary
    between code-enforced and table-enforced disconnection cases.
+3. **`IslandGroup` double duty** — it currently serves as *both* the shuffle
+   partition (D5) and the island-VP identity (D7). The prior implementation kept
+   these **separate** (`TileGroups` for randomization vs `Islands` for scoring — one
+   shuffle group could contain several scoring islands). For New Shores they align
+   (main + one cluster + sea), so a single field suffices now; a richer scenario
+   would need a distinct shuffle-group id or a per-island "is scoring" flag. Revisit
+   only when a scenario forces it.
+4. **New Shores gold** — confirm whether the official scenario includes fixed gold
+   tiles (see Non-goals). Config-only either way.
 
 **Decided (kept for the record):**
 
