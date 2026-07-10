@@ -469,6 +469,7 @@ Buying is a **core** flow (`PurchaseMessage`, existing `HandlePurchase`) with a 
 the "hold the entitlement" step — placement is flow 2.
 
 ```mermaid
+%%{init: {'theme':'dark'}}%%
 sequenceDiagram
     autonumber
     actor U as Player
@@ -499,6 +500,7 @@ Placement is an **expansion** flow: `ShipPurchaseMessage` is not a core case, so
 takes the module-descriptor path — the reusable dispatch seam is the deliverable.
 
 ```mermaid
+%%{init: {'theme':'dark'}}%%
 sequenceDiagram
     autonumber
     actor U as Player
@@ -531,6 +533,7 @@ can only happen once per turn "just like everything else." No button: clicking a
 movable ship initiates; the server marks legal destinations (client owns no rules).
 
 ```mermaid
+%%{init: {'theme':'dark'}}%%
 sequenceDiagram
     autonumber
     actor U as Player
@@ -586,6 +589,7 @@ data-gated edit to `Shuffle()` (D5) that is inert for Regular (all tiles
 `IslandGroup 0`, no `Sea` tiles).
 
 ```mermaid
+%%{init: {'theme':'dark'}}%%
 sequenceDiagram
     autonumber
     actor U as Player
@@ -615,6 +619,7 @@ player picks one piece. `MoveRobber` is a core handler; `MovePirate` takes the
 module-descriptor path.
 
 ```mermaid
+%%{init: {'theme':'dark'}}%%
 sequenceDiagram
     autonumber
     actor U as Player
