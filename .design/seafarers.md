@@ -322,11 +322,11 @@ passes. For Seafarers this would corrupt sea tiles. Change it to:
   **and** `Fixed` tiles. (The old `RandomizeTiles` drew its pool from all tiles
   incl. sea but assigned only into non-sea slots, so a land slot could draw `Sea`
   and a land resource was silently dropped.)
-+ **Harbors are authored, not type-shuffled (default).** Harbor = tile + edge
-  (`TemplateHarbor.Side`) + `Type`, fixed as authored; `Shuffle` does **not** permute
-  harbor types. (The old code re-shuffled harbor *types* per group via a
-  `RandomHarborTypeList` — we deliberately don't, to keep authored New Shores
-  harbors stable; a variable-harbor-setup option is a future opt-in, not now.)
++ **Harbors are shuffled too.** Harbor **positions** stay as authored (tile + edge,
+  `TemplateHarbor.Side`), but `Shuffle` **permutes the harbor `Type`s** across the
+  scenario's harbors each time (as the old code did via `RandomHarborTypeList`) —
+  so each shuffle yields a fresh harbor layout. Bound the harbor-type pool to the
+  scenario's authored harbor set; keep it deterministic (`ReplayableRandom`).
 
 This lands in **Phase 1** (before any game creation), not Phase 2.
 
@@ -346,11 +346,12 @@ renames the award "Longest Trade Route" when ships are enabled.
 The prior implementation joined road↔ship **geometrically at any shared vertex** and
 only broke a route on an **opponent's** building; it never required *your own*
 building at a road↔ship transition. So `IsRouteSegmentTraversable`'s
-through-building rule is being written from scratch and carries the tests. **Preserve
-the existing award semantics** the old code did have and got right: the **≥5
-minimum length** and **first-to-reach tie-break** (their `RoadRaceTracking` — the
-earliest player to reach the max length keeps the award on a tie) must carry over to
-the combined road+ship route, not just the traversal.
+through-building rule is written from scratch and carries the tests. **Award
+semantics already live in our `CalculateLongestRoad`** (`:2237-2268`): the **≥5
+minimum** (`:2246`) and **current-holder-keeps-ties** (`:2262` — a challenger takes
+the award only with a strictly longer route). Because D6 swaps only the *adjacency
+predicate*, that threshold/tie logic is untouched and applies to combined road+ship
+routes automatically — nothing to port.
 
 ### D7. New-island discovery bonus VP
 
@@ -471,6 +472,29 @@ pirate-adjacent sea edges from `BuildableKinds.Ship` and from the movable-ship s
 `ShipPurchase`/`MoveShip` validation rejects them. So the pirate folds into the D10
 hex classifier and the D3/D4 ship seams — no core surgery. Legality: pirate only on
 **sea** hexes.
+
+### D12. Gold — fixed and random (both already exist; Seafarers keeps and tunes them)
+
+Two independent gold mechanisms already ship in the engine. **New Shores uses fixed
+gold, and the random-gold house rule is retained** (not excluded):
+
++ **Fixed gold** — a tile authored as `ResourceType.GoldMine`; a settlement on it
+  yields 1 gold, a city 2 (`BuildingModel.cs:94-95`; production at
+  `GameStateMachine.cs:1008`). New Shores authors gold tiles directly in the
+  template — no new code, just authoring data.
++ **Random gold (house rule) — kept.** `HouseRules.GoldTiles` (int, default 1) tiles
+  are marked `TileModel.TemporarilyGold` each turn by `SetTempGoldTiles`
+  (`GameStateMachine.cs:1924`, called from `UpdateStateOnNextPlayer :1357` and
+  `DoneResourceAllocation :1178`); a temp-gold tile produces gold via the same
+  `:1008` path. Deterministic via `NextRandom` (replay-safe). Two Seafarers tweaks to
+  the existing selection loop (`:1950-1971`):
+  + **Selection = any tile that is not `Desert` and not `Sea`** — add the `Sea`
+    exclusion (new: a gold sea hex produces nothing and takes no building). Desert
+    stays excluded.
+  + **May re-pick an already-gold tile** — drop the current "skip previously-gold"
+    guard (`:1955-1959`) so a tile that was gold last turn, or a fixed `GoldMine`,
+    can be chosen again. (Still avoid duplicates *within one* selection via
+    `usedIndices`.)
 
 ## Message-flow swimlanes (for review)
 
@@ -854,9 +878,10 @@ island VP, pirate). Every game-creating step preserves sea tiles.
   create → the in-game board matches the template. *(Ordering: create unshuffled
   so this verifies before step 3; or land step 3 first — decided at plan time.)*
 + **3. Sea-safe Shuffle + Balance.** Fixed/shuffleable tiles (sea always fixed) +
-  per-`IslandGroup` bounded shuffle (D5); wire the existing Shuffle + Balance
-  actions. *Verify:* shuffle repeatedly — sea never moves, resources/numbers stay
-  within each island, no adjacent 6/8 per group; Balance works; Regular unchanged.
+  per-`IslandGroup` bounded shuffle + harbor-`Type` shuffle (D5); wire the existing
+  Shuffle + Balance actions. *Verify:* shuffle repeatedly — sea never moves,
+  resources/numbers stay within each island, no adjacent 6/8 per group, harbor types
+  re-shuffle (positions fixed); Balance works; Regular unchanged.
 + **4. Render the game on the client.** The game board (not just the editor)
   renders the Seafarers `GameModel` — sea + island tiles with numbers, coastal
   geometry, robber, pan/zoom (mostly data-driven, D9). *Verify:* a
@@ -934,13 +959,9 @@ New models (`Scenario`, `CommandContext` payloads, ship/move messages + records)
 
 ## Non-goals (initial scope)
 
-Fog/exploration, Cloth, Wonders, and scenarios beyond New Shores. (Gold fields are
-*not* excluded — permanent `GoldMine` tiles already work. Whether **New Shores
-itself** uses fixed gold is unconfirmed: the prior implementation's New Shores board
-authored **2 fixed `GoldMine` tiles**, but that may be a house variant — confirm
-against the rulebook. Either way it is authoring data our existing `GoldMine`
-mechanic handles; no new code. The **pirate is now in scope** — see D11 / step 11.
-The dynamic "random gold per roll" house rule remains out of scope.)
+Fog/exploration, Cloth, Wonders, and scenarios beyond New Shores. (**Gold is in
+scope** — New Shores uses fixed `GoldMine` tiles and the random-gold house rule is
+kept; see D12. The **pirate is in scope** — see D11 / step 11.)
 
 ## Prior-art review — old UWP "Catan10" (scanned read-only, not copied)
 
@@ -974,15 +995,17 @@ the rest.
   novel.
 + **Longest-route through-building junction (D6)** — theirs joined road↔ship at any
   vertex and broke only on an opponent building; our own-building junction rule is
-  net-new. Keep their **≥5 minimum** and **first-to-reach tie-break**.
+  net-new. (The **≥5 minimum** and **tie handling** already live in our
+  `CalculateLongestRoad` and are preserved by the in-place predicate swap — nothing
+  to port.)
 + **Pirate blocking (D11)** — theirs blocked nothing; "no ship build/move adjacent to
   the pirate" is novel.
 + **Coastal connectivity (D3/D10)** — theirs let a ship attach to a land road with no
   building; our edge classifier + coastal-building/own-ship rule is stricter.
 
-**Open items surfaced** (folded into D5, D2, and Open questions): harbor handling on
-shuffle, `IslandGroup` shuffle-vs-VP double duty, and whether New Shores includes
-fixed gold.
+**Open items surfaced** (folded in): harbors are now **shuffled** each time (D5);
+gold is **in scope** — fixed + random (D12). The only item left genuinely open is
+`IslandGroup` doing double duty as shuffle-partition and VP-island (Open questions).
 
 ## Open questions
 
@@ -997,8 +1020,6 @@ fixed gold.
    (main + one cluster + sea), so a single field suffices now; a richer scenario
    would need a distinct shuffle-group id or a per-island "is scoring" flag. Revisit
    only when a scenario forces it.
-4. **New Shores gold** — confirm whether the official scenario includes fixed gold
-   tiles (see Non-goals). Config-only either way.
 
 **Decided (kept for the record):**
 
@@ -1008,3 +1029,10 @@ fixed gold.
 + **Ship-move initiation (D4)** — **direct ship-click, no button**, modeled as an
   **optional per-turn `Entitlement.MoveShip`**; the picked-up ship is marked with a
   new **`RoadState.MovableShip`** value (no new top-level `GameModel` field).
++ **Gold (D12)** — **in scope, both mechanisms.** New Shores uses **fixed
+  `GoldMine`** tiles (authored); the **random-gold** house rule is **kept**
+  (`HouseRules.GoldTiles`), tuned for Seafarers to exclude `Sea` (not just `Desert`)
+  and to allow re-picking an already-gold tile.
++ **Harbors (D5)** — positions authored, **`Type`s shuffled** on every `Shuffle`.
++ **Longest-route ties (D6)** — already handled by `CalculateLongestRoad` (≥5 +
+  current-holder-keeps-ties); the in-place predicate swap preserves it.
