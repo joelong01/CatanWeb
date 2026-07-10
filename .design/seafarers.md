@@ -71,8 +71,11 @@ it does **not** excuse skipping frequent, load-bearing rules.
   combined (joined through buildings).
 + **New-island bonus VP**: +2 VP for your first settlement on a new island.
 + **Scenario = a rules profile** (VP target + active mechanics), not just a map.
-+ **Later** (foundation must not preclude): Pirate, Fog/exploration, cloth,
-  wonders.
++ **Pirate**: on a 7 (or a played Soldier) the active player moves **either** the
+  robber (onto a land hex, blocks production, steal from an adjacent building) **or**
+  the pirate (onto a sea hex, blocks ship build/move on adjacent edges, steal from a
+  player with an adjacent ship). **One choice, one piece** — never both.
++ **Later** (foundation must not preclude): Fog/exploration, cloth, wonders.
 
 ## What already exists (large leverage)
 
@@ -411,6 +414,42 @@ buildability (excludes SeaEdge), ship buildability, purchase validation, route
 adjacency, and hit-testing — the single source of truth feeding `BuildableKinds`
 (D3) and the UI distinction (D9).
 
+### D11. Pirate ship — sea-robber via `OnSevenRolled`, one "resolve the 7" state
+
+Activated by `Scenario.PirateEnabled`. The pirate is the robber's sea counterpart.
+(There is **no working pirate today** — only leftover scaffolding: a no-op
+`GameState.HandlePirates`, a `PirateShip` glyph, and a legacy comment mislabeling
+the *robber* glyph `U+E90C` as "Pirate." This builds it.)
+
+**One choice, one piece — reuse the existing `MustMoveRobber` state; do NOT add a
+second state.** A rolled 7 (or a played Soldier) already routes to
+`GameState.MustMoveRobber`, which means "resolve the 7 by moving the blocking
+piece." When `PirateEnabled`, that same state additionally accepts a new
+**`MovePirateMessage {seaHex, targetPlayerId}`** — so the player moves the robber
+(land) **or** the pirate (sea), never both, and never two states. No new
+`GameState`: the client, while in `MustMoveRobber` with `PirateEnabled`, offers
+land hexes (robber) and sea hexes (pirate); whichever the player targets picks the
+piece. Consistent with "one state that allows either to happen."
+
+**Piece = a justified new field.** The pirate is a distinct board piece with a
+*position*, so it is genuinely field-shaped (not a render-state — the
+enum-vs-field principle's carve-out for board pieces). Add `GameModel.Pirate`
+**reusing the `RobberModel` shape** (`Coordinates`, `MovedBy`, `Targeted`,
+`ResourcesStolen`), symmetric with the existing `GameModel.Robber`. New Shores
+authors a **pirate start sea hex** in the template.
+
+**Move + steal (`SeafarersRules.OnSevenRolled`, now in-scope).** Pirate moves to the
+chosen sea hex; steal a random card from an opponent with a **ship adjacent** to the
+pirate's new hex — mirrors the robber's steal-from-adjacent-building, reusing
+`Targeted`/`ResourcesStolen`.
+
+**Continuous block (`OnRecompute`).** While the pirate occupies a sea hex, **no ship
+may be built or moved on an edge adjacent to it.** The module excludes
+pirate-adjacent sea edges from `BuildableKinds.Ship` and from the movable-ship set;
+`ShipPurchase`/`MoveShip` validation rejects them. So the pirate folds into the D10
+hex classifier and the D3/D4 ship seams — no core surgery. Legality: pirate only on
+**sea** hexes.
+
 ## Message-flow swimlanes (for review)
 
 All client actions travel the **same authoritative backbone**: the React proxy
@@ -568,6 +607,43 @@ sequenceDiagram
     Note over Core,Sync: no module, Regular is byte-identical, no Sea tiles and a single group
 ```
 
+### 5. Rolling a 7 (move robber OR pirate — one state, one piece)
+
+One `MustMoveRobber` state accepts **either** `MoveRobberMessage` (existing, land)
+**or** `MovePirateMessage` (new, sea) when `Scenario.PirateEnabled` (D11). The
+player picks one piece. `MoveRobber` is a core handler; `MovePirate` takes the
+module-descriptor path.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Player
+    participant Client
+    participant API as Action API
+    participant Proc as AsyncCommandProcessor
+    participant Core as GameStateMachine
+    participant Mod as SeafarersRules
+    participant Sync as Recompute + Broadcast
+
+    Note over Core: a 7 was rolled, GameState is MustMoveRobber, PirateEnabled
+    Sync-->>Client: GameStateUpdated, MustMoveRobber
+    Client-->>U: land hexes targetable for robber, sea hexes for pirate
+    alt player moves the robber (land)
+        U->>Client: click a land hex and a victim
+        Client->>API: POST api/game/action, MoveRobberMessage
+        API->>Proc: dispatch, core handler
+        Proc->>Core: MoveRobber, existing, steal from adjacent building
+    else player moves the pirate (sea)
+        U->>Client: click a sea hex and a victim
+        Client->>API: POST api/game/action, MovePirateMessage
+        API->>Proc: dispatch, module-descriptor path
+        Proc->>Mod: MovePirate descriptor via OnSevenRolled, move pirate, steal from a player with an adjacent ship
+    end
+    Proc->>Sync: LogGameModel, persist, broadcast
+    Note over Sync: OnRecompute excludes pirate-adjacent sea edges from BuildableKinds.Ship and movable ships
+    Sync-->>Client: GameStateUpdated, WaitingForNext
+```
+
 ## Extensibility points added to the core (consolidated)
 
 | # | Extension point | Kind | Core site | SeafarersRules use | Scope |
@@ -577,7 +653,7 @@ sequenceDiagram
 | 3 | `OnBuildingPlaced` | hook | `BuildingUpgrade :1558` | `AwardNewIslandBonusIfFirst` (D7) | New Shores |
 | 4 | `OnScore` | hook | `UpdateScore :1463` | add per-player scenario bonus VP | New Shores |
 | 5 | `OnTurnAdvanced` | hook | `UpdateStateOnNextPlayer` | grant `MoveShip` entitlement; reset `ShipsBuiltThisTurn` | New Shores |
-| 6 | Expansion descriptor dispatch (`CommandContext`) | core edit | `AsyncCommandProcessor` default `:154`; expose `Modules`; caller validation | `ShipPurchase`, `SelectShipToMove`, `MoveShip`, `CancelMoveShip` (+ records) | New Shores |
+| 6 | Expansion descriptor dispatch (`CommandContext`) | core edit | `AsyncCommandProcessor` default `:154`; expose `Modules`; caller validation | `ShipPurchase`, `SelectShipToMove`, `MoveShip`, `CancelMoveShip`, `MovePirate` (+ records) | New Shores |
 | 7 | `IsRouteSegmentTraversable` predicate | core edit (not DFS) | `OwnedAdjacentRoadsNotCounted :17` + early-exit count `:2216` | road-or-ship + junction-through-building (D6) | New Shores |
 | 8 | `Entitlement.MoveShip` + `Entitlement.IsOptional` + optional-entitlement gate/expiry + `GameState.MustMoveShip` | core edit (data + generic logic) | `GameEnums.cs`; `AllowNext :1079`; turn-gate `:1912`; `UpdateStateOnNextPlayer :1349` | optional per-turn ship move (D4); click-to-move, no button | New Shores |
 | 9 | `RoadModel.BuildableKinds` (flags) | core edit (data) | `MarkBuildableRoads` sets `Road`; module sets `Ship` | road/ship/both affordance (D3) | New Shores |
@@ -617,10 +693,10 @@ the serialized GameModel shape becomes. Ground rules:
 | `RoadState` | `Ship` reused (D3); **add** `MovableShip` (a ship picked up for a move, D4) | `GameEnums.cs:31` | ships + move-selection state |
 | `Entitlement` | `Ship` reused (buy+place); **add** `MoveShip` (optional, granted per turn) | `GameEnums.cs:115` | ship purchase (D3) + ship movement (D4) |
 | `ResourceType` | *(already has `Sea`, `GoldMine`)* — no change | `GameEnums.cs:5` | islands/gold (D1/D2) |
-| `GameState` | **add** `MustMoveShip` | `GameEnums.cs` | ship-move gesture sub-state (D4) |
+| `GameState` | **add** `MustMoveShip`; **reuse existing `MustMoveRobber`** for the pirate (no new value, D11) | `GameEnums.cs` | ship-move sub-state (D4); robber-or-pirate (D11) |
 | `BuildableKind` | **new `[Flags]` enum**: `None=0, Road=1, Ship=2` | new, `GameEnums.cs` | road/ship/both affordance (D3) |
 | `EdgeKind` | **new enum**: `Land, Coastal, Sea` | new, `GameEnums.cs` | edge classifier (D10); may be compute-only, see note |
-| `ActionType` | **add** (`ShipPurchase`, `SelectShipToMove`, `MoveShip`, `CancelMoveShip`) | `ActionType.cs` | CLI/replay + dispatch (D0) |
+| `ActionType` | **add** (`ShipPurchase`, `SelectShipToMove`, `MoveShip`, `CancelMoveShip`, `MovePirate`) | `ActionType.cs` | CLI/replay + dispatch (D0) |
 
 `EdgeKind` is derived from the two adjacent tiles and may live purely as a computed
 classifier (not persisted) — decide at Phase-6 plan time whether it is worth a
@@ -637,6 +713,7 @@ cached field on `RoadModel`. Default plan: **compute-only**, no stored field.
 | `TileModel` | `Fixed` | `bool` | `false` | never-shuffle marker; sea tiles treated fixed regardless (D5) | no |
 | `RoadModel` (`RoadModel.cs`) | `BuildableKinds` | `BuildableKind` | `BuildableKind.None` | can this edge take a road / ship / both (D3) | no (transient marking) |
 | `PlayerModel` (`PlayerModel.cs`) | `ScenarioBonusVp` | `int` | `0` | island bonus + future scenario VP; feeds `OnScore` (D2/D7) | yes |
+| `GameModel` | `Pirate` | `RobberModel` | `null`/unset | pirate piece position (D11); reuses the `RobberModel` shape, symmetric with `Robber`; a real board piece, so a justified field | yes (scenario) |
 | `ResourceRules` (`GameModels.cs`) | `MaxShips` | `int` | `0` | ship entitlement cap (15 Seafarers / 0 Regular) (D3) | no |
 
 Notes:
@@ -684,6 +761,7 @@ Notes:
 | `CommandContext` | record | `string GameId`, `string PlayerId`, `string MessageType`, `JsonElement Payload` | D0 — generic dispatch payload |
 | `ShipPurchaseMessage` + `ShipPurchaseRecord` | message/record | edge `RoadKey` | D3 |
 | `SelectShipToMoveMessage`, `MoveShipMessage`, `CancelMoveShipMessage` (+ records) | messages/records | `SelectShipToMove`: `shipKey` `RoadKey`; `MoveShip`: `to` `RoadKey` (source = the `RoadState.MovableShip` road) | D4 |
+| `MovePirateMessage` + `MovePirateRecord` | message/record | `seaHex` `HexCoordinates`, `targetPlayerId` `string?` (mirrors `MoveRobberMessage`) | D11 |
 
 `Scenario` is threaded: `GameTemplateData.Scenario` (authored) → `IGameMetadata` →
 `GameModel.Scenario`. `GameTemplateData` (and `TemplateTile`) also gain the island
@@ -694,6 +772,7 @@ authoring fields below.
 | Model | New field | Type | Default | Purpose |
 |---|---|---|---|---|
 | `GameTemplateData` | `Scenario` | `Scenario` | `Scenario.Regular` | authored scenario profile (D2) |
+| `GameTemplateData` | `PirateStart` | `HexCoordinates?` | `null` | authored pirate start sea hex (D11); `null` = no pirate |
 | `TemplateTile` | `IslandGroup` | `int` | `0` | authored island partition (D1) |
 | `TemplateTile` | `Fixed` | `bool` | `false` | authored never-shuffle marker (D5) |
 
@@ -704,8 +783,9 @@ authoring fields below.
 `AddEnum<BuildableKind>()`, `AddEnum<EdgeKind>()` *(if persisted)*;
 `AddInterface<Scenario>()`, `AddInterface<CommandContext>()`,
 `AddInterface<ShipPurchaseMessage>()`, `AddInterface<SelectShipToMoveMessage>()`,
-`AddInterface<MoveShipMessage>()`, `AddInterface<CancelMoveShipMessage>()`. Then
-`pwsh ./catan.ps1 generate-types`. (`RoadKey`, `TemplateTile`, `GameTemplateData`,
+`AddInterface<MoveShipMessage>()`, `AddInterface<CancelMoveShipMessage>()`,
+`AddInterface<MovePirateMessage>()`. Then `pwsh ./catan.ps1 generate-types`.
+(`RoadKey`, `HexCoordinates`, `RobberModel`, `TemplateTile`, `GameTemplateData`,
 `GameModel`, `PlayerModel`, `TileModel`, `RoadModel`, `ResourceRules` are already
 registered — regeneration picks up their new fields automatically.)
 
@@ -722,7 +802,7 @@ registered — regeneration picks up their new fields automatically.)
 ## New statistics to track
 
 Ships built / remaining (of 15); Longest Trade Route length; islands settled +
-bonus VP; (later) pirate steals, cloth/special VP.
+bonus VP; pirate steals; (later) cloth/special VP.
 
 ## Sequencing plan (verify each step)
 
@@ -732,8 +812,8 @@ expansion mechanism is the deliverable and carries the tests; the Seafarers piec
 is only the config/test that exercises it (see the Prime rule). **Arc A** (1–5)
 makes the Seafarers board visible and
 **standard-playable** — create, shuffle, render, complete setup — before any ship
-mechanic. **Arc B** (6–10) adds the Seafarers mechanics. Every game-creating step
-preserves sea tiles.
+mechanic. **Arc B** (6–11) adds the Seafarers mechanics (ships, movement, route,
+island VP, pirate). Every game-creating step preserves sea tiles.
 
 ### Arc A — board visible & standard play
 
@@ -788,9 +868,17 @@ is called "done."
 + **10. New-island bonus VP + winner.** D7 + scenario score/target display (D2).
   *Verify:* first settlement on a new island grants +2 VP; VP target shown; winner
   reflects total.
++ **11. Pirate ship.** D11: `GameModel.Pirate` (+ template `PirateStart`),
+  `MovePirateMessage` accepted in `MustMoveRobber` when `PirateEnabled`,
+  `SeafarersRules.OnSevenRolled` (move + steal-from-adjacent-ship), and
+  `OnRecompute` blocking pirate-adjacent ship build/move. *Verify:* on a 7 (and on a
+  played Soldier) the player moves the robber **or** the pirate — not both; the
+  pirate blocks/steals from adjacent ships; a ship cannot be built/moved next to the
+  pirate; Regular unaffected.
 
-Steps 1–10 deliver a playable "Heading for New Shores." **Later** (own epics):
-Pirate, Fog/exploration, cloth, wonders.
+Steps 1–11 deliver a rules-complete "Heading for New Shores" (ships, movement,
+route, island VP, **and the pirate**). **Later** (own epics): Fog/exploration,
+cloth, wonders.
 
 ## Type generation & tooling
 
@@ -810,14 +898,18 @@ New models (`Scenario`, `CommandContext` payloads, ship/move messages + records)
   `MoveShip` entitlement); optional entitlement does not block Next; expiry + fresh
   grant on turn advance; undo-after-select, undo-after-move, cancel, turn reset.
 + **Longest Trade Route:** road→settlement→ship junction; ship-only and mixed routes.
++ **Pirate (D11):** on a 7 **and** on a played Soldier, `MustMoveRobber` accepts
+  robber **or** pirate (one piece); pirate-adjacent ship build/move is blocked;
+  steal from an adjacent-ship owner; Regular unaffected (no pirate, `MoveRobber`
+  path unchanged).
 + **Client:** stateful ship-move session; React replay of ship actions; generated types.
 + **Editor:** create/save/load a Seafarers board and start a game from it.
 
 ## Non-goals (initial scope)
 
-Pirate, Fog/exploration, Cloth, Wonders, and scenarios beyond New Shores. (Gold
-fields are *not* excluded — permanent `GoldMine` tiles already work — but New
-Shores does not use them.)
+Fog/exploration, Cloth, Wonders, and scenarios beyond New Shores. (Gold fields are
+*not* excluded — permanent `GoldMine` tiles already work — but New Shores does not
+use them. The **pirate is now in scope** — see D11 / step 11.)
 
 ## Open questions
 
