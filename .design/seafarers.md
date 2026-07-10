@@ -67,28 +67,38 @@ every client, and replay verify they hold **identical** state; a mismatch means
 someone is out of sync.
 
 **Mechanism (deliberately trivial).** `ComputeGameHash`
-(`GameModelExtensions.cs:208`) sums one term per **discriminating value**: for each,
+(`GameModelExtensions.ComputeGameHash`) sums one term per **discriminating value**:
 `hash += nextPrime × value` — a prime popped off a stack, times the
 field/enum/property value (enums cast to `int`: `(int)GameState × prime`, robber
-`Q/R/S × prime`, each owned road's owner + position, …). **Adding a new
-discriminating value = pop the next prime, multiply by the value, add. Nothing
-more.**
+`Q/R/S × prime`, …). **Adding a new discriminating value = pop the next prime,
+multiply by the value, add. Nothing more.**
+
+**Accurate baseline (verified against current code) — and its gap.** For **tiles**
+and **harbors** the code iterates *every* slot in sorted order and hashes the content
+per slot, so slot identity is implicit in the sort. But **owned roads and buildings
+iterate the *owned-only* subset** and hash the **sorted-list index** (`0..N-1`) +
+owner (+ `BuildingState`) — **the canonical `RoadKey`/`BuildingKey` position is used
+only to sort, then discarded, and `RoadState` is not hashed at all.** So the current
+hash under-discriminates: two boards where the same owner holds the same *number* of
+roads can collide regardless of *where* they are (this is **bug #205**). D8 must be
+read against *this* baseline, not a stronger imagined one.
 
 **Rule for this epic — classify every new value.** Each field/enum a step introduces
 is explicitly marked **discriminating** (enters the hash) or **not**:
 
 + *Discriminating* — anything two otherwise-identical games could differ on and must
-  read as different: owner, position, `GameState`, `RoadState` (road vs
-  `Ship`/`MovableShip`), scenario id/flags, `ShuffleGroup`, per-player
-  scenario-bonus VP, ship-move state, `TemporarilyGold`, pirate/robber coordinates.
+  read as different: owner, **canonical slot key (`RoadKey`/`BuildingKey`)**,
+  `GameState`, `RoadState` (road vs `Ship`/`MovableShip`), scenario id/flags,
+  `ShuffleGroup`, per-player scenario-bonus VP, `TemporarilyGold`, pirate/robber
+  coordinates.
 + *Not* — display-only / derived / metadata: `GameName`, timestamps, `BuildableKinds`
   and other recomputed markings, `IsShip`-style helpers, computed island ids (derived
   from tiles already hashed).
 
-D8 governs **when** a value may enter the hash (scenario-opted games hash the new
-fields; Regular/Expansion stay **hash-neutral** so existing `.catan_test` hashes
-never change) via `GameHashVersion`. The "Hashed?" column of the model tables is this
-classification.
+D8 governs **when** a value may enter the hash (scenario-opted games get the
+strengthened v2 hash; Regular/Expansion stay **hash-neutral** so existing
+`.catan_test` hashes never change) via `GameHashVersion`. The "Hashed?" column of the
+model tables is this classification.
 
 ## Rules that shape the architecture
 
@@ -118,7 +128,7 @@ classification.
 | `Road` renders `'Ship'` state | `react-ui/components/game/tiles/Road.tsx:10` | exists |
 | Permanent gold: `GoldMine` tile → settlement 1 / city 2 gold | `Catan3.Shared/Models/BuildingModel.cs:94-95`; `ResourcesModelExtensions.cs:75,106`; `GameStateMachine.cs:1008` | works |
 | Template → board (sea tile = `Resource:"Sea"`) | `BoardInfoJsonAdapter.cs`, `GameTemplateData.cs` | exists |
-| Generic action REST API | `GameApiController.cs:126` → `AsyncCommandProcessor.cs:127` | reuse |
+| Generic action REST API | `GameApiController` `/api/game/action` → `AsyncCommandProcessor.ExecuteGameLogicAsync` | reuse |
 | Longest-road traversal (fork/loop-aware, **not** DFS) | `GameStateMachine.cs:2216`; adjacency `RoadModelExtensions.cs:17` | extend in place |
 | New optional JSON fields default to empty on load | System.Text.Json (`JsonHelper.cs`) | auto |
 
@@ -164,10 +174,11 @@ The core invokes each hook as a single `foreach` loop at its site; with an empty
 list every loop is a no-op ⇒ Regular is byte-identical (backwards-compat is free).
 
 **Expansion dispatch — reuse `api/game/action` with a command context.**
-`AsyncCommandProcessor` (`:127`) switches on `messageType`, deserializes, calls a
-handler, and returns `(GameModel, IRecordedMessage)`; its default **throws** (`:154`).
-Replace that default with a **module descriptor** path that preserves the same
-caller validation, logging, and replay contract as core actions:
+`AsyncCommandProcessor.ExecuteGameLogicAsync` switches on `messageType`,
+deserializes, calls a handler, and returns `(GameModel, IRecordedMessage)`; its
+`default` arm **throws** on an unknown message type. Replace that default with a
+**module descriptor** path that preserves the same caller validation, logging, and
+replay contract as core actions:
 
 ```csharp
 public sealed record CommandContext(string GameId, string PlayerId,
@@ -272,8 +283,8 @@ that *is* "once per turn," done "just like everything else." The additions are
 generalization — optional entitlements — with **no new top-level `GameModel` field**
 for the gesture; nothing ship-specific enters core control flow.)
 
-**New generic concept: optional entitlements.** Today `AllowNext`
-(`GameStateMachine.cs:1079`) and the turn-end gate (`:1912`) block "Next" while
+**New generic concept: optional entitlements.** Today `GameStateMachine.AllowNext`
+and the server-side gate `GameStateMachine.CanTransitionToNext` block "Next" while
 `UnspentEntitlements.Count > 0` ("you can't advance holding something unplayed").
 A ship move is *optional* — it must **not** block turn-end. Add a generic
 classifier `Entitlement.IsOptional` (data about the entitlement, not an expansion
@@ -424,13 +435,19 @@ automatically surrounded by sea / board-edge — no separate "surrounded by wate
 check is needed.
 
 **Main island = the component that contains the center hex `(0,0,0)`.** `(0,0,0)`
-is the board origin (ring 0 of the spiral layout; `HexCoordinates.cs:352,521`) and
-is land on the main island. That component **never scores**; every other component
-is a scoring island. No "largest component" heuristic and **no template
-`MainIsland` tag** — just geometry. Edge case handled for free: if `(0,0,0)` is
-*sea* (a main-less scenario like Four Islands), no component contains it, so **all**
-components score. Authoring guideline: the New Shores main island must cover
-`(0,0,0)` (natural — it is the central landmass).
+is the board origin (ring 0 of `HexCoordinates.GenerateSpiral`, the spiral layout
+generator) and is land on the main island. That component **never scores**; every
+other component is a scoring island. No "largest component" heuristic and **no
+template `MainIsland` tag** — just geometry. Edge case handled for free: if
+`(0,0,0)` is *sea* (a main-less scenario like Four Islands), no component contains
+it, so **all** components score.
+
+**Template validation (guard, not just a guideline).** Because a malformed board
+could silently mis-score, any scenario with `NewIslandBonusVp` enabled is
+**validated at template-load / game-create**: `(0,0,0)` must exist and be a **land**
+tile (so it anchors the intended main island). Fail the create with a clear error
+rather than scoring the wrong islands. (New Shores satisfies this naturally — the
+main island is the central landmass.)
 
 **Scoring rule — follow the rulebook (decided).** Per the official "Heading for New
 Shores" rule: **each player scores `NewIslandBonusVpAmount` (2) VP for their first
@@ -448,19 +465,43 @@ order — it is the same one-predicate seam; New Shores uses per-island.)
 
 ### D8. Backwards compatibility + versioned hash policy
 
-New fields are optional with empty/zero defaults; old saves deserialize cleanly.
-But `GameHash` is a separate contract: today the owned-road hash includes owner +
-position, **not `RoadState`** (`GameModelExtensions.cs:262`), so a road and a ship
-on the same edge hash identically, and scenario/island/ship-move state is absent.
+New fields are optional with empty/zero defaults, so old saves deserialize cleanly.
+But `GameHash` is a **separate contract**, and the current (v1) formula is **weaker
+than a stronger reading suggests** — state it accurately before extending it.
 
-Policy: add **`GameHashVersion`**. For **scenario-opted** games, the hash includes
-`RoadState` (road vs ship), scenario id/flags, per-player scenario bonus VP, and
-pending-ship-move state. For **Regular/Expansion**, the formula is **unchanged**
-(hash-neutral) so existing `.catan_test` hashes still match. (No legacy Seafarers
-saves exist, so there is no in-progress migration case — only Regular/Expansion
-legacy, which stays neutral.) Tests: existing Regular/Expansion replay hashes
-unchanged; a Seafarers hash distinguishes road vs ship, island bonus, and pending
-move.
+**v1 baseline as it actually is** (`GameModelExtensions.ComputeGameHash`): tiles and
+harbors hash content per **every** sorted slot (slot identity implicit). Owned
+**roads** hash `sortedOwnedIndex + ownerHash`; owned **buildings** hash
+`sortedOwnedIndex + BuildingState + ownerHash`. So v1 **does not hash the canonical
+`RoadKey`/`BuildingKey` position** (only the owned-list index) and **does not hash
+`RoadState`**. Consequences: a road and a ship on the same edge hash identically,
+*and* different owned-edge sets can collide when owner counts/order match
+(**bug #205**). Do not describe v1 as "owner + position."
+
+**Policy: add `GameHashVersion`.**
+
++ **v1 (Regular/Expansion) — frozen and unchanged.** The formula stays byte-for-byte
+  identical so existing `.catan_test` hashes still match. **Bug #205 is therefore
+  *not* fixed for Regular** here — a deliberate compat choice; its collision class
+  has been harmless in practice, and strengthening v1 would invalidate every
+  recording. (Fixing #205 for all game types is a separate, versioned decision —
+  see "Open questions".)
++ **v2 (scenario-opted) — the strengthened hash.** Adds, per owned road/building, a
+  **deterministic scalar derived from the canonical `RoadKey`/`BuildingKey`** (this
+  is exactly the **#205 fix**, scoped to scenario games) **plus `RoadState`** (road
+  vs `Ship` vs `MovableShip`), and the new scenario discriminators: `Scenario`
+  id/flags, per-player `ScenarioBonusVp`, `TemporarilyGold`, and the `Pirate`
+  position. (`MovableShip` and the selected ship are captured *via* `RoadState` +
+  slot key — no separate field. Islands are derived from already-hashed tile
+  positions, so they need no term. `ShuffleGroup` is static board metadata; hashing
+  it is optional and adds only board-identity discrimination.)
+
+No legacy Seafarers saves exist, so there is no in-progress migration case — only
+Regular/Expansion legacy, which stays v1-neutral. **Tests (required for confidence):**
+(a) existing Regular/Expansion replay-hash fixtures unchanged; (b) a v1 baseline test
+that *documents* the owned-set-permutation collision (so the known gap is pinned);
+(c) v2 tests proving it distinguishes road vs ship, two different owned-edge sets,
+island bonus, pirate position, and temp-gold.
 
 ### D9. Client: render the GameModel; collect Actions — data-driven + stateful seam
 
@@ -533,6 +574,16 @@ chosen sea hex; steal a random card from an opponent with a **ship adjacent** to
 pirate's new hex — mirrors the robber's steal-from-adjacent-building, reusing
 `Targeted`/`ResourcesStolen`.
 
+**No-victim / no-target resolution (a frequent case, not pathological).** `targetPlayerId`
+is **nullable** — mirroring the existing `MoveRobberMessage` (which already accepts a
+null target). Semantics: **moving the piece is the action; the steal is optional.** If
+the chosen hex has no eligible victim (no adjacent enemy ship for the pirate; no
+adjacent enemy building for the robber), the move still completes with **no steal**
+(`Targeted = null`, `ResourcesStolen = 0`). Because the player may move **either**
+piece, the 7 is always resolvable even if one piece has no target. (A player may not
+"skip" the move — a 7 must be resolved by relocating one piece, exactly as the base
+robber flow requires today.) Covered by replay assertions for both branches.
+
 **Continuous block (`OnRecompute`).** While the pirate occupies a sea hex, **no ship
 may be built or moved on an edge adjacent to it.** The module excludes
 pirate-adjacent sea edges from `BuildableKinds.Ship` and from the movable-ship set;
@@ -562,17 +613,24 @@ gold, and the random-gold house rule is retained** (not excluded):
     guard (`:1955-1959`) so a tile that was gold last turn, or a fixed `GoldMine`,
     can be chosen again. (Still avoid duplicates *within one* selection via
     `usedIndices`.)
+  + **Bound the loop (required — new failure mode).** The current loop spins until it
+    has picked `GoldTiles` distinct tiles. Adding the `Sea` exclusion means a
+    sea-heavy board can have **fewer eligible (non-`Desert`, non-`Sea`) tiles than
+    `GoldTiles`**, which would loop forever. Clamp the target to
+    `min(GoldTiles, eligibleTileCount)` (or cap attempts with a deterministic
+    fallback) so it always terminates. Same "bounded with deterministic fallback"
+    rule as the D5 shuffle — apply it to every random-pick loop Seafarers constrains.
 
 ## Message-flow swimlanes (for review)
 
 All client actions travel the **same authoritative backbone**: the React proxy
-`executeCommand(messageType, data)` POSTs to `/api/game/action`
-(`GameServiceProxy.ts:693`); `AsyncCommandProcessor` switches on `messageType`;
-the handler mutates a copy; `LogGameModel` runs the single recompute pipeline,
-persists, and broadcasts `GameStateUpdated` to the game group; the caller gets
+`GameServiceProxy.executeCommand(messageType, data)` POSTs to `/api/game/action`;
+`AsyncCommandProcessor.ExecuteGameLogicAsync` switches on `messageType`; the handler
+mutates a copy; `LogGameModel` runs the single recompute pipeline, persists, and
+broadcasts `GameStateUpdated` to the game group; the caller gets
 `CommandCompleted`/`CommandFailed`. **Core** messages hit an existing
 `GameStateMachine` handler; **expansion** messages take the module-descriptor path
-(D0). The four flows below differ only in *which handler runs* and *what state it
+(D0). The five flows below differ only in *which handler runs* and *what state it
 sets* — no new endpoints or hub methods.
 
 ### 1. Buying a ship (acquire the entitlement — a purchase)
@@ -771,11 +829,11 @@ sequenceDiagram
 | 3 | `OnBuildingPlaced` | hook | `BuildingUpgrade :1558` | `AwardNewIslandBonusIfFirst` (D7) | New Shores |
 | 4 | `OnScore` | hook | `UpdateScore :1463` | add per-player scenario bonus VP | New Shores |
 | 5 | `OnTurnAdvanced` | hook | `UpdateStateOnNextPlayer` | grant `MoveShip` entitlement; reset `ShipsBuiltThisTurn` | New Shores |
-| 6 | Expansion descriptor dispatch (`CommandContext`) | core edit | `AsyncCommandProcessor` default `:154`; expose `Modules`; caller validation | `ShipPurchase`, `SelectShipToMove`, `MoveShip`, `CancelMoveShip`, `MovePirate` (+ records) | New Shores |
+| 6 | Expansion descriptor dispatch (`CommandContext`) | core edit | `AsyncCommandProcessor.ExecuteGameLogicAsync` default-throw arm; expose `Modules`; caller validation | `ShipPurchase`, `SelectShipToMove`, `MoveShip`, `CancelMoveShip`, `MovePirate` (+ records) | New Shores |
 | 7 | `IsRouteSegmentTraversable` predicate | core edit (not DFS) | `OwnedAdjacentRoadsNotCounted :17` + early-exit count `:2216` | road-or-ship + junction-through-building (D6) | New Shores |
-| 8 | `Entitlement.MoveShip` + `Entitlement.IsOptional` + optional-entitlement gate/expiry + `GameState.MustMoveShip` | core edit (data + generic logic) | `GameEnums.cs`; `AllowNext :1079`; turn-gate `:1912`; `UpdateStateOnNextPlayer :1349` | optional per-turn ship move (D4); click-to-move, no button | New Shores |
+| 8 | `Entitlement.MoveShip` + `Entitlement.IsOptional` + optional-entitlement gate/expiry + `GameState.MustMoveShip` | core edit (data + generic logic) | `GameEnums.cs`; `AllowNext`; `CanTransitionToNext`; `UpdateStateOnNextPlayer` | optional per-turn ship move (D4); click-to-move, no button | New Shores |
 | 9 | `RoadModel.BuildableKinds` (flags) | core edit (data) | `MarkBuildableRoads` sets `Road`; module sets `Ship` | road/ship/both affordance (D3) | New Shores |
-| 10 | `Scenario` + `ResourceRules.MaxShips` + `MaxEntitlementCount(Ship)` + `Ship` `EntitlementPurchaseModel` + `GameHashVersion` | core edit (data) | `GameModel.cs`, `GameModels.cs`, hash `:252` | limit + purchase UI + hash policy (D2/D8) | New Shores |
+| 10 | `Scenario` + `ResourceRules.MaxShips` + `MaxEntitlementCount(Ship)` + `Ship` `EntitlementPurchaseModel` + `GameHashVersion` | core edit (data) | `GameModel.cs`, `GameModels.cs`, `ComputeGameHash` | limit + purchase UI + hash policy (D2/D8) | New Shores |
 | 11 | `OnSevenRolled` | hook | seven path `:1051` | pirate move | Later |
 
 The core gains **five hook loops + one dispatch fallback + `IsRouteSegmentTraversable`**
@@ -856,8 +914,8 @@ Notes:
   `ConsumeEntitlement` → `SpentEntitlementsThisTurn`. No `ShipMovedThisTurn` flag,
   no `ActionFlags.MoveShipEnabled` — "can I move?" is "do I hold `MoveShip`?"
 + **Optional-entitlement support (generic core-logic edits, not a model field):**
-  `Entitlement.IsOptional()` classifier; `AllowNext` (`:1079`) and the turn-end gate
-  (`:1912`) change `UnspentEntitlements.Count > 0` → `.Any(e => !e.IsOptional())` so
+  `Entitlement.IsOptional()` classifier; `AllowNext` and `CanTransitionToNext`
+  change `UnspentEntitlements.Count > 0` → `.Any(e => !e.IsOptional())` so
   an unused `MoveShip` never blocks Next; `UpdateStateOnNextPlayer` **expires** unused
   optional entitlements. `SeafarersRules.OnTurnAdvanced` grants the fresh `MoveShip`.
   Reusable by any future optional per-turn action — no ship reference in core.
@@ -906,9 +964,15 @@ containing `(0,0,0)`.
 `AddInterface<ShipPurchaseMessage>()`, `AddInterface<SelectShipToMoveMessage>()`,
 `AddInterface<MoveShipMessage>()`, `AddInterface<CancelMoveShipMessage>()`,
 `AddInterface<MovePirateMessage>()`. Then `pwsh ./catan.ps1 generate-types`.
-(`RoadKey`, `HexCoordinates`, `RobberModel`, `TemplateTile`, `GameTemplateData`,
-`GameModel`, `PlayerModel`, `TileModel`, `RoadModel`, `ResourceRules` are already
-registered — regeneration picks up their new fields automatically.)
+
+Two distinct cases — do not conflate them:
+
++ **New types/enums must be registered** (the `AddInterface`/`AddEnum` calls above);
+  without an explicit registration they are **not** generated.
++ **Already-registered types auto-pick up new fields** on regeneration:
+  `RoadKey`, `HexCoordinates`, `RobberModel`, `TemplateTile`, `GameTemplateData`,
+  `GameModel`, `PlayerModel`, `TileModel`, `RoadModel`, `ResourceRules` — their new
+  members appear with no spec change.
 
 ### Landing order (matches the sequencing plan)
 
@@ -1098,6 +1162,12 @@ connected-component islands for VP (D1/D7).
    at Phase 3; it is a config value.
 2. **Ship-movement pathological cases (D4)** — Phase 8 fixes the exact boundary
    between code-enforced and table-enforced disconnection cases.
+3. **Strengthen the v1 (Regular) hash too? (bug #205)** — v2 fixes the
+   owned-road/building slot-identity gap for scenario games (D8). Fixing it for
+   **Regular** as well would require a version bump and **regenerating every
+   `.catan_test` baseline**. Recommended: **defer** — Regular's collision class has
+   been harmless; do it only if a standalone hardening PR is warranted. Decide with
+   the developer.
 
 **Decided (kept for the record):**
 
