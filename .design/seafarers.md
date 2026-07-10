@@ -503,6 +503,17 @@ that *documents* the owned-set-permutation collision (so the known gap is pinned
 (c) v2 tests proving it distinguishes road vs ship, two different owned-edge sets,
 island bonus, pirate position, and temp-gold.
 
+**Performance — a benchmark, not live instrumentation.** `ComputeGameHash` is linear
+in board size (~hundreds of small `BigInteger` adds + a few sorts of tens of items)
+and runs once per move in `LogGameModel`, at human speed — so it is **tens of
+microseconds, sub-millisecond**, and does **not** warrant timing code in the hot
+path. v2 makes it heavier (slot key + `RoadState` + scenario terms), so add **one
+micro-benchmark test** on a worst-case Seafarers board (max tiles/roads/ships/
+buildings) asserting the hash stays well under a threshold (e.g. `< 1 ms`), guarding
+against a v2/#205 regression. If recompute latency ever becomes a real question,
+instrument the **whole `LogGameModel` pipeline** behind a trace level — `CalculateLongestRoad`'s
+per-player DFS is the likelier hotspot, not the hash.
+
 ### D9. Client: render the GameModel; collect Actions — data-driven + stateful seam
 
 The client has exactly **two responsibilities**: (1) **render the GameModel** (a
