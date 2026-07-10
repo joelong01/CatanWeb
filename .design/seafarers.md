@@ -387,9 +387,19 @@ joining hex-neighbors via the existing adjacency (`HexCoordinates.GetAllNeighbor
 / `TileModelExtensions.AdjacentTiles` — the same the D10 edge classifier uses; two
 land hexes sharing a `LandEdge` are one island). Each connected component is an
 island with a **stable id = the canonical (min) `HexCoordinates`** in the component
-— position-based, so it survives shuffles and is hashable. The **main island** is
-the largest component (holds for New Shores), with an optional template `MainIsland`
-override; the main island never scores.
+— position-based, so it survives shuffles and is hashable. A component is "an
+island" precisely because it is a **maximal** connected land group, so it is
+automatically surrounded by sea / board-edge — no separate "surrounded by water"
+check is needed.
+
+**Main island = the component that contains the center hex `(0,0,0)`.** `(0,0,0)`
+is the board origin (ring 0 of the spiral layout; `HexCoordinates.cs:352,521`) and
+is land on the main island. That component **never scores**; every other component
+is a scoring island. No "largest component" heuristic and **no template
+`MainIsland` tag** — just geometry. Edge case handled for free: if `(0,0,0)` is
+*sea* (a main-less scenario like Four Islands), no component contains it, so **all**
+components score. Authoring guideline: the New Shores main island must cover
+`(0,0,0)` (natural — it is the central landmass).
 
 **Scoring rule — follow the rulebook (decided).** Per the official "Heading for New
 Shores" rule: **each player scores `NewIslandBonusVpAmount` (2) VP for their first
@@ -852,11 +862,11 @@ authoring fields below.
 | `GameTemplateData` | `PirateStart` | `HexCoordinates?` | `null` | authored pirate start sea hex (D11); `null` = no pirate |
 | `TemplateTile` | `ShuffleGroup` | `int` | `0` | authored shuffle partition (D1) |
 | `TemplateTile` | `Fixed` | `bool` | `false` | authored never-shuffle marker (D5) |
-| `TemplateTile` | `MainIsland` | `bool` | `false` | optional main-island override (D7); default = largest land component |
 
 `Sea` is already expressible as `TemplateTile.Resource = "Sea"` (no change).
 Island-VP identity is **derived** (D7 `ComputeIslands`), so there is **no** island
-tag on the tile.
+tag on the tile and **no** main-island tag — the main island is the component
+containing `(0,0,0)`.
 
 ### Type-generation registrations to add (`CatanTypeGenSpec.cs`)
 
@@ -872,8 +882,8 @@ registered — regeneration picks up their new fields automatically.)
 ### Landing order (matches the sequencing plan)
 
 + **Phase 1 (before any game creation):** `TileModel.ShuffleGroup` + `Fixed`,
-  `TemplateTile.ShuffleGroup` + `Fixed` + `MainIsland`, and `ComputeIslands`
-  (D1/D5/D7 need these before `Shuffle`).
+  `TemplateTile.ShuffleGroup` + `Fixed`, and `ComputeIslands` (main = the `(0,0,0)`
+  component) — D1/D5/D7 need these before `Shuffle`.
 + **Phase 6 (module framework):** `Scenario`, `GameHashVersion`,
   `ResourceRules.MaxShips`, `BuildableKind`, `CommandContext`, `GameState.MustMoveShip`
   scaffolding.
@@ -1051,8 +1061,9 @@ connected-component islands for VP (D1/D7).
   **`ShuffleGroup`** (tag) pools land tiles that permute together (islands can shuffle
   *with each other* by sharing one). **Island VP identity is derived** — connected
   components of land hexes (`ComputeIslands`, flood-fill; sea fixed ⇒ islands
-  invariant under shuffle); id = canonical min-coord; main = largest component (or a
-  template `MainIsland`). Replaces the conflated `IslandGroup`.
+  invariant under shuffle); id = canonical min-coord. **Main island = the component
+  containing the center `(0,0,0)`** (no largest-component heuristic, no tag; if
+  `(0,0,0)` is sea, all components score). Replaces the conflated `IslandGroup`.
 + **New-island scoring (D7)** — **per island, per player** (rulebook rule): 2 VP for
   each non-main island a player is first to settle themselves. Not a race, not
   capped.
