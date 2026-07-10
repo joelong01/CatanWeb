@@ -59,6 +59,37 @@ it does **not** excuse skipping frequent, load-bearing rules.
 4. **Leverage existing mechanisms** — a human building the board in the editor
    should "just work."
 
+## GameHash — the GameModel's identity (foundational)
+
+**If the `GameHash` differs, the game is different; if two `GameHash`es match, the
+`GameModel` is the same.** The hash *is* the game's identity — it is how the service,
+every client, and replay verify they hold **identical** state; a mismatch means
+someone is out of sync.
+
+**Mechanism (deliberately trivial).** `ComputeGameHash`
+(`GameModelExtensions.cs:208`) sums one term per **discriminating value**: for each,
+`hash += nextPrime × value` — a prime popped off a stack, times the
+field/enum/property value (enums cast to `int`: `(int)GameState × prime`, robber
+`Q/R/S × prime`, each owned road's owner + position, …). **Adding a new
+discriminating value = pop the next prime, multiply by the value, add. Nothing
+more.**
+
+**Rule for this epic — classify every new value.** Each field/enum a step introduces
+is explicitly marked **discriminating** (enters the hash) or **not**:
+
++ *Discriminating* — anything two otherwise-identical games could differ on and must
+  read as different: owner, position, `GameState`, `RoadState` (road vs
+  `Ship`/`MovableShip`), scenario id/flags, `ShuffleGroup`, per-player
+  scenario-bonus VP, ship-move state, `TemporarilyGold`, pirate/robber coordinates.
++ *Not* — display-only / derived / metadata: `GameName`, timestamps, `BuildableKinds`
+  and other recomputed markings, `IsShip`-style helpers, computed island ids (derived
+  from tiles already hashed).
+
+D8 governs **when** a value may enter the hash (scenario-opted games hash the new
+fields; Regular/Expansion stay **hash-neutral** so existing `.catan_test` hashes
+never change) via `GameHashVersion`. The "Hashed?" column of the model tables is this
+classification.
+
 ## Rules that shape the architecture
 
 + **Ships**: cost **1 wood + 1 sheep**; **15 per player**; built on any edge
@@ -905,6 +936,19 @@ makes the Seafarers board visible and
 **standard-playable** — create, shuffle, render, complete setup — before any ship
 mechanic. **Arc B** (6–11) adds the Seafarers mechanics (ships, movement, route,
 island VP, pirate). Every game-creating step preserves sea tiles.
+
+**Every step's implementation plan opens with an explicit *Model & template changes*
+review — a STOP-for-review gate before any code.** It enumerates the exact
+`TemplateTile` / `GameTemplateData` / `TileModel` / `GameModel` / enum deltas that
+step adds or touches, and — for **each** new value — its **GameHash treatment**
+(discriminating ⇒ `prime × value` into the hash, or excluded, with why; see the
+GameHash section). The consolidated *GameModel & data-model changes* section and its
+*Landing order* are the master list; each step's review is the slice it needs, so we
+see "these are all the template + GameModel changes for this step" before building.
+*(E.g. Step 1's slice: `TemplateTile.ShuffleGroup` + `Fixed`,
+`GameTemplateData.Scenario` + `PirateStart`, and the editor's `Sea`/island rendering
+— plus a note that the matching `TileModel` fields and `ComputeIslands` land in
+steps 2–3, when a template becomes a live board.)*
 
 ### Arc A — board visible & standard play
 
