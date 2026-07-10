@@ -168,17 +168,30 @@ and the React `RecordingPlayer` union gets one case.
 per future expansion. Module framework lands in **Phase 3** before any mechanic
 uses it.
 
-### D1. Islands are **tiles**, with fixed/shuffleable classification
+### D1. Islands are **tiles**; identity is **derived**, shuffling is a separate tag
 
 Island land tiles are regular `TileModel` entries at sea-region coordinates (they
-render, take buildings, anchor ships — no new plumbing). Two tags carry the
-epic's intent:
+render, take buildings, anchor ships — no new plumbing). The epic needs **two
+orthogonal things** that an earlier draft wrongly folded into one `IslandGroup` (the
+old UWP code already kept them separate — `TileGroups` vs `Islands`):
 
-+ **`IslandGroup`** (int, default `0` = main board) on `TemplateTile`/`TileModel`
-  — the shuffle-partition key ("never shuffle across islands").
-+ **Fixed vs. shuffleable** (see D5): **sea tiles are always fixed**; land tiles
-  are shuffleable within their group. This must exist *before* any Seafarers game
-  is created (Phase 1), because game creation calls `Shuffle`.
++ **Shuffling — a `ShuffleGroup` tag** (int, default `0`) on
+  `TemplateTile`/`TileModel`: land tiles with the same `ShuffleGroup` permute
+  **together**; sea tiles are always fixed and never move (D5). **To "shuffle
+  several islands with each other," give their land tiles the same `ShuffleGroup`**
+  (exactly what old Seafarers4Player did — one outer group spanning three islands).
+  This is an authoring choice, not derivable, so it stays a tag. It must exist
+  *before* any game is created (Phase 1), because creation calls `Shuffle`.
++ **Island VP identity — derived, not tagged** (D7): an island is a **connected
+  component of land hexes** (flood-fill; sea breaks connectivity). Because sea
+  positions are **fixed**, shuffling only moves *contents* among fixed land/sea
+  slots, so the components (the islands) are **invariant** under shuffle, undo, and
+  replay. The engine computes island identity from position — **no per-tile island
+  tag** — which is both less authoring burden and more correct.
+
+**Why the split:** one shuffle group can contain many scoring islands, and no
+scoring island is ever split by a shuffle. So `IslandGroup` is **replaced by
+`ShuffleGroup`**; VP-island identity is computed (see D7's `ComputeIslands`).
 
 ### D2. Scenario profile + score/victory/winner
 
@@ -311,7 +324,10 @@ passes. For Seafarers this would corrupt sea tiles. Change it to:
 
 + **Never shuffle fixed tiles** (all `Sea` tiles are fixed; optionally
   template-marked fixed land tiles). Only **shuffleable land tiles within each
-  `IslandGroup`** are permuted, independently per group.
+  `ShuffleGroup`** are permuted, independently per group (D1). (Islands that should
+  shuffle *together* share a `ShuffleGroup`; VP-island identity is derived
+  separately — D7 — so pooling islands into one shuffle group never merges them for
+  scoring.)
 + Keep the existing no-adjacent-6/8 (`ValidateGame`) + desert rules **per group**,
   but make the retry loop **bounded** (iteration cap) with a deterministic
   fallback if a small group can't satisfy constraints — no unbounded loop. (The
@@ -363,7 +379,17 @@ building/island-group state, and `UpdateScore` adds it to the total. Because it 
 re-derived from `Buildings` every `LogGameModel`, undo/redo and replay reproduce it
 exactly; the value is stored on the player (D2) and included in the scenario hash
 (D8). `SeafarersRules.OnBuildingPlaced` bumps `PlayerModel.IslandsPlayed` for the
-stat/UI when a settlement first reaches a new group.
+stat/UI when a settlement first reaches a new island.
+
+**Island identity is computed, not tagged (D1).** A helper `ComputeIslands(game)`
+runs a **flood-fill / union-find over land tiles** (`ResourceTileType != Sea`),
+joining hex-neighbors via the existing adjacency (`HexCoordinates.GetAllNeighbors`
+/ `TileModelExtensions.AdjacentTiles` — the same the D10 edge classifier uses; two
+land hexes sharing a `LandEdge` are one island). Each connected component is an
+island with a **stable id = the canonical (min) `HexCoordinates`** in the component
+— position-based, so it survives shuffles and is hashable. The **main island** is
+the largest component (holds for New Shores), with an optional template `MainIsland`
+override; the main island never scores.
 
 **Scoring rule — follow the rulebook (decided).** Per the official "Heading for New
 Shores" rule: **each player scores `NewIslandBonusVpAmount` (2) VP for their first
@@ -372,8 +398,8 @@ player** (a player settling three foreign islands earns 6). It is **not** a race
 (later settlers on an island the player themselves reaches still score their own
 first-settlement there) and it is **not** capped at one island.
 
-`OnScore` computes it directly from `Buildings` + `TileModel.IslandGroup`: `2 ×
-(count of distinct non-main IslandGroups where the player holds ≥1 settlement)`,
+`OnScore` computes it from `Buildings` + the computed islands: `2 × (count of
+distinct **non-main island components** where the player holds ≥1 settlement)`,
 guarded by `Scenario.NewIslandBonusVp`. `Scenario.NewIslandBonusVpAmount` keeps the
 per-island value configurable for other scenarios. (If a future scenario needs a
 different rule — once-per-player, or a first-discoverer race using `BuildIndex`
@@ -632,7 +658,7 @@ computes the legal destinations it marks via `BuildableKinds.Ship`.
 
 Shuffle is a **core** flow with no module: the sea-safe/per-group behavior is a
 data-gated edit to `Shuffle()` (D5) that is inert for Regular (all tiles
-`IslandGroup 0`, no `Sea` tiles).
+`ShuffleGroup 0`, no `Sea` tiles).
 
 ```mermaid
 %%{init: {'theme':'dark'}}%%
@@ -650,7 +676,7 @@ sequenceDiagram
     Client->>API: POST api/game/action, ShuffleMessage
     API->>Proc: dispatch
     Proc->>Core: HandleShuffle core existing, calls Shuffle D5
-    Note over Core: partition tiles by IslandGroup, Sea and Fixed tiles never move, permute shuffleable land within each group, ValidateGame per group, bounded retry with deterministic fallback, uses ReplayableRandom for replay safety
+    Note over Core: partition tiles by ShuffleGroup, Sea and Fixed tiles never move, permute shuffleable land within each group, ValidateGame per group, bounded retry with deterministic fallback, uses ReplayableRandom for replay safety
     Core-->>Proc: GameModel
     Proc->>Sync: LogGameModel, persist, broadcast
     Sync-->>Client: GameStateUpdated, new board
@@ -733,7 +759,7 @@ the serialized GameModel shape becomes. Ground rules:
   hash (`GameHashVersion ≥ 2`). For Regular/Expansion the hash formula is unchanged,
   so these fields are hash-neutral there even when present at defaults.
 + **Naming note.** The scenario ship toggle is `Scenario.ShipsEnabled` (not
-  `SupportShips`); the island grouping key is `IslandGroup`. If we prefer
+  `SupportShips`); the shuffle-partition key is `ShuffleGroup`. If we prefer
   `SupportShips` as the public flag name, rename in one place (`Scenario`) — it is
   not referenced by core control flow.
 
@@ -760,7 +786,7 @@ cached field on `RoadModel`. Default plan: **compute-only**, no stored field.
 | `GameModel` (`GameModel.cs`) | `Scenario` | `Scenario` | `Scenario.Regular` | scenario profile: VP target + mechanic flags (D2) | yes |
 | `GameModel` | `GameHashVersion` | `int` | `1` | hash policy selector; `≥2` opts into scenario hash (D8) | n/a (selector) |
 | `GameModel` | `ShipsBuiltThisTurn` | `List<RoadKey>` | `[]` | ships ineligible to move this turn (D4 movability); cleared `OnTurnAdvanced`; the **only** new top-level field, scrutinized in D4 | yes |
-| `TileModel` (`TileModel.cs`) | `IslandGroup` | `int` | `0` | shuffle-partition key; `0` = main board (D1/D5) | yes (scenario) |
+| `TileModel` (`TileModel.cs`) | `ShuffleGroup` | `int` | `0` | shuffle partition (D1/D5); land tiles sharing it permute together; island-VP identity is **derived**, not this | yes (scenario) |
 | `TileModel` | `Fixed` | `bool` | `false` | never-shuffle marker; sea tiles treated fixed regardless (D5) | no |
 | `RoadModel` (`RoadModel.cs`) | `BuildableKinds` | `BuildableKind` | `BuildableKind.None` | can this edge take a road / ship / both (D3) | no (transient marking) |
 | `PlayerModel` (`PlayerModel.cs`) | `ScenarioBonusVp` | `int` | `0` | island bonus + future scenario VP; feeds `OnScore` (D2/D7) | yes |
@@ -824,10 +850,13 @@ authoring fields below.
 |---|---|---|---|---|
 | `GameTemplateData` | `Scenario` | `Scenario` | `Scenario.Regular` | authored scenario profile (D2) |
 | `GameTemplateData` | `PirateStart` | `HexCoordinates?` | `null` | authored pirate start sea hex (D11); `null` = no pirate |
-| `TemplateTile` | `IslandGroup` | `int` | `0` | authored island partition (D1) |
+| `TemplateTile` | `ShuffleGroup` | `int` | `0` | authored shuffle partition (D1) |
 | `TemplateTile` | `Fixed` | `bool` | `false` | authored never-shuffle marker (D5) |
+| `TemplateTile` | `MainIsland` | `bool` | `false` | optional main-island override (D7); default = largest land component |
 
 `Sea` is already expressible as `TemplateTile.Resource = "Sea"` (no change).
+Island-VP identity is **derived** (D7 `ComputeIslands`), so there is **no** island
+tag on the tile.
 
 ### Type-generation registrations to add (`CatanTypeGenSpec.cs`)
 
@@ -842,8 +871,9 @@ registered — regeneration picks up their new fields automatically.)
 
 ### Landing order (matches the sequencing plan)
 
-+ **Phase 1 (before any game creation):** `TileModel.IslandGroup` + `Fixed`,
-  `TemplateTile.IslandGroup` + `Fixed` (D1/D5 need these before `Shuffle`).
++ **Phase 1 (before any game creation):** `TileModel.ShuffleGroup` + `Fixed`,
+  `TemplateTile.ShuffleGroup` + `Fixed` + `MainIsland`, and `ComputeIslands`
+  (D1/D5/D7 need these before `Shuffle`).
 + **Phase 6 (module framework):** `Scenario`, `GameHashVersion`,
   `ResourceRules.MaxShips`, `BuildableKind`, `CommandContext`, `GameState.MustMoveShip`
   scaffolding.
@@ -878,7 +908,7 @@ island VP, pirate). Every game-creating step preserves sea tiles.
   create → the in-game board matches the template. *(Ordering: create unshuffled
   so this verifies before step 3; or land step 3 first — decided at plan time.)*
 + **3. Sea-safe Shuffle + Balance.** Fixed/shuffleable tiles (sea always fixed) +
-  per-`IslandGroup` bounded shuffle + harbor-`Type` shuffle (D5); wire the existing
+  per-`ShuffleGroup` bounded shuffle + harbor-`Type` shuffle (D5); wire the existing
   Shuffle + Balance actions. *Verify:* shuffle repeatedly — sea never moves,
   resources/numbers stay within each island, no adjacent 6/8 per group, harbor types
   re-shuffle (positions fixed); Balance works; Regular unchanged.
@@ -1004,8 +1034,9 @@ the rest.
   building; our edge classifier + coastal-building/own-ship rule is stricter.
 
 **Open items surfaced** (folded in): harbors are now **shuffled** each time (D5);
-gold is **in scope** — fixed + random (D12). The only item left genuinely open is
-`IslandGroup` doing double duty as shuffle-partition and VP-island (Open questions).
+gold is **in scope** — fixed + random (D12); the `IslandGroup` double-duty is
+**resolved "the right way"** — `ShuffleGroup` (tag) for pooling vs derived
+connected-component islands for VP (D1/D7).
 
 ## Open questions
 
@@ -1013,16 +1044,15 @@ gold is **in scope** — fixed + random (D12). The only item left genuinely open
    at Phase 3; it is a config value.
 2. **Ship-movement pathological cases (D4)** — Phase 8 fixes the exact boundary
    between code-enforced and table-enforced disconnection cases.
-3. **`IslandGroup` double duty** — it currently serves as *both* the shuffle
-   partition (D5) and the island-VP identity (D7). The prior implementation kept
-   these **separate** (`TileGroups` for randomization vs `Islands` for scoring — one
-   shuffle group could contain several scoring islands). For New Shores they align
-   (main + one cluster + sea), so a single field suffices now; a richer scenario
-   would need a distinct shuffle-group id or a per-island "is scoring" flag. Revisit
-   only when a scenario forces it.
 
 **Decided (kept for the record):**
 
++ **Shuffle vs island identity (D1/D7)** — **do it right, two orthogonal concepts.**
+  **`ShuffleGroup`** (tag) pools land tiles that permute together (islands can shuffle
+  *with each other* by sharing one). **Island VP identity is derived** — connected
+  components of land hexes (`ComputeIslands`, flood-fill; sea fixed ⇒ islands
+  invariant under shuffle); id = canonical min-coord; main = largest component (or a
+  template `MainIsland`). Replaces the conflated `IslandGroup`.
 + **New-island scoring (D7)** — **per island, per player** (rulebook rule): 2 VP for
   each non-main island a player is first to settle themselves. Not a race, not
   capped.
