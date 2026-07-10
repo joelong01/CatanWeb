@@ -264,17 +264,25 @@ optional — no new special case.
   (ship's `RoadState` back to `Ship`); after `MoveShip` → back to `MustMoveShip`
   with the entitlement restored.
 
-**Why `RoadState.MovableShip`, not a `GameModel` field.** The selected ship is
-identified by *its own* `RoadState` — consistent with how `RoadState.Buildable` and
-`BuildingState.PossibleSettlement`/`NotBuildable` already carry transient edge/vertex
-*states* (the enum is a state machine, not just a kind-tag). A ship is `Ship` **xor**
-`MovableShip` (one mutually-exclusive axis), unlike the two-axis road/ship
-buildability that needed `BuildableKinds`. This **removes** the would-be
-`PendingShipMoveFrom` top-level field. Guiding principle (recorded): **adding an enum
-value is cheap and idiomatic here; adding a new top-level `GameModel` field/concept
-is not — prefer the enum.** One-line helper `RoadModel.IsShip => RoadState is Ship or
-MovableShip` keeps the handful of "is this a ship" sites (render glyph, `MaxShips`
-count, route traversal) from each special-casing the new value.
+**Why `RoadState.MovableShip`, not a `GameModel` field.** These state enums exist
+for exactly two jobs: **(1) drive the `GameStateMachine` rules/transitions, and
+(2) tell the client how to render the object** — that is what `RoadState.Buildable`
+and `BuildingState.PossibleSettlement`/`NotBuildable` already do. So the trigger for
+a new state value is precisely **"we need to render (or rule on) this in a new
+way"** — a picked-up ship renders at 0.5 opacity and is gated by the move rules, so
+it *earns* a state. A ship is `Ship` **xor** `MovableShip` (one mutually-exclusive
+axis), unlike the two-axis road/ship buildability that needed `BuildableKinds`. This
+**removes** the would-be `PendingShipMoveFrom` field. Two invariants hold:
+
++ **Only `GameStateMachine` (the server engine, incl. the `SeafarersRules` module
+  running inside its pipeline) transitions `RoadState`.** The client **renders** the
+  state and **sends actions** (`SelectShipToMove`/`MoveShip`/`Cancel`); it never sets
+  `MovableShip` itself ([[client-two-responsibilities]]).
++ Guiding principle: **when a piece must be shown or ruled on a new way, add a state
+  value — do not add a new top-level `GameModel` field, and do not compute it on the
+  client.** A helper `RoadModel.IsShip => RoadState is Ship or MovableShip` keeps the
+  few "is this a ship" sites (render glyph, `MaxShips` count, route traversal) from
+  each special-casing the new value.
 
 **The one remaining new field — scrutinized per that principle:** `ShipsBuiltThisTurn`
 (`List<RoadKey>` on `GameModel`, cleared in `OnTurnAdvanced`) backs the movability
@@ -637,10 +645,12 @@ Notes:
   reused, no new fields for those.
 + **`RoadState.MovableShip` carries the move-selection (D4), replacing a would-be
   `PendingShipMoveFrom` field** — the picked-up ship *is* the road in that state
-  (find-by-scan), consistent with the existing `RoadState.Buildable` /
-  `BuildingState.PossibleSettlement` transient states. Add a helper
-  `RoadModel.IsShip => RoadState is Ship or MovableShip` so the "is a ship" sites
-  (render, `MaxShips` count, route traversal) don't each special-case it.
+  (find-by-scan). A state value is the right home because these enums exist to
+  **drive `GameStateMachine` rules and to tell the client how to render** — and a
+  picked-up ship both renders differently (0.5 opacity) and is rule-gated. Only the
+  engine transitions it; the client renders it. Add a helper `RoadModel.IsShip =>
+  RoadState is Ship or MovableShip` so the "is a ship" sites (render, `MaxShips`
+  count, route traversal) don't each special-case it.
 + **Two distinct ship entitlements — both ride the existing system (D3/D4):**
   **`Entitlement.Ship`** = *buy + place* a ship (a purchase, two-step like
   `Entitlement.Road`: buying adds `Ship` to `UnspentEntitlements` + marks
