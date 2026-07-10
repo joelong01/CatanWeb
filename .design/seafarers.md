@@ -220,9 +220,10 @@ once-per-turn machinery instead of a bespoke ship flag. (Rationale: a
 `ShipMovedThisTurn` bool special-cases ships — and every ship-like mechanic we add
 later would need its own such flag. `ConsumeEntitlement` already moves a used
 entitlement into `SpentEntitlementsThisTurn`, which is cleared at turn advance —
-that *is* "once per turn," done "just like everything else." Only **one** new
-enum value, `Entitlement.MoveShip`, and one small generalization — optional
-entitlements — are added; nothing ship-specific enters core control flow.)
+that *is* "once per turn," done "just like everything else." The additions are
+**two enum values** (`Entitlement.MoveShip`, `RoadState.MovableShip`) and one small
+generalization — optional entitlements — with **no new top-level `GameModel` field**
+for the gesture; nothing ship-specific enters core control flow.)
 
 **New generic concept: optional entitlements.** Today `AllowNext`
 (`GameStateMachine.cs:1079`) and the turn-end gate (`:1912`) block "Next" while
@@ -244,28 +245,44 @@ optional — no new special case.
 + **Initiate (click the ship, no button)** — while holding `MoveShip`, clicking one
   of your movable ships sends **`SelectShipToMoveMessage {shipKey}`**. The server
   (client owns no rules — [[client-two-responsibilities]]) validates the ship is
-  movable, stores `PreviousGameState`, sets `GameState = MustMoveShip` and
-  `PendingShipMoveFrom = shipKey`, and **marks the legal destinations by reusing
-  `BuildableKinds.Ship`** (same affordance as placement). The entitlement is **not**
-  consumed yet. The pending ship renders at reduced opacity (`RoadState == Ship &&
-  key == PendingShipMoveFrom`) — **no `RoadState.ReadyToMove`** (that would conflate
-  "is a ship" with "is being moved," the orthogonality trap `BuildableKinds` avoids).
-+ **Complete** — clicking a marked destination sends **`MoveShipMessage {to}`** (the
-  source is `PendingShipMoveFrom`, server-side). Validate `to` is legal; move the
-  ship; **`ConsumeEntitlement(MoveShip)`** (→ `SpentEntitlementsThisTurn`, so it
-  cannot recur this turn); clear `PendingShipMoveFrom`; restore `PreviousGameState`.
+  movable, stores `PreviousGameState`, sets `GameState = MustMoveShip`, sets that
+  road's **`RoadState = MovableShip`** (the ship is now "picked up"), and **marks
+  legal destinations by reusing `BuildableKinds.Ship`** (same affordance as
+  placement). The entitlement is **not** consumed yet. The picked-up ship renders at
+  reduced opacity from its `RoadState == MovableShip`.
++ **Complete** — clicking a marked destination sends **`MoveShipMessage {to}`**; the
+  **source is the road whose `RoadState == MovableShip`** (no separate field to
+  carry it). Validate `to` is legal; move the ship (source edge → `Unowned`,
+  destination edge → `Ship`); **`ConsumeEntitlement(MoveShip)`** (→
+  `SpentEntitlementsThisTurn`, so it cannot recur this turn); restore
+  `PreviousGameState`.
 + **Dismiss** — a non-destination click / Escape sends **`CancelMoveShipMessage`**:
-  clear `PendingShipMoveFrom`, restore `PreviousGameState`. Entitlement stays held,
-  so the player can click a ship again. (`MustMoveShip`'s interaction session owns
-  all clicks, so dismiss logic is centralized — not scattered across handlers.)
-+ **Undo** — snapshot-based: after `SelectShipToMove` → back to `WaitingForNext`;
-  after `MoveShip` → back to `MustMoveShip` with the entitlement restored.
+  set the `MovableShip` road back to `RoadState = Ship`, restore `PreviousGameState`.
+  Entitlement stays held, so the player can click a ship again. (`MustMoveShip`'s
+  interaction session owns all clicks, so dismiss logic is centralized.)
++ **Undo** — snapshot-based: after `SelectShipToMove` → back to `WaitingForNext`
+  (ship's `RoadState` back to `Ship`); after `MoveShip` → back to `MustMoveShip`
+  with the entitlement restored.
 
-**Minimal ship-specific state that remains:** `ShipsBuiltThisTurn` (`List<RoadKey>`
-on `GameModel`, cleared in `OnTurnAdvanced`) — needed only for the movability rule
-"a ship built this turn cannot move," which is a per-*ship* property the entitlement
-system can't express. (Under the table-assistant principle this rule could be
-relaxed and the field dropped; kept for now — decided at Phase 8.)
+**Why `RoadState.MovableShip`, not a `GameModel` field.** The selected ship is
+identified by *its own* `RoadState` — consistent with how `RoadState.Buildable` and
+`BuildingState.PossibleSettlement`/`NotBuildable` already carry transient edge/vertex
+*states* (the enum is a state machine, not just a kind-tag). A ship is `Ship` **xor**
+`MovableShip` (one mutually-exclusive axis), unlike the two-axis road/ship
+buildability that needed `BuildableKinds`. This **removes** the would-be
+`PendingShipMoveFrom` top-level field. Guiding principle (recorded): **adding an enum
+value is cheap and idiomatic here; adding a new top-level `GameModel` field/concept
+is not — prefer the enum.** One-line helper `RoadModel.IsShip => RoadState is Ship or
+MovableShip` keeps the handful of "is this a ship" sites (render glyph, `MaxShips`
+count, route traversal) from each special-casing the new value.
+
+**The one remaining new field — scrutinized per that principle:** `ShipsBuiltThisTurn`
+(`List<RoadKey>` on `GameModel`, cleared in `OnTurnAdvanced`) backs the movability
+rule "a ship built this turn cannot move." It is genuinely per-*ship* temporal data
+with no enum home (a just-built ship is a fully normal `Ship` in every other
+respect — production, count, route — so it must **not** be a `RoadState`). It is
+kept as a deliberate, well-scoped exception; under the table-assistant principle the
+rule could instead be table-enforced and the field dropped. Decided at Phase 8.
 
 **Enforced (frequent) legality:** a ship is movable iff (a) not built this turn
 (`ShipsBuiltThisTurn`), (b) it has an **open end** — a vertex not continuing to
@@ -482,18 +499,18 @@ sequenceDiagram
     Client->>API: POST api/game/action, SelectShipToMoveMessage shipKey
     API->>Proc: dispatch, module-descriptor path, caller is current player
     Proc->>Mod: SelectShipToMove descriptor
-    Note over Mod: validate ship movable, open end and not built this turn, store PreviousGameState, set GameState MustMoveShip, set PendingShipMoveFrom shipKey, MoveShip not consumed yet
+    Note over Mod: validate ship movable, open end and not built this turn, store PreviousGameState, set GameState MustMoveShip, set that road RoadState MovableShip, MoveShip not consumed yet
     Mod-->>Proc: GameModel
     Proc->>Sync: LogGameModel
     Sync->>Mod: OnRecompute marks legal destinations as BuildableKinds.Ship
     Sync-->>Client: GameStateUpdated, MustMoveShip
-    Client-->>U: pending ship at 0.5 opacity, legal destinations glow
+    Client-->>U: MovableShip ship at 0.5 opacity, legal destinations glow
 
     U->>Client: click a marked destination
     Client->>API: POST api/game/action, MoveShipMessage to
     API->>Proc: dispatch
-    Proc->>Mod: MoveShip descriptor, source is PendingShipMoveFrom
-    Note over Mod: validate to is legal, move ship, ConsumeEntitlement MoveShip into SpentEntitlementsThisTurn, clear PendingShipMoveFrom, restore PreviousGameState
+    Proc->>Mod: MoveShip descriptor, source is the MovableShip road
+    Note over Mod: validate to is legal, move ship, source edge Unowned and destination edge Ship, ConsumeEntitlement MoveShip into SpentEntitlementsThisTurn, restore PreviousGameState
     Mod-->>Proc: GameModel
     Proc->>Sync: LogGameModel, persist, broadcast
     Sync-->>Client: GameStateUpdated, WaitingForNext, MoveShip spent
@@ -502,7 +519,7 @@ sequenceDiagram
         U->>Client: click a non-destination
         Client->>API: POST api/game/action, CancelMoveShipMessage
         API->>Proc: dispatch
-        Proc->>Mod: CancelMoveShip, clear pending, restore PreviousGameState
+        Proc->>Mod: CancelMoveShip, set MovableShip road back to Ship, restore PreviousGameState
         Note over Mod: MoveShip stays held, player may click a ship again
         Mod-->>Sync: LogGameModel, broadcast
     end
@@ -511,9 +528,9 @@ sequenceDiagram
 **Why `MustMoveShip` (a sub-state) rather than staying in `WaitingForNext`:** its
 interaction session owns every click during the gesture, so "dismiss on
 non-destination click" lives in one place instead of being sprinkled through the
-other click handlers. `PendingShipMoveFrom` is the server-authoritative source
-(this resolves the earlier open point — it is **kept**, because the server, not the
-client, must compute legal destinations).
+other click handlers. The picked-up ship is the road with **`RoadState ==
+MovableShip`** (no `PendingShipMoveFrom` field), and the server — not the client —
+computes the legal destinations it marks via `BuildableKinds.Ship`.
 
 ### 4. Shuffling (sea-safe, per-island — pure core)
 
@@ -589,7 +606,7 @@ the serialized GameModel shape becomes. Ground rules:
 
 | Enum | Change | File | Notes |
 |---|---|---|---|
-| `RoadState` | *(already has `Ship`)* — no change | `GameEnums.cs:31` | reused for ships (D3) |
+| `RoadState` | `Ship` reused (D3); **add** `MovableShip` (a ship picked up for a move, D4) | `GameEnums.cs:31` | ships + move-selection state |
 | `Entitlement` | `Ship` reused (buy+place); **add** `MoveShip` (optional, granted per turn) | `GameEnums.cs:115` | ship purchase (D3) + ship movement (D4) |
 | `ResourceType` | *(already has `Sea`, `GoldMine`)* — no change | `GameEnums.cs:5` | islands/gold (D1/D2) |
 | `GameState` | **add** `MustMoveShip` | `GameEnums.cs` | ship-move gesture sub-state (D4) |
@@ -607,8 +624,7 @@ cached field on `RoadModel`. Default plan: **compute-only**, no stored field.
 |---|---|---|---|---|---|
 | `GameModel` (`GameModel.cs`) | `Scenario` | `Scenario` | `Scenario.Regular` | scenario profile: VP target + mechanic flags (D2) | yes |
 | `GameModel` | `GameHashVersion` | `int` | `1` | hash policy selector; `≥2` opts into scenario hash (D8) | n/a (selector) |
-| `GameModel` | `ShipsBuiltThisTurn` | `List<RoadKey>` | `[]` | ships ineligible to move this turn (D4 movability); cleared `OnTurnAdvanced` | yes |
-| `GameModel` | `PendingShipMoveFrom` | `RoadKey?` | `null` | server-authoritative selected ship during `MustMoveShip` (D4) | yes |
+| `GameModel` | `ShipsBuiltThisTurn` | `List<RoadKey>` | `[]` | ships ineligible to move this turn (D4 movability); cleared `OnTurnAdvanced`; the **only** new top-level field, scrutinized in D4 | yes |
 | `TileModel` (`TileModel.cs`) | `IslandGroup` | `int` | `0` | shuffle-partition key; `0` = main board (D1/D5) | yes (scenario) |
 | `TileModel` | `Fixed` | `bool` | `false` | never-shuffle marker; sea tiles treated fixed regardless (D5) | no |
 | `RoadModel` (`RoadModel.cs`) | `BuildableKinds` | `BuildableKind` | `BuildableKind.None` | can this edge take a road / ship / both (D3) | no (transient marking) |
@@ -619,6 +635,12 @@ Notes:
 
 + `PlayerModel` already has `IslandsPlayed`, `LongestRoad`, `HasLongestRoad` —
   reused, no new fields for those.
++ **`RoadState.MovableShip` carries the move-selection (D4), replacing a would-be
+  `PendingShipMoveFrom` field** — the picked-up ship *is* the road in that state
+  (find-by-scan), consistent with the existing `RoadState.Buildable` /
+  `BuildingState.PossibleSettlement` transient states. Add a helper
+  `RoadModel.IsShip => RoadState is Ship or MovableShip` so the "is a ship" sites
+  (render, `MaxShips` count, route traversal) don't each special-case it.
 + **Two distinct ship entitlements — both ride the existing system (D3/D4):**
   **`Entitlement.Ship`** = *buy + place* a ship (a purchase, two-step like
   `Entitlement.Road`: buying adds `Ship` to `UnspentEntitlements` + marks
@@ -651,7 +673,7 @@ Notes:
 | `Scenario` | class | `string Id`, `int VictoryPointTarget = 10`, `bool ShipsEnabled`, `bool ShipMovementEnabled`, `bool NewIslandBonusVp`, `int NewIslandBonusVpAmount = 2`, `bool ShipsCountForLongestRoute`, `bool PirateEnabled`, `bool FogEnabled`; static `Scenario Regular` (all-off) | D2 — flags select active modules; default = Regular |
 | `CommandContext` | record | `string GameId`, `string PlayerId`, `string MessageType`, `JsonElement Payload` | D0 — generic dispatch payload |
 | `ShipPurchaseMessage` + `ShipPurchaseRecord` | message/record | edge `RoadKey` | D3 |
-| `SelectShipToMoveMessage`, `MoveShipMessage`, `CancelMoveShipMessage` (+ records) | messages/records | `SelectShipToMove`: `shipKey` `RoadKey`; `MoveShip`: `to` `RoadKey` (source = `PendingShipMoveFrom`) | D4 |
+| `SelectShipToMoveMessage`, `MoveShipMessage`, `CancelMoveShipMessage` (+ records) | messages/records | `SelectShipToMove`: `shipKey` `RoadKey`; `MoveShip`: `to` `RoadKey` (source = the `RoadState.MovableShip` road) | D4 |
 
 `Scenario` is threaded: `GameTemplateData.Scenario` (authored) → `IGameMetadata` →
 `GameModel.Scenario`. `GameTemplateData` (and `TemplateTile`) also gain the island
@@ -800,5 +822,5 @@ Shores does not use them.)
   each non-main island a player is first to settle themselves. Not a race, not
   capped.
 + **Ship-move initiation (D4)** — **direct ship-click, no button**, modeled as an
-  **optional per-turn `Entitlement.MoveShip`**; pending selection is
-  server-authoritative via `PendingShipMoveFrom` (not a `RoadState`).
+  **optional per-turn `Entitlement.MoveShip`**; the picked-up ship is marked with a
+  new **`RoadState.MovableShip`** value (no new top-level `GameModel` field).
