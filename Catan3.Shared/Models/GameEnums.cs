@@ -26,7 +26,12 @@ namespace Catan3.Shared.Models
     public enum GameType
     {
         Regular, Expansion, Unset,
-        SavedGame
+        SavedGame,
+        // Seafarers is the game *family* (one value); individual scenarios
+        // (Heading for New Shores, The Four Islands, ...) are Scenario data, not
+        // GameType values. Appended last to keep existing (int) ordinals stable
+        // (GameHash / serialized games unaffected).
+        Seafarers
     }
     public enum RoadState { Unowned, Road, Ship, Buildable };
     public enum HarborType { Sheep, Wood, Ore, Wheat, Brick, ThreeForOne, None };

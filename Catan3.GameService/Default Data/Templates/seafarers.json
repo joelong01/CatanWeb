@@ -1,0 +1,79 @@
+{
+  "id": "seafarers",
+  "name": "Seafarers - Heading for New Shores",
+  "category": "Seafarers",
+  "version": 1,
+  "description": "Heading for New Shores - the introductory Seafarers scenario: a central main island (with gold and a desert), a small island to discover, and open sea with harbors. Step 1 renders the board in the editor; ships, pirate, and scoring arrive in later steps.",
+  "engine": "base",
+  "gameType": "Seafarers",
+  "resourceRules": {
+    "maxCities": 4,
+    "maxSettlements": 5,
+    "maxRoads": 15,
+    "minPlayers": 3,
+    "maxPlayers": 4
+  },
+  "houseRules": {
+    "goldTiles": 1
+  },
+  "hasSupplemental": false,
+  "tiles": [
+    { "q": 0, "r": 0, "resource": "Wheat", "number": 6 },
+    { "q": 1, "r": -1, "resource": "Wood", "number": 5 },
+    { "q": 1, "r": 0, "resource": "Sheep", "number": 9 },
+    { "q": 0, "r": 1, "resource": "Ore", "number": 10 },
+    { "q": -1, "r": 1, "resource": "Brick", "number": 4 },
+    { "q": -1, "r": 0, "resource": "Wood", "number": 8 },
+    { "q": 0, "r": -1, "resource": "Sheep", "number": 3 },
+    { "q": 0, "r": -2, "resource": "GoldMine", "number": 5 },
+    { "q": 1, "r": -2, "resource": "Wheat", "number": 11 },
+    { "q": 2, "r": -2, "resource": "Ore", "number": 6 },
+    { "q": -1, "r": -1, "resource": "Desert", "number": 0 },
+    { "q": -2, "r": 0, "resource": "Brick", "number": 9 },
+    { "q": -2, "r": 1, "resource": "GoldMine", "number": 2 },
+
+    { "q": 0, "r": 3, "resource": "Wood", "number": 8 },
+    { "q": 1, "r": 2, "resource": "Sheep", "number": 10 },
+    { "q": -1, "r": 3, "resource": "Wheat", "number": 4 },
+
+    { "q": -3, "r": 0, "resource": "Sea", "number": 0 },
+    { "q": -3, "r": 1, "resource": "Sea", "number": 0 },
+    { "q": -3, "r": 2, "resource": "Sea", "number": 0 },
+    { "q": -3, "r": 3, "resource": "Sea", "number": 0 },
+    { "q": -2, "r": -1, "resource": "Sea", "number": 0 },
+    { "q": -2, "r": 2, "resource": "Sea", "number": 0 },
+    { "q": -2, "r": 3, "resource": "Sea", "number": 0 },
+    { "q": -1, "r": -2, "resource": "Sea", "number": 0 },
+    { "q": -1, "r": 2, "resource": "Sea", "number": 0 },
+    { "q": 0, "r": -3, "resource": "Sea", "number": 0 },
+    { "q": 0, "r": 2, "resource": "Sea", "number": 0 },
+    { "q": 1, "r": -3, "resource": "Sea", "number": 0 },
+    { "q": 1, "r": 1, "resource": "Sea", "number": 0 },
+    { "q": 2, "r": -3, "resource": "Sea", "number": 0 },
+    { "q": 2, "r": -1, "resource": "Sea", "number": 0 },
+    { "q": 2, "r": 0, "resource": "Sea", "number": 0 },
+    { "q": 2, "r": 1, "resource": "Sea", "number": 0 },
+    { "q": 3, "r": -3, "resource": "Sea", "number": 0 },
+    { "q": 3, "r": -2, "resource": "Sea", "number": 0 },
+    { "q": 3, "r": -1, "resource": "Sea", "number": 0 },
+    { "q": 3, "r": 0, "resource": "Sea", "number": 0 }
+  ],
+  "harbors": [
+    { "q": 2, "r": -2, "side": "TopRight", "type": "Ore" },
+    { "q": 0, "r": -2, "side": "Top", "type": "Wheat" },
+    { "q": -2, "r": 0, "side": "TopLeft", "type": "ThreeForOne" },
+    { "q": -2, "r": 1, "side": "BottomLeft", "type": "ThreeForOne" },
+    { "q": -1, "r": 1, "side": "BottomLeft", "type": "ThreeForOne" },
+    { "q": 0, "r": 1, "side": "Bottom", "type": "Brick" },
+    { "q": 1, "r": 0, "side": "BottomRight", "type": "Wood" },
+    { "q": 1, "r": -2, "side": "TopRight", "type": "Sheep" },
+    { "q": 0, "r": 3, "side": "Top", "type": "ThreeForOne" }
+  ],
+  "entitlements": [
+    { "entitlement": "City" },
+    { "entitlement": "Settlement" },
+    { "entitlement": "Road" },
+    { "entitlement": "Soldier" },
+    { "entitlement": "DevCard" }
+  ]
+}

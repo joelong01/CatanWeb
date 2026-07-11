@@ -383,6 +383,18 @@ export function EditorBoard({
     return set;
   }, [tiles]);
 
+  // Land tiles only. A Seafarers harbor sits ON a coastal Sea hex, so its water
+  // coord is a real (Sea) tile; we must only drop a harbor when its coord is a
+  // LAND tile (a genuine overlap), not when it lands on a Sea tile.
+  const landTileCoordSet = useMemo(() => {
+    const set = new Set<string>();
+    tiles.forEach((t) => {
+      if (t.resource === 'Sea') return;
+      set.add(coordKey(cubicCoord(t.q, t.r)));
+    });
+    return set;
+  }, [tiles]);
+
   // Build set of water coords adjacent to at least one land tile
   const adjacentWaterSet = useMemo(() => {
     const set = new Set<string>();
@@ -574,9 +586,13 @@ export function EditorBoard({
 
   // Combine: water first, then tiles, then harbors
   const allItems = useMemo(() => {
-    const harborFiltered = harborItems.filter((item) => !tileCoordSet.has(coordKey(item.coord)));
+    // Drop a harbor only when it overlaps a LAND tile; harbors on coastal Sea
+    // tiles (Seafarers) render on top of the sea hex.
+    const harborFiltered = harborItems.filter(
+      (item) => !landTileCoordSet.has(coordKey(item.coord))
+    );
     return [...waterItems, ...tileItems, ...harborFiltered];
-  }, [waterItems, tileItems, harborItems, tileCoordSet]);
+  }, [waterItems, tileItems, harborItems, landTileCoordSet]);
 
   if (tiles.length === 0) {
     return (

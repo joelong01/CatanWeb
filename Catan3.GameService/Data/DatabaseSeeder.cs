@@ -28,7 +28,51 @@ public static class DatabaseSeeder
             await db.SaveTemplateAsync(id, name, category, isSystemTemplate: true, templateData);
         }
 
-        logger?.LogInformation("  Upserted {Count} system game templates", candidates.Length);
+        logger?.LogInformation("  Upserted {Count} code-defined system game templates", candidates.Length);
+
+        // File-based system templates: expansions ship as data (a serialized
+        // GameTemplateData) under "Default Data/Templates/*.json". Dropping a new
+        // JSON there adds a system template with no code change.
+        await UpsertFileTemplatesAsync(db, logger);
+    }
+
+    /// <summary>
+    /// Upserts any file-based system templates found under "Default Data/Templates/*.json".
+    /// Idempotent (upsert by Id). A missing folder or a malformed file is logged and skipped —
+    /// it never aborts seeding.
+    /// </summary>
+    private static async Task UpsertFileTemplatesAsync(Abstractions.ICatanDb db, ILogger? logger)
+    {
+        var dir = Path.Combine(AppContext.BaseDirectory, "Default Data", "Templates");
+        if (!Directory.Exists(dir))
+        {
+            logger?.LogInformation("  No file-template folder at {Dir}; skipping file templates", dir);
+            return;
+        }
+
+        int count = 0;
+        foreach (var path in Directory.EnumerateFiles(dir, "*.json"))
+        {
+            try
+            {
+                var json = await File.ReadAllTextAsync(path);
+                var data = JsonHelper.Deserialize<GameTemplateData>(json);
+                if (data is null || string.IsNullOrWhiteSpace(data.Id))
+                {
+                    logger?.LogWarning("  Skipping template file {File}: empty or missing Id", Path.GetFileName(path));
+                    continue;
+                }
+
+                await db.SaveTemplateAsync(data.Id, data.Name, data.Category, isSystemTemplate: true, data);
+                count++;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "  Skipping malformed template file {File}", Path.GetFileName(path));
+            }
+        }
+
+        logger?.LogInformation("  Upserted {Count} file-based system templates from {Dir}", count, dir);
     }
 
     private static GameTemplateData BuildTemplateFromMetadata(

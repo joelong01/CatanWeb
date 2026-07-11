@@ -22,7 +22,9 @@ const LAYOUT_OPTIONS: { value: LayoutType; label: string }[] = [
   { value: 'Square', label: 'Square (column-based)' },
 ];
 
-const RESOURCE_OPTIONS = ['Desert', 'Wood', 'Brick', 'Wheat', 'Sheep', 'Ore', 'GoldMine'];
+const RESOURCE_OPTIONS = ['Desert', 'Wood', 'Brick', 'Wheat', 'Sheep', 'Ore', 'GoldMine', 'Sea'];
+/** Resources that carry no number token (a chit makes no sense on them). */
+const NO_NUMBER_RESOURCES = new Set(['Desert', 'Sea']);
 const TILE_NUMBERS = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
 const NUMBER_OPTIONS = [0, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
 const HARBOR_SIDE_OPTIONS = ['Top', 'TopRight', 'BottomRight', 'Bottom', 'BottomLeft', 'TopLeft'];
@@ -409,6 +411,7 @@ export default function TemplateEditor(): React.ReactElement {
                   >
                     <option value="Regular">Regular</option>
                     <option value="Expansion">Expansion</option>
+                    <option value="Seafarers">Seafarers</option>
                   </select>
                 </label>
                 <label className="block">
@@ -481,7 +484,7 @@ export default function TemplateEditor(): React.ReactElement {
                   {/* Rows */}
                   {template.tiles.map((tile, i) => {
                     const isSelected = selectedTileIndex === i;
-                    const isDesert = tile.resource === 'Desert';
+                    const noNumber = NO_NUMBER_RESOURCES.has(tile.resource);
                     return (
                       <div
                         key={i}
@@ -504,7 +507,7 @@ export default function TemplateEditor(): React.ReactElement {
                           onChange={(e) => {
                             const resource = e.target.value;
                             const updates: Partial<TemplateTile> = { resource };
-                            if (resource === 'Desert') updates.number = 0;
+                            if (NO_NUMBER_RESOURCES.has(resource)) updates.number = 0;
                             updateTile(i, updates);
                           }}
                           className="flex-1 bg-transparent border-none text-white text-xs py-0.5"
@@ -519,7 +522,7 @@ export default function TemplateEditor(): React.ReactElement {
                         <select
                           value={tile.number}
                           onChange={(e) => updateTile(i, { number: parseInt(e.target.value, 10) })}
-                          disabled={isDesert}
+                          disabled={noNumber}
                           className="w-16 bg-transparent border-none text-white text-xs py-0.5 disabled:opacity-40"
                           onClick={(e) => e.stopPropagation()}
                         >

@@ -88,11 +88,14 @@ const GAME_TYPES: GameTypeConfig[] = [
     enabled: false,
   },
   {
-    type: 'SavedGame' as GameType, // Placeholder - Seafarers not yet implemented
+    // The Seafarers *family* now exists (GameType.Seafarers); its "Heading for New
+    // Shores" template renders in the editor. Game-creation stays gated ("Coming
+    // Soon") until the mechanics land in later steps, so enabled is false.
+    type: 'Seafarers',
     title: 'Seafarers',
     description: 'Explore the seas with ships and islands',
     players: '3-4 players',
-    tiles: 19,
+    tiles: 37,
     features: ['Ships & sea routes', 'Island discovery'],
     devCards: { knights: 14, victoryPoints: 5, monopoly: 2, yearOfPlenty: 2, roadBuilding: 2 },
     icon: faShip,
