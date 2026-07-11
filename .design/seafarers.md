@@ -118,6 +118,41 @@ model tables is this classification.
   player with an adjacent ship). **One choice, one piece** — never both.
 + **Later** (foundation must not preclude): Fog/exploration, cloth, wonders.
 
+## Seafarers is a family of scenarios — `GameType` vs `Scenario`
+
+**`GameType.Seafarers` is the *family* (one enum value)** for the New-Game selector
+and template category. The individual scenarios below are **`Scenario`s = data**
+(a template board + a `Scenario` profile: a `GameFeature` set + VP target), **not**
+`GameType` values — branching core control flow on a scenario name is exactly what
+the Prime rule forbids. So there is **one** `GameType.Seafarers`, and many scenarios
+as data underneath it.
+
+**"Supported vs not-supported" is decided by mechanics, not names.** A scenario is
+playable **iff every flag it needs maps to an implemented rule module**
+(`RulesModuleRegistry.Resolve`, D0); otherwise it resolves to a clear
+*"scenario X requires the missing mechanic (not yet implemented)."* Adding
+`GameType.Seafarers`
+also gets a **defensive `default` ("not yet supported")** on the few `switch (GameType)`
+sites — hygiene, nothing scenario-specific.
+
+The 8 official Seafarers scenarios and what each needs (implement **New Shores**
+first; the rest are documentation + future *data*, not pre-authored):
+
+| Scenario | Mechanics it needs | Status under this roadmap |
+|---|---|---|
+| **Heading for New Shores** | ships, movement, route, island-VP, pirate, gold | **target of this epic** |
+| The Four Islands | ships, movement, route, island-VP, pirate | data-only later (no main island → `(0,0,0)` is *sea*, the D7 all-score case) |
+| Through the Desert | ships, movement, route, island-VP, pirate | data-only later |
+| The Fog Island | + fog/exploration | needs Fog (deferred) |
+| The Forgotten Tribe | + special tokens | needs token mechanic (deferred) |
+| Cloth for Catan | + cloth | needs Cloth (deferred) |
+| The Pirate Islands | + advanced pirate / fleet | needs advanced pirate (deferred) |
+| The Wonders of Catan | + wonders | needs Wonders (deferred) |
+
+Once this epic's mechanics land, **Four Islands** and **Through the Desert** become
+new-data follow-ons (a template + a `Scenario` profile, no engine change) — the
+clearest proof that the framework, not the scenario, is the product.
+
 ## What already exists (large leverage)
 
 | Capability | Where | Status |
@@ -238,10 +273,37 @@ scoring island is ever split by a shuffle. So `IslandGroup` is **replaced by
 ### D2. Scenario profile + score/victory/winner
 
 Extend `GameTemplateData` (→ `IGameMetadata` → `GameModel`) with a `Scenario`
-descriptor: `VictoryPointTarget` and mechanic flags (`ShipsEnabled`,
-`ShipMovementEnabled`, `NewIslandBonusVp`, `ShipsCountForLongestRoute`,
-`PirateEnabled`, `FogEnabled`). Default = Regular (all off, target 10). `MaxShips`
-lives in `ResourceRules` (15 Seafarers / 0 Regular). Flags select active modules.
+descriptor: a **`Features` set** (`List<GameFeature>`) + numeric **config values**
+(`VictoryPointTarget`, `NewIslandBonusVpAmount`, …). Default = Regular (empty
+features, target 10). `MaxShips` lives in `ResourceRules` (15 Seafarers / 0 Regular).
+
+**`GameFeature` — the explicit capability vocabulary (enum, not per-feature bools).**
+A scenario's *requirements* are a **`GameFeature` set** on the scenario (data), never
+on `GameType`. This applies the "prefer an enum value over a new field" principle to
+the capability layer: a new mechanic (Cloth, Wonders) is **one enum value**, and a
+scenario opts in by **listing** it — no new `bool XEnabled` field per mechanic. New
+Shores' features are `{Ships, ShipMovement, ShipsInLongestRoute, NewIslandVp,
+Pirate}`. (Gold is **not** a feature — fixed `GoldMine` needs no module and its
+presence is derivable from the board.) Convenience accessors bridge the prose
+(`scenario.HasShips` ⇔ `Features.Contains(GameFeature.Ships)`).
+
+**Features drive module selection *and* support-gating.** `RulesModuleRegistry`
+maps each `GameFeature` → the module that implements it; `implementedFeatures` is the
+union those registered modules cover. A scenario is **playable iff
+`Features ⊆ implementedFeatures`**; otherwise it resolves to a clear *"requires the
+missing feature (not yet implemented)"*. The client reads `Features` to enable
+capability UI. (`Regular` = empty features ⇒ zero modules ⇒ byte-identical, D0.)
+
+**Features are also the build tracker — a scenario's definition of done.** A
+scenario's `Features` set *is* its acceptance checklist: New Shores needs `{Ships,
+ShipMovement, ShipsInLongestRoute, NewIslandVp, Pirate}`. As each Arc-B step
+registers the module for one feature, `implementedFeatures` grows, and the scenario
+**flips from "not yet supported" to playable exactly when its set is fully covered**.
+So progress is *visible and mechanical* — `Features \ implementedFeatures` is
+literally the remaining work — and each step's "done" is "this feature's module is
+registered and its tests pass." The sequencing maps 1:1: step 7 → `Ships`, step 8 →
+`ShipMovement`, step 9 → `ShipsInLongestRoute`, step 10 → `NewIslandVp`, step 11 →
+`Pirate` (step 6 lands the registry itself).
 
 **Scoring/winner:** `UpdateScore` gains the module `OnScore` contribution
 (scenario bonus VP). Per-player scenario bonus VP is stored in `GameModel`
@@ -868,10 +930,9 @@ the serialized GameModel shape becomes. Ground rules:
 + **Hash impact is versioned (D8).** The "Hashed?" column below is the *scenario-opted*
   hash (`GameHashVersion ≥ 2`). For Regular/Expansion the hash formula is unchanged,
   so these fields are hash-neutral there even when present at defaults.
-+ **Naming note.** The scenario ship toggle is `Scenario.ShipsEnabled` (not
-  `SupportShips`); the shuffle-partition key is `ShuffleGroup`. If we prefer
-  `SupportShips` as the public flag name, rename in one place (`Scenario`) — it is
-  not referenced by core control flow.
++ **Naming note.** Ship capability is `GameFeature.Ships` (accessor
+  `Scenario.HasShips`), not a `SupportShips` bool; the shuffle-partition key is
+  `ShuffleGroup`. Capabilities live in the `Features` set, not per-mechanic fields.
 
 ### New enum members / new enums
 
@@ -881,6 +942,8 @@ the serialized GameModel shape becomes. Ground rules:
 | `Entitlement` | `Ship` reused (buy+place); **add** `MoveShip` (optional, granted per turn) | `GameEnums.cs:115` | ship purchase (D3) + ship movement (D4) |
 | `ResourceType` | *(already has `Sea`, `GoldMine`)* — no change | `GameEnums.cs:5` | islands/gold (D1/D2) |
 | `GameState` | **add** `MustMoveShip`; **reuse existing `MustMoveRobber`** for the pirate (no new value, D11) | `GameEnums.cs` | ship-move sub-state (D4); robber-or-pirate (D11) |
+| `GameType` | **add** `Seafarers` (family; append) | `GameEnums.cs` | one value per *family*; scenarios are data (D2) |
+| `GameFeature` | **new enum**: `Ships, ShipMovement, ShipsInLongestRoute, NewIslandVp, Pirate, Fog, Cloth, Wonders, FriendlyTokens, PirateFleet` | new, `GameEnums.cs` | scenario capability vocabulary (D2); new mechanic = one value |
 | `BuildableKind` | **new `[Flags]` enum**: `None=0, Road=1, Ship=2` | new, `GameEnums.cs` | road/ship/both affordance (D3) |
 | `EdgeKind` | **new enum**: `Land, Coastal, Sea` | new, `GameEnums.cs` | edge classifier (D10); may be compute-only, see note |
 | `ActionType` | **add** (`ShipPurchase`, `SelectShipToMove`, `MoveShip`, `CancelMoveShip`, `MovePirate`) | `ActionType.cs` | CLI/replay + dispatch (D0) |
@@ -893,7 +956,7 @@ cached field on `RoadModel`. Default plan: **compute-only**, no stored field.
 
 | Model (file) | New field | Type | Default | Purpose (decision) | Hashed? |
 |---|---|---|---|---|---|
-| `GameModel` (`GameModel.cs`) | `Scenario` | `Scenario` | `Scenario.Regular` | scenario profile: VP target + mechanic flags (D2) | yes |
+| `GameModel` (`GameModel.cs`) | `Scenario` | `Scenario` | `Scenario.Regular` | scenario profile: `GameFeature` set + VP config (D2) | yes |
 | `GameModel` | `GameHashVersion` | `int` | `1` | hash policy selector; `≥2` opts into scenario hash (D8) | n/a (selector) |
 | `GameModel` | `ShipsBuiltThisTurn` | `List<RoadKey>` | `[]` | ships ineligible to move this turn (D4 movability); cleared `OnTurnAdvanced`; the **only** new top-level field, scrutinized in D4 | yes |
 | `TileModel` (`TileModel.cs`) | `ShuffleGroup` | `int` | `0` | shuffle partition (D1/D5); land tiles sharing it permute together; island-VP identity is **derived**, not this | yes (scenario) |
@@ -944,7 +1007,7 @@ Notes:
 
 | Type | Kind | Fields | Decision |
 |---|---|---|---|
-| `Scenario` | class | `string Id`, `int VictoryPointTarget = 10`, `bool ShipsEnabled`, `bool ShipMovementEnabled`, `bool NewIslandBonusVp`, `int NewIslandBonusVpAmount = 2`, `bool ShipsCountForLongestRoute`, `bool PirateEnabled`, `bool FogEnabled`; static `Scenario Regular` (all-off) | D2 — flags select active modules; default = Regular |
+| `Scenario` | class | `string Id`, `List<GameFeature> Features = []`, `int VictoryPointTarget = 10`, `int NewIslandBonusVpAmount = 2`; computed accessors (`HasShips`, `HasPirate`, …); static `Scenario Regular` (empty features) | D2 — `Features` select active modules + gate support; default = Regular |
 | `CommandContext` | record | `string GameId`, `string PlayerId`, `string MessageType`, `JsonElement Payload` | D0 — generic dispatch payload |
 | `ShipPurchaseMessage` + `ShipPurchaseRecord` | message/record | edge `RoadKey` | D3 |
 | `SelectShipToMoveMessage`, `MoveShipMessage`, `CancelMoveShipMessage` (+ records) | messages/records | `SelectShipToMove`: `shipKey` `RoadKey`; `MoveShip`: `to` `RoadKey` (source = the `RoadState.MovableShip` road) | D4 |
@@ -970,8 +1033,8 @@ containing `(0,0,0)`.
 
 ### Type-generation registrations to add (`CatanTypeGenSpec.cs`)
 
-`AddEnum<BuildableKind>()`, `AddEnum<EdgeKind>()` *(if persisted)*;
-`AddInterface<Scenario>()`, `AddInterface<CommandContext>()`,
+`AddEnum<BuildableKind>()`, `AddEnum<EdgeKind>()` *(if persisted)*,
+`AddEnum<GameFeature>()`; `AddInterface<Scenario>()`, `AddInterface<CommandContext>()`,
 `AddInterface<ShipPurchaseMessage>()`, `AddInterface<SelectShipToMoveMessage>()`,
 `AddInterface<MoveShipMessage>()`, `AddInterface<CancelMoveShipMessage>()`,
 `AddInterface<MovePirateMessage>()`. Then `pwsh ./catan.ps1 generate-types`.
