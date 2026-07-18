@@ -168,6 +168,18 @@ function Test-DefenderExclusions {
 
     Write-Log -Level WARN -Message "Checking Defender exclusions (toolchain speed)..." -NoLabel
 
+    # Reading the exclusion LIST requires elevation: Defender returns empty
+    # ExclusionPath/ExclusionProcess to non-admin callers even when exclusions ARE
+    # set (so malware can't enumerate safe spots). Detect elevation so we don't
+    # false-alarm from an ordinary shell.
+    $isAdmin = $false
+    try {
+        $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+        $isAdmin = ([System.Security.Principal.WindowsPrincipal]$id).IsInRole(
+            [System.Security.Principal.WindowsBuiltInRole]::Administrator)
+    }
+    catch { }
+
     $repoPath = $PSScriptRoot
     $npmCache = Join-Path $env:LOCALAPPDATA "npm-cache"
     $wantPaths = @($repoPath, $npmCache)
@@ -183,6 +195,17 @@ function Test-DefenderExclusions {
 
     $havePaths = @($pref.ExclusionPath)
     $haveProc = @($pref.ExclusionProcess)
+
+    # A non-admin shell can't read the exclusion list: Defender returns either an
+    # empty list or a sentinel like "N/A: Must be an administrator to view exclusions"
+    # even when exclusions ARE set. Detect that and skip rather than false-alarm.
+    $cannotRead = ($havePaths.Count -eq 0 -and $haveProc.Count -eq 0) -or
+        (@($havePaths + $haveProc) | Where-Object { $_ -match 'administrator to view|^N/?A\b' })
+    if (-not $isAdmin -and $cannotRead) {
+        Write-Log -Level INFO -Message "  [SKIP] Can't read Defender exclusions from a non-admin shell (Defender hides them)." -NoLabel
+        Write-Log -Level INFO -Message "         To verify, run './catan.ps1 doctor' in an elevated PowerShell." -NoLabel
+        return
+    }
 
     $missingPaths = @($wantPaths | Where-Object {
             $want = $_
