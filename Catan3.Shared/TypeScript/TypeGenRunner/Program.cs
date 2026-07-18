@@ -192,6 +192,8 @@ static void GenerateEnumDescriptions(string outputPath)
         (typeof(GameState), "GameState"),
         (typeof(Entitlement), "Entitlement"),
         (typeof(ActionType), "ActionType"),
+        (typeof(GameFeature), "GameFeature"),
+        (typeof(KeyboardShortcut), "KeyboardShortcut"),
     };
 
     // Generate imports

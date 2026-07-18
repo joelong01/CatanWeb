@@ -389,6 +389,24 @@ Use `./catan.ps1` as the unified entry point for all development tasks:
 
 ## Architecture and Design Patterns
 
+### Architectural Invariants (read first)
+
+The load-bearing laws of this codebase live in
+[`architecture-invariants.md`](./architecture-invariants.md) — the "constitution."
+**Read it before any design or implementation work.** It is authoritative: when a
+design doc or any subsection below disagrees with an invariant, the invariant wins.
+In brief:
+
+1. `GameModel` is the single runtime source of truth; the template is a
+   creation-time factory input, never read at play time.
+2. `GameState` is service-only; the client reads it, never derives it.
+3. Client-only render/interaction options (glyphs, labels, keyboard shortcuts)
+   live in the client, keyed by a shared enum — never in `GameModel`.
+4. Enums are defined once in `Catan3.Shared` and generated to TypeScript via the
+   type-gen pipeline; never hand-authored in `react-ui`.
+5. Templates author only what varies per-template; each field routes at creation
+   to `GameModel` (if authoritative) or nowhere (if the client knows it by enum).
+
 ### Blazor Component Model
 
 - **Parameters**: Use `[Parameter]` attribute for component props
@@ -408,6 +426,10 @@ Use `./catan.ps1` as the unified entry point for all development tasks:
 | Grid/StackPanel | CSS Grid/Flexbox | Layout |
 
 ### State Management
+
+> **Note:** The bullets below are legacy Blazor/desktop-era guidance. For the
+> authoritative rules on where state lives, defer to
+> [`architecture-invariants.md`](./architecture-invariants.md) (invariants 1–3).
 
 - **SignalR for game state**: Real-time updates from GameService
 - **Component state**: Local state in `@code` blocks

@@ -58,6 +58,8 @@ public class CatanTypeGenSpec : GenerationSpec
         // Enums
         AddEnum<GameState>();
         AddEnum<GameType>();
+        AddEnum<GameFeature>();
+        AddEnum<KeyboardShortcut>();
         AddEnum<ResourceType>();
         AddEnum<BuildingState>();
         AddEnum<BuildingVisualState>();

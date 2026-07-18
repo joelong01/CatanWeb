@@ -31,19 +31,21 @@ public static class DatabaseSeeder
         logger?.LogInformation("  Upserted {Count} code-defined system game templates", candidates.Length);
 
         // File-based system templates: expansions ship as data (a serialized
-        // GameTemplateData) under "Default Data/Templates/*.json". Dropping a new
-        // JSON there adds a system template with no code change.
+        // GameTemplateData) under "Default Data/SystemTemplates/*.json". Dropping a
+        // new JSON there adds a system template with no code change. (This folder is
+        // deliberately separate from "Default Data/Templates", which the catan.ps1
+        // install snapshots as raw Cosmos TemplateDoc dumps — a different format.)
         await UpsertFileTemplatesAsync(db, logger);
     }
 
     /// <summary>
-    /// Upserts any file-based system templates found under "Default Data/Templates/*.json".
-    /// Idempotent (upsert by Id). A missing folder or a malformed file is logged and skipped —
-    /// it never aborts seeding.
+    /// Upserts file-based system templates found under "Default Data/SystemTemplates/*.json",
+    /// each a raw serialized <see cref="GameTemplateData"/>. Idempotent (upsert by Id). A
+    /// missing folder or a malformed file is logged and skipped — it never aborts seeding.
     /// </summary>
     private static async Task UpsertFileTemplatesAsync(Abstractions.ICatanDb db, ILogger? logger)
     {
-        var dir = Path.Combine(AppContext.BaseDirectory, "Default Data", "Templates");
+        var dir = Path.Combine(AppContext.BaseDirectory, "Default Data", "SystemTemplates");
         if (!Directory.Exists(dir))
         {
             logger?.LogInformation("  No file-template folder at {Dir}; skipping file templates", dir);
@@ -115,6 +117,7 @@ public static class DatabaseSeeder
             ResourceRules = metadata.ResourceRules,
             HouseRules = metadata.HouseRules,
             HasSupplemental = metadata.HasSupplemental,
+            Features = [], // Regular/Expansion are plain boards; features ride the same field, empty.
             Tiles = tiles,
             Harbors = harbors,
             Entitlements = entitlements

@@ -44,6 +44,8 @@ import type { RoadModel } from '@/types/generated/models/road-model';
 import type { BuildingModel } from '@/types/generated/models/building-model';
 import type { PlayerModel } from '@/types/generated/models/player-model';
 import { Entitlement } from '@/types/generated/models/entitlement';
+import { KeyboardShortcut } from '@/types/generated/models/keyboard-shortcut';
+import { KeyboardShortcutDescriptions } from '@/types/generated/models/enum-descriptions';
 
 export interface GameKeyboardState {
   proxy: GameServiceProxy;
@@ -74,6 +76,45 @@ export interface GameKeyboardResult {
    */
   rollPrefixPending: boolean;
 }
+
+/**
+ * Fixed purchase/action shortcuts. Each trigger key is the enum's [Description]
+ * (via KeyboardShortcutDescriptions), so the binding stays in sync with the C#
+ * KeyboardShortcut enum — the single source of truth (architecture invariant 3).
+ * Positional keys (roll digits, road/settlement/city index) are handled above;
+ * they are algorithmic, not fixed shortcuts, and are intentionally not modelled here.
+ */
+const PURCHASE_SHORTCUTS: {
+  shortcut: KeyboardShortcut;
+  entitlement: Entitlement;
+  canPurchase: (s: GameKeyboardState) => boolean;
+}[] = [
+  {
+    shortcut: KeyboardShortcut.PurchaseSettlement,
+    entitlement: Entitlement.Settlement,
+    canPurchase: (s) => s.canPurchaseSettlement,
+  },
+  {
+    shortcut: KeyboardShortcut.PurchaseCity,
+    entitlement: Entitlement.City,
+    canPurchase: (s) => s.canPurchaseCity,
+  },
+  {
+    shortcut: KeyboardShortcut.PurchaseRoad,
+    entitlement: Entitlement.Road,
+    canPurchase: (s) => s.canPurchaseRoad,
+  },
+  {
+    shortcut: KeyboardShortcut.PlaySoldier,
+    entitlement: Entitlement.Soldier,
+    canPurchase: (s) => s.canPlaySoldier,
+  },
+  {
+    shortcut: KeyboardShortcut.PurchaseDevCard,
+    entitlement: Entitlement.DevCard,
+    canPurchase: (s) => s.canPurchaseDevCard,
+  },
+];
 
 /** Blur the currently focused element ONLY if it's a button. See invariant 4. */
 function blurFocusedButton(): void {
@@ -272,45 +313,20 @@ export function useGameKeyboard(state: GameKeyboardState): GameKeyboardResult {
         // Letter didn't match a road or city → fall through to purchase shortcuts.
       }
 
-      // ── Purchase shortcuts (case-insensitive) ──
-      // No game-state gating here — the canPurchase* flags already
-      // encode whether the purchase is valid in the current state.
-      switch (lower) {
-        case 's':
-          if (s.canPurchaseSettlement) {
-            e.preventDefault();
-            void s.proxy.purchase(Entitlement.Settlement);
-            blurFocusedButton();
-          }
-          return;
-        case 'c':
-          if (s.canPurchaseCity) {
-            e.preventDefault();
-            void s.proxy.purchase(Entitlement.City);
-            blurFocusedButton();
-          }
-          return;
-        case 'k':
-          if (s.canPlaySoldier) {
-            e.preventDefault();
-            void s.proxy.purchase(Entitlement.Soldier);
-            blurFocusedButton();
-          }
-          return;
-        case 'r':
-          if (s.canPurchaseRoad) {
-            e.preventDefault();
-            void s.proxy.purchase(Entitlement.Road);
-            blurFocusedButton();
-          }
-          return;
-        case 'd':
-          if (s.canPurchaseDevCard) {
-            e.preventDefault();
-            void s.proxy.purchase(Entitlement.DevCard);
-            blurFocusedButton();
-          }
-          return;
+      // ── Purchase shortcuts (case-insensitive, keyed off the KeyboardShortcut
+      // enum) ── The trigger key is the enum's [Description] so it stays in sync
+      // with C# (architecture invariant 3). No game-state gating here — the
+      // canPurchase* flags already encode whether the purchase is valid now.
+      const shortcut = PURCHASE_SHORTCUTS.find(
+        (ps) => KeyboardShortcutDescriptions[ps.shortcut].toLowerCase() === lower
+      );
+      if (shortcut) {
+        if (shortcut.canPurchase(s)) {
+          e.preventDefault();
+          void s.proxy.purchase(shortcut.entitlement);
+          blurFocusedButton();
+        }
+        return;
       }
     };
 

@@ -8,7 +8,13 @@ import { EditorBoard, coordKey } from '@/components/templates/EditorBoard';
 import { TileContextMenu } from '@/components/templates/TileContextMenu';
 import { WaterContextMenu } from '@/components/templates/WaterContextMenu';
 import { HarborContextMenu } from '@/components/templates/HarborContextMenu';
-import type { GameTemplateData, TemplateTile, TemplateHarbor } from '@/types/generated/models';
+import type {
+  GameTemplateData,
+  TemplateTile,
+  TemplateHarbor,
+} from '@/types/generated/models';
+import { Entitlement, GameFeature } from '@/types/generated/models';
+import { GameFeatureDescriptions } from '@/types/generated/models/enum-descriptions';
 import type { HexCoordinate } from '@/components/hex-grid/hex-geometry';
 import { cubicCoord } from '@/components/hex-grid/hex-geometry';
 import { getSpiralCoordinates, getSquareCoordinates } from '@/components/hex-grid';
@@ -25,10 +31,26 @@ const LAYOUT_OPTIONS: { value: LayoutType; label: string }[] = [
 const RESOURCE_OPTIONS = ['Desert', 'Wood', 'Brick', 'Wheat', 'Sheep', 'Ore', 'GoldMine', 'Sea'];
 /** Resources that carry no number token (a chit makes no sense on them). */
 const NO_NUMBER_RESOURCES = new Set(['Desert', 'Sea']);
-const TILE_NUMBERS = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
 const NUMBER_OPTIONS = [0, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
 const HARBOR_SIDE_OPTIONS = ['Top', 'TopRight', 'BottomRight', 'Bottom', 'BottomLeft', 'TopLeft'];
 const HARBOR_TYPE_OPTIONS = ['ThreeForOne', 'Wood', 'Brick', 'Wheat', 'Sheep', 'Ore'];
+
+/**
+ * Scenario capabilities a template can advertise, derived from the generated
+ * GameFeature enum + its descriptions (architecture invariant 4 — one source of
+ * truth, no hand-authored copy). `value` is stored verbatim in template.features.
+ */
+const GAME_FEATURE_OPTIONS: { value: GameFeature; label: string }[] = Object.values(
+  GameFeature
+).map((value) => ({ value, label: GameFeatureDescriptions[value] }));
+
+/**
+ * Every purchaseable entitlement a template can grant, derived from the generated
+ * Entitlement enum (drops the `Undefined` sentinel). Stays in sync with C#.
+ */
+const ENTITLEMENT_OPTIONS: string[] = Object.values(Entitlement).filter(
+  (e) => e !== Entitlement.Undefined
+);
 
 /** Flip animation duration in ms. */
 const FLIP_DURATION = 300;
@@ -142,6 +164,28 @@ export default function TemplateEditor(): React.ReactElement {
     },
     []
   );
+
+  const toggleFeature = useCallback((feature: GameFeature) => {
+    setTemplate((prev) => {
+      if (!prev) return prev;
+      const current = prev.features ?? [];
+      const next = current.includes(feature)
+        ? current.filter((f) => f !== feature)
+        : [...current, feature];
+      return { ...prev, features: next };
+    });
+  }, []);
+
+  const toggleEntitlement = useCallback((entitlement: string) => {
+    setTemplate((prev) => {
+      if (!prev) return prev;
+      const has = prev.entitlements.some((e) => e.entitlement === entitlement);
+      const next = has
+        ? prev.entitlements.filter((e) => e.entitlement !== entitlement)
+        : [...prev.entitlements, { entitlement }];
+      return { ...prev, entitlements: next };
+    });
+  }, []);
 
   const handleLayoutChange = useCallback(
     (newLayout: LayoutType) => {
@@ -414,6 +458,40 @@ export default function TemplateEditor(): React.ReactElement {
                     <option value="Seafarers">Seafarers</option>
                   </select>
                 </label>
+                <div className="block">
+                  <span className="text-xs text-gray-400">Features</span>
+                  <details className="mt-1 group">
+                    <summary className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white cursor-pointer list-none flex justify-between items-center gap-2">
+                      <span className="truncate">
+                        {(template.features?.length ?? 0) === 0
+                          ? 'None'
+                          : GAME_FEATURE_OPTIONS.filter((f) =>
+                              template.features?.includes(f.value)
+                            )
+                              .map((f) => f.label)
+                              .join(', ')}
+                      </span>
+                      <span className="text-gray-400 transition-transform group-open:rotate-180">
+                        &#9662;
+                      </span>
+                    </summary>
+                    <div className="mt-1 max-h-56 space-y-0.5 overflow-y-auto rounded border border-white/10 bg-black/40 p-2">
+                      {GAME_FEATURE_OPTIONS.map((f) => (
+                        <label
+                          key={f.value}
+                          className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm text-white hover:bg-white/5"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={template.features?.includes(f.value) ?? false}
+                            onChange={() => toggleFeature(f.value)}
+                          />
+                          <span>{f.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                </div>
                 <label className="block">
                   <span className="text-xs text-gray-400">Board Layout</span>
                   <select
@@ -548,31 +626,6 @@ export default function TemplateEditor(): React.ReactElement {
               )}
             </section>
 
-            {/* Number Distribution */}
-            <section className="space-y-2">
-              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-                Numbers
-              </h2>
-              <div className="space-y-1">
-                {TILE_NUMBERS.map((num) => {
-                  const count = template.tiles.filter((t) => t.number === num).length;
-                  return (
-                    <div
-                      key={num}
-                      className="flex items-center justify-between text-sm px-2 py-1 rounded bg-white/5"
-                    >
-                      <span
-                        className={`font-mono ${num === 6 || num === 8 ? 'text-red-400 font-bold' : 'text-gray-300'}`}
-                      >
-                        {num}
-                      </span>
-                      <span className="text-white w-6 text-center font-mono">{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
             {/* Harbors */}
             <section className="space-y-2">
               <div className="flex items-center justify-between">
@@ -628,18 +681,38 @@ export default function TemplateEditor(): React.ReactElement {
               </div>
             </section>
 
-            {/* Entitlements (read-only for now) */}
+            {/* Entitlements */}
             <section className="space-y-2">
               <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
                 Entitlements ({template.entitlements.length})
               </h2>
-              <div className="space-y-1">
-                {template.entitlements.map((ent, i) => (
-                  <div key={i} className="text-sm px-2 py-1 rounded bg-white/5 text-gray-300">
-                    {ent.entitlement}
-                  </div>
-                ))}
-              </div>
+              <details className="group">
+                <summary className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white cursor-pointer list-none flex justify-between items-center gap-2">
+                  <span className="truncate">
+                    {template.entitlements.length === 0
+                      ? 'None'
+                      : template.entitlements.map((e) => e.entitlement).join(', ')}
+                  </span>
+                  <span className="text-gray-400 transition-transform group-open:rotate-180">
+                    &#9662;
+                  </span>
+                </summary>
+                <div className="mt-1 max-h-56 space-y-0.5 overflow-y-auto rounded border border-white/10 bg-black/40 p-2">
+                  {ENTITLEMENT_OPTIONS.map((ent) => (
+                    <label
+                      key={ent}
+                      className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm text-white hover:bg-white/5"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={template.entitlements.some((e) => e.entitlement === ent)}
+                        onChange={() => toggleEntitlement(ent)}
+                      />
+                      <span>{ent}</span>
+                    </label>
+                  ))}
+                </div>
+              </details>
             </section>
           </div>
 
@@ -738,6 +811,7 @@ function createDefaultTemplate(): GameTemplateData {
       griefDodgy: false,
     },
     hasSupplemental: false,
+    features: [],
     tiles: [],
     harbors: [],
     entitlements: [

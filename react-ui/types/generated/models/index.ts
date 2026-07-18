@@ -30,6 +30,8 @@ export * from './road-key';
 export * from './hex-coordinates';
 export * from './game-state';
 export * from './game-type';
+export * from './game-feature';
+export * from './keyboard-shortcut';
 export * from './resource-type';
 export * from './building-state';
 export * from './building-visual-state';

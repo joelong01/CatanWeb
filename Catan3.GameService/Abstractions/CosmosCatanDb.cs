@@ -285,6 +285,7 @@ public sealed class CosmosCatanDb : ICatanDb
             ResourceRules = data.ResourceRules,
             HouseRules = data.HouseRules,
             HasSupplemental = data.HasSupplemental,
+            Features = data.Features,
             Tiles = data.Tiles,
             Harbors = data.Harbors,
             Entitlements = data.Entitlements,
