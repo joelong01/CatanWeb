@@ -285,7 +285,7 @@ public sealed class CosmosCatanDb : ICatanDb
             ResourceRules = data.ResourceRules,
             HouseRules = data.HouseRules,
             HasSupplemental = data.HasSupplemental,
-            Features = data.Features,
+            Features = data.Features ?? [], // keep the non-null invariant even if a stored doc has "features": null
             Tiles = data.Tiles,
             Harbors = data.Harbors,
             Entitlements = data.Entitlements,

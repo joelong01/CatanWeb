@@ -33,8 +33,16 @@ const LAYOUT_OPTIONS: { value: LayoutType; label: string }[] = [
  * hardcode the *exclusion* set instead). Keep in sync if a placeable resource is added.
  */
 const RESOURCE_OPTIONS = ['Desert', 'Wood', 'Brick', 'Wheat', 'Sheep', 'Ore', 'GoldMine', 'Sea'];
+/**
+ * The engine's canonical "no production chit" number per resource. Desert is **7** —
+ * the robber tile; the engine asserts (# deserts == # number-7 tiles) and forces it in
+ * EnsureDesertSeven, and a board may hold several deserts (each 7, shuffled within their
+ * group). Sea is 0. The board shows no chit for these, but the value is preserved so the
+ * template round-trips cleanly through the editor.
+ */
+const NO_NUMBER_VALUE: Record<string, number> = { Desert: 7, Sea: 0 };
 /** Resources that carry no number token (a chit makes no sense on them). */
-const NO_NUMBER_RESOURCES = new Set(['Desert', 'Sea']);
+const NO_NUMBER_RESOURCES = new Set(Object.keys(NO_NUMBER_VALUE));
 const NUMBER_OPTIONS = [0, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
 // Harbor sides/types are the full enums minus the `None` sentinel — derive from the
 // generated enums so they stay in sync with C# (architecture invariant 4).
@@ -288,7 +296,10 @@ export default function TemplateEditor(): React.ReactElement {
         if (!prev) return prev;
         return {
           ...prev,
-          tiles: [...prev.tiles, { q: coord.q, r: coord.r, resource: 'Desert', number: 0 }],
+          tiles: [
+            ...prev.tiles,
+            { q: coord.q, r: coord.r, resource: 'Desert', number: NO_NUMBER_VALUE.Desert },
+          ],
         };
       });
       setWaterMenu(null);
@@ -589,7 +600,8 @@ export default function TemplateEditor(): React.ReactElement {
                           onChange={(e) => {
                             const resource = e.target.value;
                             const updates: Partial<TemplateTile> = { resource };
-                            if (NO_NUMBER_RESOURCES.has(resource)) updates.number = 0;
+                            if (resource in NO_NUMBER_VALUE)
+                              updates.number = NO_NUMBER_VALUE[resource];
                             updateTile(i, updates);
                           }}
                           className="flex-1 bg-transparent border-none text-white text-xs py-0.5"
@@ -608,9 +620,9 @@ export default function TemplateEditor(): React.ReactElement {
                           className="w-16 bg-transparent border-none text-white text-xs py-0.5 disabled:opacity-40"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {NUMBER_OPTIONS.map((n) => (
+                          {(noNumber ? [tile.number] : NUMBER_OPTIONS).map((n) => (
                             <option key={n} value={n}>
-                              {n === 0 ? '—' : n}
+                              {noNumber || n === 0 ? '—' : n}
                             </option>
                           ))}
                         </select>

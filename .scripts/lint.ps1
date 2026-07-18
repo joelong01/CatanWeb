@@ -59,16 +59,23 @@ function Get-NodeToolInvoker {
     param([Parameter(Mandatory)][string]$Bin, [Parameter(Mandatory)][string]$Package)
     if ($script:_toolInvokers.ContainsKey($Bin)) { return $script:_toolInvokers[$Bin] }
     $invoker = $null
+    # Local install: Windows uses a "<bin>.cmd" shim, macOS/Linux a bare "<bin>".
+    $localNames = if ($IsWindows) { @("$Bin.cmd", $Bin) } else { @($Bin, "$Bin.cmd") }
     foreach ($dir in @($projectRoot, $reactUiPath)) {
-        $cmd = Join-Path $dir "node_modules/.bin/$Bin.cmd"
-        if (Test-Path $cmd) { $invoker = @($cmd); break }
+        foreach ($name in $localNames) {
+            $cmd = Join-Path $dir "node_modules/.bin/$name"
+            if (Test-Path -LiteralPath $cmd) { $invoker = @($cmd); break }
+        }
+        if ($invoker) { break }
     }
     if (-not $invoker) {
-        # Prefer the Windows .cmd shim explicitly — the extensionless global shim
-        # (a shell script) is not directly executable by PowerShell.
-        $g = Get-Command "$Bin.cmd" -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-        if (-not $g) { $g = Get-Command $Bin -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1 }
-        if ($g) { $invoker = @($g.Source) }
+        # Global: on Windows prefer the .cmd shim (the extensionless one is a shell
+        # script pwsh can't exec directly); elsewhere the bare name is correct.
+        $globalNames = if ($IsWindows) { @("$Bin.cmd", $Bin) } else { @($Bin) }
+        foreach ($name in $globalNames) {
+            $g = Get-Command $name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($g) { $invoker = @($g.Source); break }
+        }
     }
     if (-not $invoker) { $invoker = @('npx', $Package) }  # last resort (slow under AV)
     $script:_toolInvokers[$Bin] = $invoker
