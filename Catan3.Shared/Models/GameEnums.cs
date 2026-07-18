@@ -26,7 +26,64 @@ namespace Catan3.Shared.Models
     public enum GameType
     {
         Regular, Expansion, Unset,
-        SavedGame
+        SavedGame,
+        // Seafarers is the game *family* (one value); individual scenarios
+        // (Heading for New Shores, The Four Islands, ...) are Scenario data, not
+        // GameType values. Appended last to keep existing (int) ordinals stable
+        // (GameHash / serialized games unaffected).
+        Seafarers
+    }
+    // Scenario capability vocabulary (Seafarers D2). A scenario's requirements are a
+    // set of these; the engine switches modules on their presence and gates support.
+    // Adding a new mechanic = one new value here (also a "definition of done" tracker).
+    // Appended-only: never reorder/remove (serialized in templates/scenarios).
+    // [Description] is the friendly label; the editor sources it from the generated
+    // enum descriptions (architecture invariant 4) rather than a hand-authored TS list.
+    public enum GameFeature
+    {
+        [Description("Ships")]
+        Ships,
+        [Description("Ship Movement")]
+        ShipMovement,
+        [Description("Ships in Longest Route")]
+        ShipsInLongestRoute,
+        [Description("New Island VP")]
+        NewIslandVp,
+        [Description("Pirate")]
+        Pirate,
+        [Description("Fog")]
+        Fog,
+        [Description("Cloth")]
+        Cloth,
+        [Description("Wonders")]
+        Wonders,
+        [Description("Friendly Tokens")]
+        FriendlyTokens,
+        [Description("Pirate Fleet")]
+        PirateFleet
+    }
+    // Single source of truth for fixed keyboard shortcuts (architecture invariant 3).
+    // [Description] is the browser KeyboardEvent.key value (canonical lowercase); the
+    // client matches against it and normalizes case. Client-only vocabulary: it lives
+    // in Shared so it flows to TypeScript via the type-gen pipeline, but it is NEVER
+    // placed in GameModel or on a template. Append-only.
+    //
+    // Only FIXED named shortcuts belong here. Positional keys (roll digits, road /
+    // settlement / city index) are algorithmic, not fixed shortcuts, and stay in the
+    // keyboard hook. PurchaseShip ([Description("p")]) is added in step 7 with its
+    // ship-purchase handler.
+    public enum KeyboardShortcut
+    {
+        [Description("s")]
+        PurchaseSettlement,
+        [Description("c")]
+        PurchaseCity,
+        [Description("r")]
+        PurchaseRoad,
+        [Description("k")]
+        PlaySoldier,
+        [Description("d")]
+        PurchaseDevCard
     }
     public enum RoadState { Unowned, Road, Ship, Buildable };
     public enum HarborType { Sheep, Wood, Ore, Wheat, Brick, ThreeForOne, None };

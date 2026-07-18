@@ -28,7 +28,53 @@ public static class DatabaseSeeder
             await db.SaveTemplateAsync(id, name, category, isSystemTemplate: true, templateData);
         }
 
-        logger?.LogInformation("  Upserted {Count} system game templates", candidates.Length);
+        logger?.LogInformation("  Upserted {Count} code-defined system game templates", candidates.Length);
+
+        // File-based system templates: expansions ship as data (a serialized
+        // GameTemplateData) under "Default Data/SystemTemplates/*.json". Dropping a
+        // new JSON there adds a system template with no code change. (This folder is
+        // deliberately separate from "Default Data/Templates", which the catan.ps1
+        // install snapshots as raw Cosmos TemplateDoc dumps — a different format.)
+        await UpsertFileTemplatesAsync(db, logger);
+    }
+
+    /// <summary>
+    /// Upserts file-based system templates found under "Default Data/SystemTemplates/*.json",
+    /// each a raw serialized <see cref="GameTemplateData"/>. Idempotent (upsert by Id). A
+    /// missing folder or a malformed file is logged and skipped — it never aborts seeding.
+    /// </summary>
+    private static async Task UpsertFileTemplatesAsync(Abstractions.ICatanDb db, ILogger? logger)
+    {
+        var dir = Path.Combine(AppContext.BaseDirectory, "Default Data", "SystemTemplates");
+        if (!Directory.Exists(dir))
+        {
+            logger?.LogInformation("  No file-template folder at {Dir}; skipping file templates", dir);
+            return;
+        }
+
+        int count = 0;
+        foreach (var path in Directory.EnumerateFiles(dir, "*.json"))
+        {
+            try
+            {
+                var json = await File.ReadAllTextAsync(path);
+                var data = JsonHelper.Deserialize<GameTemplateData>(json);
+                if (data is null || string.IsNullOrWhiteSpace(data.Id))
+                {
+                    logger?.LogWarning("  Skipping template file {File}: empty or missing Id", Path.GetFileName(path));
+                    continue;
+                }
+
+                await db.SaveTemplateAsync(data.Id, data.Name, data.Category, isSystemTemplate: true, data);
+                count++;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "  Skipping malformed template file {File}", Path.GetFileName(path));
+            }
+        }
+
+        logger?.LogInformation("  Upserted {Count} file-based system templates from {Dir}", count, dir);
     }
 
     private static GameTemplateData BuildTemplateFromMetadata(
@@ -71,6 +117,7 @@ public static class DatabaseSeeder
             ResourceRules = metadata.ResourceRules,
             HouseRules = metadata.HouseRules,
             HasSupplemental = metadata.HasSupplemental,
+            Features = [], // Regular/Expansion are plain boards; features ride the same field, empty.
             Tiles = tiles,
             Harbors = harbors,
             Entitlements = entitlements

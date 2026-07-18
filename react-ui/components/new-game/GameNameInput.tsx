@@ -47,6 +47,8 @@ function getGameTypeName(gameType: GameType): string {
       return 'Catan';
     case 'Expansion':
       return 'Catan 5-6';
+    case 'Seafarers':
+      return 'Seafarers';
     default:
       return 'Game';
   }

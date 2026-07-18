@@ -19,6 +19,8 @@ import type { GameServiceProxy } from '@/lib/services/GameServiceProxy';
 import type { GameState } from '@/types/generated/models/game-state';
 import type { ActionFlags } from '@/types/generated/models/action-flags';
 import type { RoadModel } from '@/types/generated/models/road-model';
+import { KeyboardShortcut } from '@/types/generated/models/keyboard-shortcut';
+import { KeyboardShortcutDescriptions } from '@/types/generated/models/enum-descriptions';
 import type { BuildingModel } from '@/types/generated/models/building-model';
 import type { PlayerModel } from '@/types/generated/models/player-model';
 
@@ -379,31 +381,35 @@ describe('useGameKeyboard — unit', () => {
       expect(proxy.upgradeBuilding).toHaveBeenCalledTimes(1);
     });
 
+    // Keys come from the KeyboardShortcut enum's descriptions (the single source of
+    // truth) so a description typo fails here instead of silently shipping.
+    const settlementKey = KeyboardShortcutDescriptions[KeyboardShortcut.PurchaseSettlement];
+
     it('S fires Purchase Settlement when canPurchaseSettlement is true', () => {
       const proxy = makeFakeProxy();
       renderHook(() => useGameKeyboard(buildState({ proxy, canPurchaseSettlement: true })));
-      press('s');
+      press(settlementKey);
       expect(proxy.purchase).toHaveBeenCalledWith('Settlement');
     });
 
     it('S does NOT fire when canPurchaseSettlement is false', () => {
       const proxy = makeFakeProxy();
       renderHook(() => useGameKeyboard(buildState({ proxy, canPurchaseSettlement: false })));
-      press('s');
+      press(settlementKey);
       expect(proxy.purchase).not.toHaveBeenCalled();
     });
 
     it.each([
-      ['c', 'canPurchaseCity', 'City'],
-      ['k', 'canPlaySoldier', 'Soldier'],
-      ['r', 'canPurchaseRoad', 'Road'],
-      ['d', 'canPurchaseDevCard', 'DevCard'],
-    ] as const)('purchase letter %s fires when its flag is true', (key, flag, expected) => {
+      [KeyboardShortcut.PurchaseCity, 'canPurchaseCity', 'City'],
+      [KeyboardShortcut.PlaySoldier, 'canPlaySoldier', 'Soldier'],
+      [KeyboardShortcut.PurchaseRoad, 'canPurchaseRoad', 'Road'],
+      [KeyboardShortcut.PurchaseDevCard, 'canPurchaseDevCard', 'DevCard'],
+    ] as const)('purchase shortcut %s fires when its flag is true', (shortcut, flag, expected) => {
       const proxy = makeFakeProxy();
       const args: BuildArgs = { proxy };
       args[flag] = true;
       renderHook(() => useGameKeyboard(buildState(args)));
-      press(key);
+      press(KeyboardShortcutDescriptions[shortcut]);
       expect(proxy.purchase).toHaveBeenCalledWith(expected);
     });
   });

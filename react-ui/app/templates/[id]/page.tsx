@@ -9,6 +9,8 @@ import { TileContextMenu } from '@/components/templates/TileContextMenu';
 import { WaterContextMenu } from '@/components/templates/WaterContextMenu';
 import { HarborContextMenu } from '@/components/templates/HarborContextMenu';
 import type { GameTemplateData, TemplateTile, TemplateHarbor } from '@/types/generated/models';
+import { Entitlement, GameFeature, HarborType, HexSide } from '@/types/generated/models';
+import { GameFeatureDescriptions } from '@/types/generated/models/enum-descriptions';
 import type { HexCoordinate } from '@/components/hex-grid/hex-geometry';
 import { cubicCoord } from '@/components/hex-grid/hex-geometry';
 import { getSpiralCoordinates, getSquareCoordinates } from '@/components/hex-grid';
@@ -22,11 +24,47 @@ const LAYOUT_OPTIONS: { value: LayoutType; label: string }[] = [
   { value: 'Square', label: 'Square (column-based)' },
 ];
 
-const RESOURCE_OPTIONS = ['Desert', 'Wood', 'Brick', 'Wheat', 'Sheep', 'Ore', 'GoldMine'];
-const TILE_NUMBERS = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
+/**
+ * Board-placeable resources — an intentional CURATED SUBSET of the `ResourceType`
+ * enum, not the whole thing. `ResourceType` also carries dev-card/commodity values
+ * (Coin, Cloth, Paper, …) and sentinels (Back, None, Robber) that are never authored
+ * onto a board tile, and there is no "placeable" marker on the enum to filter on — so
+ * this explicit include-list is the correct representation (deriving it would just
+ * hardcode the *exclusion* set instead). Keep in sync if a placeable resource is added.
+ */
+const RESOURCE_OPTIONS = ['Desert', 'Wood', 'Brick', 'Wheat', 'Sheep', 'Ore', 'GoldMine', 'Sea'];
+/**
+ * The engine's canonical "no production chit" number per resource. Desert is **7** —
+ * the robber tile; the engine asserts (# deserts == # number-7 tiles) and forces it in
+ * EnsureDesertSeven, and a board may hold several deserts (each 7, shuffled within their
+ * group). Sea is 0. The board shows no chit for these, but the value is preserved so the
+ * template round-trips cleanly through the editor.
+ */
+const NO_NUMBER_VALUE: Record<string, number> = { Desert: 7, Sea: 0 };
+/** Resources that carry no number token (a chit makes no sense on them). */
+const NO_NUMBER_RESOURCES = new Set(Object.keys(NO_NUMBER_VALUE));
 const NUMBER_OPTIONS = [0, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
-const HARBOR_SIDE_OPTIONS = ['Top', 'TopRight', 'BottomRight', 'Bottom', 'BottomLeft', 'TopLeft'];
-const HARBOR_TYPE_OPTIONS = ['ThreeForOne', 'Wood', 'Brick', 'Wheat', 'Sheep', 'Ore'];
+// Harbor sides/types are the full enums minus the `None` sentinel — derive from the
+// generated enums so they stay in sync with C# (architecture invariant 4).
+const HARBOR_SIDE_OPTIONS = Object.values(HexSide).filter((s) => s !== HexSide.None);
+const HARBOR_TYPE_OPTIONS = Object.values(HarborType).filter((t) => t !== HarborType.None);
+
+/**
+ * Scenario capabilities a template can advertise, derived from the generated
+ * GameFeature enum + its descriptions (architecture invariant 4 — one source of
+ * truth, no hand-authored copy). `value` is stored verbatim in template.features.
+ */
+const GAME_FEATURE_OPTIONS: { value: GameFeature; label: string }[] = Object.values(
+  GameFeature
+).map((value) => ({ value, label: GameFeatureDescriptions[value] }));
+
+/**
+ * Every purchaseable entitlement a template can grant, derived from the generated
+ * Entitlement enum (drops the `Undefined` sentinel). Stays in sync with C#.
+ */
+const ENTITLEMENT_OPTIONS: string[] = Object.values(Entitlement).filter(
+  (e) => e !== Entitlement.Undefined
+);
 
 /** Flip animation duration in ms. */
 const FLIP_DURATION = 300;
@@ -141,6 +179,28 @@ export default function TemplateEditor(): React.ReactElement {
     []
   );
 
+  const toggleFeature = useCallback((feature: GameFeature) => {
+    setTemplate((prev) => {
+      if (!prev) return prev;
+      const current = prev.features ?? [];
+      const next = current.includes(feature)
+        ? current.filter((f) => f !== feature)
+        : [...current, feature];
+      return { ...prev, features: next };
+    });
+  }, []);
+
+  const toggleEntitlement = useCallback((entitlement: string) => {
+    setTemplate((prev) => {
+      if (!prev) return prev;
+      const has = prev.entitlements.some((e) => e.entitlement === entitlement);
+      const next = has
+        ? prev.entitlements.filter((e) => e.entitlement !== entitlement)
+        : [...prev.entitlements, { entitlement }];
+      return { ...prev, entitlements: next };
+    });
+  }, []);
+
   const handleLayoutChange = useCallback(
     (newLayout: LayoutType) => {
       setLayout(newLayout);
@@ -236,7 +296,10 @@ export default function TemplateEditor(): React.ReactElement {
         if (!prev) return prev;
         return {
           ...prev,
-          tiles: [...prev.tiles, { q: coord.q, r: coord.r, resource: 'Desert', number: 0 }],
+          tiles: [
+            ...prev.tiles,
+            { q: coord.q, r: coord.r, resource: 'Desert', number: NO_NUMBER_VALUE.Desert },
+          ],
         };
       });
       setWaterMenu(null);
@@ -409,8 +472,41 @@ export default function TemplateEditor(): React.ReactElement {
                   >
                     <option value="Regular">Regular</option>
                     <option value="Expansion">Expansion</option>
+                    <option value="Seafarers">Seafarers</option>
                   </select>
                 </label>
+                <div className="block">
+                  <span className="text-xs text-gray-400">Features</span>
+                  <details className="mt-1 group">
+                    <summary className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white cursor-pointer list-none flex justify-between items-center gap-2">
+                      <span className="truncate">
+                        {(template.features?.length ?? 0) === 0
+                          ? 'None'
+                          : GAME_FEATURE_OPTIONS.filter((f) => template.features?.includes(f.value))
+                              .map((f) => f.label)
+                              .join(', ')}
+                      </span>
+                      <span className="text-gray-400 transition-transform group-open:rotate-180">
+                        &#9662;
+                      </span>
+                    </summary>
+                    <div className="mt-1 max-h-56 space-y-0.5 overflow-y-auto rounded border border-white/10 bg-black/40 p-2">
+                      {GAME_FEATURE_OPTIONS.map((f) => (
+                        <label
+                          key={f.value}
+                          className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm text-white hover:bg-white/5"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={template.features?.includes(f.value) ?? false}
+                            onChange={() => toggleFeature(f.value)}
+                          />
+                          <span>{f.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                </div>
                 <label className="block">
                   <span className="text-xs text-gray-400">Board Layout</span>
                   <select
@@ -481,7 +577,7 @@ export default function TemplateEditor(): React.ReactElement {
                   {/* Rows */}
                   {template.tiles.map((tile, i) => {
                     const isSelected = selectedTileIndex === i;
-                    const isDesert = tile.resource === 'Desert';
+                    const noNumber = NO_NUMBER_RESOURCES.has(tile.resource);
                     return (
                       <div
                         key={i}
@@ -504,7 +600,8 @@ export default function TemplateEditor(): React.ReactElement {
                           onChange={(e) => {
                             const resource = e.target.value;
                             const updates: Partial<TemplateTile> = { resource };
-                            if (resource === 'Desert') updates.number = 0;
+                            if (resource in NO_NUMBER_VALUE)
+                              updates.number = NO_NUMBER_VALUE[resource];
                             updateTile(i, updates);
                           }}
                           className="flex-1 bg-transparent border-none text-white text-xs py-0.5"
@@ -519,13 +616,13 @@ export default function TemplateEditor(): React.ReactElement {
                         <select
                           value={tile.number}
                           onChange={(e) => updateTile(i, { number: parseInt(e.target.value, 10) })}
-                          disabled={isDesert}
+                          disabled={noNumber}
                           className="w-16 bg-transparent border-none text-white text-xs py-0.5 disabled:opacity-40"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {NUMBER_OPTIONS.map((n) => (
+                          {(noNumber ? [tile.number] : NUMBER_OPTIONS).map((n) => (
                             <option key={n} value={n}>
-                              {n === 0 ? '—' : n}
+                              {noNumber || n === 0 ? '—' : n}
                             </option>
                           ))}
                         </select>
@@ -543,31 +640,6 @@ export default function TemplateEditor(): React.ReactElement {
                   })}
                 </div>
               )}
-            </section>
-
-            {/* Number Distribution */}
-            <section className="space-y-2">
-              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-                Numbers
-              </h2>
-              <div className="space-y-1">
-                {TILE_NUMBERS.map((num) => {
-                  const count = template.tiles.filter((t) => t.number === num).length;
-                  return (
-                    <div
-                      key={num}
-                      className="flex items-center justify-between text-sm px-2 py-1 rounded bg-white/5"
-                    >
-                      <span
-                        className={`font-mono ${num === 6 || num === 8 ? 'text-red-400 font-bold' : 'text-gray-300'}`}
-                      >
-                        {num}
-                      </span>
-                      <span className="text-white w-6 text-center font-mono">{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
             </section>
 
             {/* Harbors */}
@@ -625,18 +697,38 @@ export default function TemplateEditor(): React.ReactElement {
               </div>
             </section>
 
-            {/* Entitlements (read-only for now) */}
+            {/* Entitlements */}
             <section className="space-y-2">
               <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
                 Entitlements ({template.entitlements.length})
               </h2>
-              <div className="space-y-1">
-                {template.entitlements.map((ent, i) => (
-                  <div key={i} className="text-sm px-2 py-1 rounded bg-white/5 text-gray-300">
-                    {ent.entitlement}
-                  </div>
-                ))}
-              </div>
+              <details className="group">
+                <summary className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white cursor-pointer list-none flex justify-between items-center gap-2">
+                  <span className="truncate">
+                    {template.entitlements.length === 0
+                      ? 'None'
+                      : template.entitlements.map((e) => e.entitlement).join(', ')}
+                  </span>
+                  <span className="text-gray-400 transition-transform group-open:rotate-180">
+                    &#9662;
+                  </span>
+                </summary>
+                <div className="mt-1 max-h-56 space-y-0.5 overflow-y-auto rounded border border-white/10 bg-black/40 p-2">
+                  {ENTITLEMENT_OPTIONS.map((ent) => (
+                    <label
+                      key={ent}
+                      className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm text-white hover:bg-white/5"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={template.entitlements.some((e) => e.entitlement === ent)}
+                        onChange={() => toggleEntitlement(ent)}
+                      />
+                      <span>{ent}</span>
+                    </label>
+                  ))}
+                </div>
+              </details>
             </section>
           </div>
 
@@ -735,6 +827,7 @@ function createDefaultTemplate(): GameTemplateData {
       griefDodgy: false,
     },
     hasSupplemental: false,
+    features: [],
     tiles: [],
     harbors: [],
     entitlements: [

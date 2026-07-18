@@ -88,9 +88,12 @@ function Get-ChangedFiles {
         if ($unstaged) { $allChanged += $unstaged }
         if ($untracked) { $allChanged += $untracked }
 
+        # -LiteralPath: Next.js dynamic-route dirs contain literal square brackets
+        # (e.g. app/templates/[id]/page.tsx) that Test-Path would treat as a wildcard
+        # and drop the file.
         $allChanged | Sort-Object -Unique | ForEach-Object {
             Join-Path $projectRoot $_
-        } | Where-Object { Test-Path $_ }
+        } | Where-Object { Test-Path -LiteralPath $_ }
     }
     finally {
         Pop-Location
@@ -190,7 +193,15 @@ function Invoke-PrettierFormat {
 
         $prettierAction = if ($Check) { "--check" } else { "--write" }
         Write-Info "Running prettier $prettierAction..."
-        $output = & npx prettier $prettierAction @prettierTargets 2>&1
+        # Call prettier directly, not via npx: every npx spawn is scanned by real-time
+        # AV and can stall 60-90s (see lint.ps1). react-ui always has it locally.
+        $prettierBin = Join-Path $reactUiPath "node_modules/.bin/prettier.cmd"
+        if (Test-Path -LiteralPath $prettierBin) {
+            $output = & $prettierBin $prettierAction @prettierTargets 2>&1
+        }
+        else {
+            $output = & npx prettier $prettierAction @prettierTargets 2>&1
+        }
 
         $prettierExit = $LASTEXITCODE
 

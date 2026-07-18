@@ -71,7 +71,7 @@ export function TileContextMenu({
     (resource: string) => {
       const updates: Partial<TemplateTile> = { resource };
       if (resource === 'Desert') {
-        updates.number = 0;
+        updates.number = 7; // engine convention: Desert is the number-7 (robber) tile
       }
       onUpdateTile(tileIndex, updates);
     },
@@ -128,9 +128,9 @@ export function TileContextMenu({
           disabled={isDesert}
           className="w-full mt-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {NUMBER_OPTIONS.map((n) => (
+          {(isDesert ? [tile.number] : NUMBER_OPTIONS).map((n) => (
             <option key={n} value={n}>
-              {n === 0 ? '—' : n}
+              {isDesert || n === 0 ? '—' : n}
             </option>
           ))}
         </select>

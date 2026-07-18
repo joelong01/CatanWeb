@@ -5,6 +5,7 @@
 
 import { ResourceRules } from './resource-rules';
 import { HouseRules } from './house-rules';
+import { GameFeature } from './game-feature';
 import { TemplateTile } from './template-tile';
 import { TemplateHarbor } from './template-harbor';
 import { TemplateEntitlement } from './template-entitlement';
@@ -20,6 +21,7 @@ export interface GameTemplateData {
     resourceRules: ResourceRules;
     houseRules: HouseRules;
     hasSupplemental: boolean;
+    features: GameFeature[];
     tiles: TemplateTile[];
     harbors: TemplateHarbor[];
     entitlements: TemplateEntitlement[];

@@ -7,6 +7,8 @@
 import { GameState } from './game-state';
 import { Entitlement } from './entitlement';
 import { ActionType } from './action-type';
+import { GameFeature } from './game-feature';
+import { KeyboardShortcut } from './keyboard-shortcut';
 
 /**
  * Display text for GameState enum values.
@@ -105,6 +107,35 @@ export const ActionTypeDescriptions: Record<ActionType, string> = {
   [ActionType.VerifyTurnResources]: 'Verify player turn resources match expected',
   [ActionType.VerifyGameResources]: 'Verify player game total resources match expected',
   [ActionType.Wait]: 'Wait for specified time (for UI updates)'
+};
+
+/**
+ * Display text for GameFeature enum values.
+ * Maps each enum value to its user-friendly description from C# [Description] attributes.
+ */
+export const GameFeatureDescriptions: Record<GameFeature, string> = {
+  [GameFeature.Ships]: 'Ships',
+  [GameFeature.ShipMovement]: 'Ship Movement',
+  [GameFeature.ShipsInLongestRoute]: 'Ships in Longest Route',
+  [GameFeature.NewIslandVp]: 'New Island VP',
+  [GameFeature.Pirate]: 'Pirate',
+  [GameFeature.Fog]: 'Fog',
+  [GameFeature.Cloth]: 'Cloth',
+  [GameFeature.Wonders]: 'Wonders',
+  [GameFeature.FriendlyTokens]: 'Friendly Tokens',
+  [GameFeature.PirateFleet]: 'Pirate Fleet'
+};
+
+/**
+ * Display text for KeyboardShortcut enum values.
+ * Maps each enum value to its user-friendly description from C# [Description] attributes.
+ */
+export const KeyboardShortcutDescriptions: Record<KeyboardShortcut, string> = {
+  [KeyboardShortcut.PurchaseSettlement]: 's',
+  [KeyboardShortcut.PurchaseCity]: 'c',
+  [KeyboardShortcut.PurchaseRoad]: 'r',
+  [KeyboardShortcut.PlaySoldier]: 'k',
+  [KeyboardShortcut.PurchaseDevCard]: 'd'
 };
 
 /**

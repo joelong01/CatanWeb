@@ -16,6 +16,14 @@ public class GameTemplateData
     public ResourceRules ResourceRules { get; set; } = new();
     public HouseRules HouseRules { get; set; } = new();
     public bool HasSupplemental { get; set; }
+
+    /// <summary>
+    /// Scenario capabilities this template advertises (e.g. <see cref="GameFeature.Ships"/>).
+    /// Authored in the template editor; step 6 routes these into the game's scenario
+    /// profile on <c>GameModel</c> at creation (architecture invariant 1 — nothing reads
+    /// this template field at play time). Empty = a plain (Regular/Expansion) board.
+    /// </summary>
+    public List<GameFeature> Features { get; set; } = [];
     public List<TemplateTile> Tiles { get; set; } = [];
     public List<TemplateHarbor> Harbors { get; set; } = [];
     public List<TemplateEntitlement> Entitlements { get; set; } = [];
@@ -37,6 +45,13 @@ public class TemplateHarbor
     public string Type { get; set; } = "ThreeForOne";
 }
 
+/// <summary>
+/// A buyable entitlement offered by a template. The <see cref="Entitlement"/> name is the
+/// only field: it is what varies per template (architecture invariant 5). Purchase
+/// render/interaction metadata (title, description, icon, keyboard shortcut) is a
+/// client concern keyed by the <c>Entitlement</c> enum (invariant 3) and is NOT stored
+/// here. Author-defined costs remain deferred (the engine hardcodes costs today).
+/// </summary>
 public class TemplateEntitlement
 {
     public string Entitlement { get; set; } = "Road";
