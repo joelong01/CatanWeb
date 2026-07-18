@@ -154,6 +154,64 @@ function Test-PortInUse {
     }
 }
 
+function Test-DefenderExclusions {
+    <#
+        Checks whether the recommended Microsoft Defender exclusions are present. On
+        Windows, real-time AV scanning of every Node/npx spawn adds large latency to the
+        toolchain (a single `npx` call was measured at ~72s wall / ~0.1s CPU). Excluding
+        the repo, the npm cache, and node.exe removes that overhead across build/test/
+        lint/run. Reading exclusions needs no admin; SETTING them does — so if any are
+        missing we echo the exact Add-MpPreference command(s) to run as Administrator.
+        No-ops on non-Windows or when Defender/Get-MpPreference is unavailable.
+    #>
+    if (-not $IsWindows) { return }
+
+    Write-Log -Level WARN -Message "Checking Defender exclusions (toolchain speed)..." -NoLabel
+
+    $repoPath = $PSScriptRoot
+    $npmCache = Join-Path $env:LOCALAPPDATA "npm-cache"
+    $wantPaths = @($repoPath, $npmCache)
+    $wantProc = "node.exe"
+
+    try {
+        $pref = Get-MpPreference -ErrorAction Stop
+    }
+    catch {
+        Write-Log -Level INFO -Message "  [SKIP] Microsoft Defender not queryable (third-party AV, disabled, or no Defender module)" -NoLabel
+        return
+    }
+
+    $havePaths = @($pref.ExclusionPath)
+    $haveProc = @($pref.ExclusionProcess)
+
+    $missingPaths = @($wantPaths | Where-Object {
+            $want = $_
+            -not ($havePaths | Where-Object { $_ -and ($_.TrimEnd('\', '/') -ieq $want.TrimEnd('\', '/')) })
+        })
+    $procMissing = -not ($haveProc | Where-Object { $_ -ieq $wantProc })
+
+    if ($missingPaths.Count -eq 0 -and -not $procMissing) {
+        Write-Log -Level INFO -Message "  [OK] Defender exclusions set (repo, npm-cache, node.exe)" -NoLabel -ForegroundColor Green
+        return
+    }
+
+    Write-Log -Level WARN -Message "  [WARN] Missing Defender exclusions - Node/npm tooling will be slow (AV scans every spawn)." -NoLabel
+    Write-Log -Level INFO -Message "         Run the following in an ELEVATED (Administrator) PowerShell to fix:" -NoLabel
+
+    $cmds = @()
+    if ($missingPaths.Count -gt 0) {
+        $quoted = ($missingPaths | ForEach-Object { "'$_'" }) -join ", "
+        $cmds += "Add-MpPreference -ExclusionPath $quoted"
+    }
+    if ($procMissing) {
+        $cmds += "Add-MpPreference -ExclusionProcess '$wantProc'"
+    }
+    foreach ($c in $cmds) {
+        Write-Log -Level INFO -Message "           $c" -NoLabel -ForegroundColor Yellow
+    }
+    Write-Log -Level INFO -Message "         (Win+X -> 'Terminal (Admin)', paste the line(s), then reopen your shell.)" -NoLabel
+}
+
 function Stop-ProcessOnPort {
     param([int]$Port)
     if ($IsWindows) {
@@ -1457,6 +1515,10 @@ switch ($Verb) {
                 }
                 Write-Log -Level INFO -Message "" -NoLabel
             }
+
+            # Check Defender exclusions (Windows toolchain speed)
+            Test-DefenderExclusions
+            Write-Log -Level INFO -Message "" -NoLabel
 
             # Check database
             Write-Log -Level WARN -Message "Checking database..." -NoLabel
