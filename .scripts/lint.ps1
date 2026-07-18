@@ -145,10 +145,13 @@ function Get-ChangedFiles {
         if ($unstaged) { $allChanged += $unstaged }
         if ($untracked) { $allChanged += $untracked }
 
-        # Remove duplicates and return full paths
+        # Remove duplicates and return full paths.
+        # -LiteralPath is required: Next.js dynamic-route dirs contain literal square
+        # brackets (e.g. app/templates/[id]/page.tsx) which Test-Path would otherwise
+        # interpret as a wildcard character class and drop the file.
         $allChanged | Sort-Object -Unique | ForEach-Object {
             Join-Path $projectRoot $_
-        } | Where-Object { Test-Path $_ }
+        } | Where-Object { Test-Path -LiteralPath $_ }
     }
     finally {
         Pop-Location
@@ -672,7 +675,7 @@ if ($All) {
         $changedFiles = git ls-files --cached --others --exclude-standard 2>$null |
             Where-Object { $_ -match "\.(cs|ts|tsx|js|jsx|mjs|md|json|ps1)$" } |
             ForEach-Object { Join-Path $projectRoot $_ } |
-            Where-Object { Test-Path $_ }
+            Where-Object { Test-Path -LiteralPath $_ }  # -LiteralPath: keep bracketed [id] route paths
     }
     finally {
         Pop-Location
