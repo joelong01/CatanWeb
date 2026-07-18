@@ -44,6 +44,55 @@ $script:totalIssues = 0
 $script:totalFixed = 0
 $script:failedLinters = @()
 
+# ---------------------------------------------------------------------------
+# Node CLI invocation WITHOUT `npx`.
+#
+# On Windows with real-time antivirus (Defender et al.), every `npx` spawn is
+# scanned as it walks its resolution tree, which can stall a SINGLE invocation
+# for 60-90s (observed: `npx markdownlint-cli --version` = 72s wall, ~0.1s CPU —
+# pure blocked wait). Because the linters' output is captured into variables,
+# that stall shows up as a silent, promptless hang. Calling the already-installed
+# binary directly is ~0.3s. Resolution order: repo .bin -> react-ui .bin ->
+# global (PATH) -> npx (last resort only).
+$script:_toolInvokers = @{}
+function Get-NodeToolInvoker {
+    param([Parameter(Mandatory)][string]$Bin, [Parameter(Mandatory)][string]$Package)
+    if ($script:_toolInvokers.ContainsKey($Bin)) { return $script:_toolInvokers[$Bin] }
+    $invoker = $null
+    foreach ($dir in @($projectRoot, $reactUiPath)) {
+        $cmd = Join-Path $dir "node_modules/.bin/$Bin.cmd"
+        if (Test-Path $cmd) { $invoker = @($cmd); break }
+    }
+    if (-not $invoker) {
+        # Prefer the Windows .cmd shim explicitly — the extensionless global shim
+        # (a shell script) is not directly executable by PowerShell.
+        $g = Get-Command "$Bin.cmd" -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $g) { $g = Get-Command $Bin -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1 }
+        if ($g) { $invoker = @($g.Source) }
+    }
+    if (-not $invoker) { $invoker = @('npx', $Package) }  # last resort (slow under AV)
+    $script:_toolInvokers[$Bin] = $invoker
+    return $invoker
+}
+
+# Invoke a resolved Node CLI, returning its merged stdout+stderr. $LASTEXITCODE is
+# preserved for the caller. Pass tool args via -Arguments (an explicit array).
+function Invoke-NodeTool {
+    param(
+        [Parameter(Mandatory)][string]$Bin,
+        [Parameter(Mandatory)][string]$Package,
+        [string[]]$Arguments = @()
+    )
+    # @() re-wraps: a single-element invoker gets unwrapped to a scalar string when
+    # returned across the function boundary; without this, $inv[0] would index the
+    # first *character* of the path ("C") instead of the path.
+    $inv = @(Get-NodeToolInvoker -Bin $Bin -Package $Package)
+    $exe = $inv[0]
+    $pre = if ($inv.Count -gt 1) { $inv[1..($inv.Count - 1)] } else { @() }
+    $all = @($pre + $Arguments)
+    & $exe @all 2>&1
+}
+
 function Write-Header {
     param([string]$Text)
     Write-Host ""
@@ -234,7 +283,7 @@ function Invoke-TypeScriptLint {
     try {
         # Step 1: TypeScript type-check (whole-project, matches VS Code diagnostics)
         Write-Info "Running tsc --noEmit..."
-        $tscOutput = & npx tsc --noEmit 2>&1
+        $tscOutput = Invoke-NodeTool -Bin 'tsc' -Package 'typescript' -Arguments @('--noEmit')
         $tscExit = $LASTEXITCODE
 
         if ($tscExit -eq 0) {
@@ -274,7 +323,7 @@ function Invoke-TypeScriptLint {
         $eslintArgs = @($eslintTargets) + @("--format", "stylish", "--no-warn-ignored")
         if ($fixArg) { $eslintArgs += "--fix" }
 
-        $eslintOutput = & npx eslint @eslintArgs 2>&1
+        $eslintOutput = Invoke-NodeTool -Bin 'eslint' -Package 'eslint' -Arguments $eslintArgs
         $eslintExit = $LASTEXITCODE
 
         if ($eslintExit -eq 0) {
@@ -329,7 +378,7 @@ function Invoke-TypeScriptLint {
             })
         }
 
-        $prettierOutput = & npx prettier --check @prettierTargets 2>&1
+        $prettierOutput = Invoke-NodeTool -Bin 'prettier' -Package 'prettier' -Arguments (@('--check') + $prettierTargets)
         $prettierExit = $LASTEXITCODE
 
         if ($prettierExit -eq 0) {
@@ -404,12 +453,12 @@ function Invoke-MarkdownLint {
         }
 
         if ($fixArg) {
-            # Run with fix first - use Start-Process to avoid encoding issues
-            $null = & npx markdownlint-cli @relativePaths --fix --dot 2>&1
+            # Run with fix first (direct binary, not npx — see Invoke-NodeTool)
+            $null = Invoke-NodeTool -Bin 'markdownlint' -Package 'markdownlint-cli' -Arguments (@($relativePaths) + @('--fix', '--dot'))
         }
 
         # Then check for remaining issues
-        $mdOutput = & npx markdownlint-cli @relativePaths --dot 2>&1
+        $mdOutput = Invoke-NodeTool -Bin 'markdownlint' -Package 'markdownlint-cli' -Arguments (@($relativePaths) + @('--dot'))
         $mdExit = $LASTEXITCODE
 
         if ($mdExit -eq 0) {
@@ -489,13 +538,13 @@ function Invoke-SpellCheck {
             $batches = [Math]::Ceiling($relativePaths.Count / 50)
             for ($i = 0; $i -lt $batches; $i++) {
                 $batch = $relativePaths | Select-Object -Skip ($i * 50) -First 50
-                $batchOutput = & npx cspell @batch --no-progress --no-summary 2>&1
+                $batchOutput = Invoke-NodeTool -Bin 'cspell' -Package 'cspell' -Arguments (@($batch) + @('--no-progress', '--no-summary'))
                 $cspellOutput += $batchOutput
             }
             $cspellExit = if ($cspellOutput | Where-Object { $_ -match "Unknown word" }) { 1 } else { 0 }
         }
         else {
-            $cspellOutput = & npx cspell @relativePaths --no-progress --no-summary 2>&1
+            $cspellOutput = Invoke-NodeTool -Bin 'cspell' -Package 'cspell' -Arguments (@($relativePaths) + @('--no-progress', '--no-summary'))
             $cspellExit = $LASTEXITCODE
         }
 
