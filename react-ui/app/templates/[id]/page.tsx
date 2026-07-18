@@ -8,12 +8,8 @@ import { EditorBoard, coordKey } from '@/components/templates/EditorBoard';
 import { TileContextMenu } from '@/components/templates/TileContextMenu';
 import { WaterContextMenu } from '@/components/templates/WaterContextMenu';
 import { HarborContextMenu } from '@/components/templates/HarborContextMenu';
-import type {
-  GameTemplateData,
-  TemplateTile,
-  TemplateHarbor,
-} from '@/types/generated/models';
-import { Entitlement, GameFeature } from '@/types/generated/models';
+import type { GameTemplateData, TemplateTile, TemplateHarbor } from '@/types/generated/models';
+import { Entitlement, GameFeature, HarborType, HexSide } from '@/types/generated/models';
 import { GameFeatureDescriptions } from '@/types/generated/models/enum-descriptions';
 import type { HexCoordinate } from '@/components/hex-grid/hex-geometry';
 import { cubicCoord } from '@/components/hex-grid/hex-geometry';
@@ -28,12 +24,22 @@ const LAYOUT_OPTIONS: { value: LayoutType; label: string }[] = [
   { value: 'Square', label: 'Square (column-based)' },
 ];
 
+/**
+ * Board-placeable resources — an intentional CURATED SUBSET of the `ResourceType`
+ * enum, not the whole thing. `ResourceType` also carries dev-card/commodity values
+ * (Coin, Cloth, Paper, …) and sentinels (Back, None, Robber) that are never authored
+ * onto a board tile, and there is no "placeable" marker on the enum to filter on — so
+ * this explicit include-list is the correct representation (deriving it would just
+ * hardcode the *exclusion* set instead). Keep in sync if a placeable resource is added.
+ */
 const RESOURCE_OPTIONS = ['Desert', 'Wood', 'Brick', 'Wheat', 'Sheep', 'Ore', 'GoldMine', 'Sea'];
 /** Resources that carry no number token (a chit makes no sense on them). */
 const NO_NUMBER_RESOURCES = new Set(['Desert', 'Sea']);
 const NUMBER_OPTIONS = [0, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
-const HARBOR_SIDE_OPTIONS = ['Top', 'TopRight', 'BottomRight', 'Bottom', 'BottomLeft', 'TopLeft'];
-const HARBOR_TYPE_OPTIONS = ['ThreeForOne', 'Wood', 'Brick', 'Wheat', 'Sheep', 'Ore'];
+// Harbor sides/types are the full enums minus the `None` sentinel — derive from the
+// generated enums so they stay in sync with C# (architecture invariant 4).
+const HARBOR_SIDE_OPTIONS = Object.values(HexSide).filter((s) => s !== HexSide.None);
+const HARBOR_TYPE_OPTIONS = Object.values(HarborType).filter((t) => t !== HarborType.None);
 
 /**
  * Scenario capabilities a template can advertise, derived from the generated
@@ -465,9 +471,7 @@ export default function TemplateEditor(): React.ReactElement {
                       <span className="truncate">
                         {(template.features?.length ?? 0) === 0
                           ? 'None'
-                          : GAME_FEATURE_OPTIONS.filter((f) =>
-                              template.features?.includes(f.value)
-                            )
+                          : GAME_FEATURE_OPTIONS.filter((f) => template.features?.includes(f.value))
                               .map((f) => f.label)
                               .join(', ')}
                       </span>
