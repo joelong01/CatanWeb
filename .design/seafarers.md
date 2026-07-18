@@ -1,6 +1,7 @@
 # Design: Seafarers support (epic #200)
 
-**Status:** Design — awaiting approval
+**Status:** In progress — Step 1 (+ reconciliation) landed on `seafarers`; later
+steps still awaiting their per-step plans.
 **Supersedes:** `.design/old/seafarers-2026-02-draft.md` (Feb 2026 draft; reverses
 its separate-`ShipModel` decision — see D3).
 **Review history:** two Copilot rounds
@@ -8,6 +9,52 @@ its separate-`ShipModel` decision — see D3).
 into the decisions below — each decision has one authoritative wording. Rejected:
 a roll-production hook and a setup-allocation hook (not needed for New Shores) and
 a separate gold-field mechanic (permanent `GoldMine` tiles already work — see D2).
+
+**Governing law — the architecture constitution.** This design is subordinate to
+[`.ai/architecture-invariants.md`](../.ai/architecture-invariants.md). Where any
+decision below disagrees with an invariant, the invariant wins. The load-bearing
+ones for this epic: **(1)** `GameModel` is the single runtime source of truth — the
+template is a creation-time factory input, **never read at play time**; **(3)**
+client-only render/interaction options (glyphs, labels, keyboard shortcuts) live in
+the client, keyed by a shared enum, **never in `GameModel` or on a template**;
+**(4)** enums are defined once in `Catan3.Shared` and generated to TS. See
+**"As-built status & constitution alignment"** immediately below for how this
+revises the D13 purchase family.
+
+## As-built status & constitution alignment (2026-07-17)
+
+What has actually shipped on `seafarers`, and how it revises the older sections:
+
++ **Step 1 (`d5dfe7e`) + reconciliation (`6b013cc`) landed, hash-neutral.**
+  `GameType.Seafarers` (family), the New Shores board as **data**
+  (`Default Data/SystemTemplates/seafarers.json`, loaded by `DatabaseSeeder`), and
+  the editor rendering it. Verified via `./catan.ps1 test` (the only sanctioned test
+  path — it provisions the Cosmos emulator; raw `dotnet test` gives false failures).
++ **`GameFeature`** enum shipped with `[Description]` labels; **`GameTemplateData.Features`
+  is `List<GameFeature>`** (the flat step-1 authoring surface). It is authored data
+  only — **routing it into `GameModel.Scenario` happens at Step 6**; nothing reads it
+  at play time yet (invariant 1 holds).
++ **Keyboard shortcuts are a Shared `KeyboardShortcut` enum** (`[Description]` = the
+  browser `event.key`), generated to TS; `useGameKeyboard.ts` reads it. This replaces
+  the "author `KeyboardShortcut` on `TemplateEntitlement`" idea in D13a/b.
++ **`TemplateEntitlement` is `{ Entitlement }` only.** The render/interaction fields
+  (`Title/Description/Icon/PurchaseType/KeyboardShortcut`) and `TemplateResourceCost`
+  were **removed** — they are client concerns keyed by the `Entitlement` enum
+  (invariant 3), not model/template data. `Cost` stays deferred (engine hardcodes it).
+
+**This revises D13 (purchase) — read D13a/b/d through this lens.** The buyable
+*list* stays data-driven (`entitlementPurchaseModel[]` in `GameModel`, authoritative:
+which entitlements + `enabled` + any authored `Max`, all baked at creation). But the
+*per-entitlement presentation* (glyph, label, tooltip, keyboard) is **client-static,
+keyed by the `Entitlement`/`KeyboardShortcut` enums** — it does **not** travel through
+the model and is **not** resolved from the template at runtime. **D13d's "TemplateId +
+live template resolution" delivery is superseded** — see the rewritten D13d.
+
+**Deferred as their own tracked steps (constitution-driven):** migrate Regular/
+Expansion authoring from the C# `RegularBoardInfo`/`ExpansionBoardInfo` remnants to
+`SystemTemplates/*.json` (byte-identical `GameTemplateData` + full replay pass as the
+gate); and generate a `GameTemplateData` JSON Schema from the type pipeline (the
+structural "XSD" gate, prerequisite for deleting the C# type-safety net).
 
 ## Goal — build *Expansion*; Seafarers is the test
 
@@ -694,6 +741,344 @@ gold, and the random-gold house rule is retained** (not excluded):
     fallback) so it always terminates. Same "bounded with deterministic fallback"
     rule as the D5 shuffle — apply it to every random-pick loop Seafarers constrains.
 
+### D13. Template-driven client behaviors — Purchase is the first
+
+> **Revised by the constitution (see "As-built status" up top).** The split below is
+> now: the **buyable list** is data-driven and authoritative (`entitlementPurchaseModel[]`
+> in `GameModel`, baked at creation — which entitlements, `enabled`, authored `Max`);
+> the **per-entitlement presentation** (glyph, label, tooltip, keyboard) is
+> **client-static, keyed by the `Entitlement`/`KeyboardShortcut` enums** (invariant 3),
+> not carried through the model and not resolved from the template at runtime. The
+> passages below that route metadata through `EntitlementPurchaseModel` (D13a) or fetch
+> the template live (D13d) are **superseded**; keep them for the reasoning trail, but
+> D13b's static-catalog and D13d's rewrite are the current model.
+
+**The extensibility thesis.** A new buyable appears because it is authored into the
+template's entitlement list and is a value of the `Entitlement` enum — **no `GameType`
+branch, no per-entitlement `case` in control flow**. *What* is buyable is template
+data (baked into `GameModel` at creation); *how* each entitlement looks and which key
+triggers it is **client config keyed by the shared enum** (glyphs in `catanGlyphs.ts`,
+keys in the `KeyboardShortcut` enum). This is the client-side complement to D0's
+server-side rule modules — "data, not conditionals" — split across the
+service/client boundary exactly as invariants 1 and 3 require. **Purchase is the first
+behavior we make truly extensible**; the same seam later serves other behaviors
+(harbor-trade offers, dev-card deck presentation, victory-condition display).
+
+**Where D9 is aspirational vs. real.** D9 says "buttons stay data-driven from
+`entitlementPurchaseModel`; a `Ship` entitlement yields a Ship button with no
+hardcoded `case`." Today that is **not** true, in two places:
+
++ **The metadata is dropped server-side.** `BoardInfoJsonAdapter.PurchaseableEntitlements`
+  (`BoardInfoJsonAdapter.cs:42-45`) maps each `TemplateEntitlement` to
+  `new EntitlementPurchaseModel(Enum.Parse<Entitlement>(...))` — discarding the
+  authored `title/description/cost/icon/purchaseType`. `EntitlementPurchaseModel`
+  (`EntitlementPurchaseModel.cs`) carries only `{ Entitlement, Enabled }`, so the
+  GameModel the client receives has no icon/cost/message to render from.
++ **The UI is hardcoded client-side, in three spots.** `ActionCluster.tsx` has a
+  fixed `BUTTON_ORDER` and per-button literals (`glyph={CatanGlyph.Road}`, label
+  `"Road"`, tooltip `"Buy Road"`); the game page's `handleAction` switch
+  (`app/game/[id]/page.tsx:324-354`) maps `'road' -> proxy.purchase('Road')` case by
+  case; and `enabledButtons` (`:177-196`) reads a hand-listed
+  `canPurchaseRoad/Settlement/City/DevCard/Soldier`. Adding `Ship` today means
+  editing all three plus `catanGlyphs.ts`.
+
+**Target flow (make D9 real).**
+
+```text
+TemplateEntitlement (title, description, cost, icon, purchaseType, entitlement)
+  -> BoardInfoJsonAdapter carries the metadata (stops dropping it)
+  -> EntitlementPurchaseModel carries it + server-computed `enabled`
+  -> GameModel.entitlementPurchaseModel[]  (already serialized to the client)
+  -> ActionCluster renders one purchase button PER entry:
+       glyph   = resolve(icon)         // "Ship" -> CatanGlyph.Ship
+       tooltip = title + description + cost
+       enabled = model.enabled
+       onClick = proxy.purchase(entitlement)   // PurchaseMessage { entitlement }
+```
+
+No per-entitlement `case` anywhere; `Ship` (or any future buyable) appears because
+it is authored in the template.
+
+**What we need to do (Purchase).**
+
+1. **Carry the metadata server->client.** Add the display/purchase fields to
+   `EntitlementPurchaseModel` (`Title`, `Description`, `Cost`, `Icon`,
+   `PurchaseType` — optional, mirroring `TemplateEntitlement`), and populate them in
+   `BoardInfoJsonAdapter` from the template. `RegularBoardInfo`/`ExpansionBoardInfo`
+   (the code-defined boards) supply the same metadata so existing games keep their
+   icons/labels — via a small default map keyed by `Entitlement`, so un-enriched
+   boards still render. Regenerate TS (`AddInterface` already covers the model).
+2. **Resolve icon name -> glyph on the client.** `icon` is a `CatanGlyph` key string
+   (e.g. `"Ship"`); the client looks it up in `catanGlyphs.ts` with a safe fallback.
+   Keeps the font mapping on the client (where the font lives) while the *choice* is
+   authored in data.
+3. **Send the generic message.** Click sends `PurchaseMessage { entitlement }`
+   (`GameServiceProxy.ts:456`) — already generic; the server routes by the
+   `Entitlement` enum (`HandlePurchaseAsync`). `purchaseType` is **server-facing
+   metadata** for now (documents/So selects the handler); the client does not need it
+   to send a standard purchase. Revisit only if a buyable needs a non-standard
+   message.
+4. **Data-drive the buttons.** Replace `ActionCluster`'s fixed purchase configs and
+   the game page's `handleAction` purchase cases + `enabledButtons` list with
+   iteration over `entitlementPurchaseModel`. The **non-purchase** controls
+   (State/Undo/Next/Redo) stay fixed; only the buyables become data-driven.
+5. **Cost stays server-authoritative.** The engine still owns and deducts cost
+   (rules are the authority — costs are hardcoded in `GameStateMachine`); the
+   template `cost` is **display-only** here (show it in the tooltip/back). Making the
+   engine *read* template costs is a separate, later decision (the deferred phase-2
+   data-driven-cost idea), not part of this step.
+
+**Open sub-decision — grid layout for a variable buyable set.** `ActionCluster` is a
+fixed 3x3 (`LAYOUTS.SQUARE_3x3`) with named slots; a data-driven buyable count
+(4 today, +Ship = 5, more later) needs a slot policy. Options: (a) keep a fixed set
+of purchase slots addressed by a stable order and let the data fill/enable them, or
+(b) a flexible cluster that grows. Resolve when we implement; it does not change the
+data contract above.
+
+Cross-refs: D3 (Ship is a first-class entitlement — the motivating buyable), D9 (the
+client seam this concretizes), and the template-authoring model
+(`TemplateEntitlement` enrichment, already landed).
+
+### D13a. Purchase data model — full analysis (drives the structures below)
+
+Rewriting the purchase UI to be template-driven *forces* the data model: the client
+can only render a buyable it has the data for. This is the full inventory of what the
+purchase UI consumes today, where each piece comes from, and the target source.
+
+| Data (per buyable) | Used for | Source today | Static or per-player | Target source |
+| --- | --- | --- | --- | --- |
+| `enabled` | card face-up vs face-down (flip) | `EntitlementPurchaseModel.Enabled`, server recompute = `Phase==Purchase` AND a buildable spot exists AND under Max (`AllowPurchase`, `GameStateMachine.cs:2095-2214`) | per-player | same (server) |
+| `unspent` | count badge | client-derived from `Player.UnspentEntitlements` (`page.tsx:222`) | per-player | same (client-derived) |
+| `spent` | back-of-card "N of Max" | client-derived from `Player.SpentEntitlementsThisGame` (`page.tsx:231`) | per-player | same (client-derived) |
+| `max` | the "of Max" + Max enforcement | `ResourceRules.MaxCities/Settlements/Roads` — **only 3**; `Ship`⇒0⇒unlimited (`GameModels.cs:29`) | static (per board) | **per-entitlement `Max` (authored)** |
+| glyph | button face | hardcoded `CatanGlyph.Road` in `ActionCluster.tsx` | static | `TemplateEntitlement.Icon` |
+| label | button label | hardcoded `"Road"` | static | `TemplateEntitlement.Title` |
+| tooltip | hover | hardcoded `"Buy Road"` | static | `Title` + `Description` (+ `Cost`) |
+| cost | display | not shown; hardcoded in engine | static | `TemplateEntitlement.Cost` |
+| send | click → message | hardcoded `handleAction` case → `proxy.purchase(entitlement)` | — | generic `PurchaseMessage { entitlement }`; `PurchaseType` server-facing |
+| keyboard shortcut | key → purchase | hardcoded switch in `useGameKeyboard.ts` (`s/c/k/r/d`) | static | `TemplateEntitlement.KeyboardShortcut` |
+| which stats show | Soldier shows played; DevCard spent-only; others "N of Max" | hardcoded per button | static | derive from `Max` (0 ⇒ no "of Max") — no per-entitlement code |
+
+**The Max smoking gun.** `ResourceRules.MaxEntitlementCount(entitlement)` is a 25-arm
+switch returning non-zero only for Settlement/City/Road; **Ship falls through to `0`
+(unlimited)** though Seafarers caps ships (15). Capping a ship today means editing
+that switch. Max must be **authored per entitlement**, not switch-coded — the concrete
+reason the model must change.
+
+**Proposed structures (for review).**
+
+Authored (static) — add `Max` to `TemplateEntitlement` (the rest, incl.
+`KeyboardShortcut`, already landed):
+
+```csharp
+public class TemplateEntitlement {
+  public string  Entitlement;                       // "Ship"
+  public string? Title, Description, Icon, PurchaseType;
+  public string? KeyboardShortcut;                  // single key, e.g. "p" for Ship (hard P in shiP)
+  public TemplateResourceCost? Cost;
+  public int     Max;                               // NEW: per-piece supply cap; 0 = unlimited
+}
+```
+
+Runtime (the client-facing descriptor) — `EntitlementPurchaseModel` carries the
+authored metadata (copied at game-create) plus the server-computed `Enabled`, so the
+client renders from the GameModel alone (it never sees the template):
+
+```csharp
+public class EntitlementPurchaseModel {
+  public Entitlement Entitlement;
+  public bool        Enabled;                        // server recompute (unchanged)
+  // carried from the template so the client is self-sufficient:
+  public string?     Title, Description, Icon, PurchaseType;
+  public ResourceCost? Cost;
+  public int         Max;                            // powers "N of Max" + face-down-at-cap
+}
+```
+
+Counts (`unspent`/`spent`) stay **client-derived** from the player's entitlement
+lists (the client already has them) — no duplicated state (open Q1).
+
+Wiring the flow:
+
++ `BoardInfoJsonAdapter.PurchaseableEntitlements` copies **all** fields from
+  `TemplateEntitlement` (stops dropping them at `:42-45`).
++ `RegularBoardInfo`/`ExpansionBoardInfo` (code boards) supply the same via a default
+  `Entitlement → { icon, title, cost, max }` map, so pre-template games keep their look.
++ Server enable/`AllowPurchase` reads `Max` from the per-entitlement descriptor; the
+  `ResourceRules.MaxEntitlementCount` switch **and the three `ResourceRules.Max*`
+  fields are removed** (decision 2 — no compat projection; `ResourceRules` keeps only
+  `Min/MaxPlayers`).
+
+**Client contract (data → `ActionCluster`).** Iterate `entitlementPurchaseModel`:
+`glyph = resolveGlyph(icon)`, `label = title`, `tooltip = title + description + cost`,
+`isEnabled = enabled`, `count = unspent(entitlement)`,
+`backStats = Max > 0 ? "{spent} of {Max}" : "{spent}"`. No per-entitlement `case`;
+Soldier/DevCard specialness falls out of `Max`/counts, not code.
+
+**Hash note (D8).** The authored metadata is static per board and must **not** enter
+`ComputeGameHash` — identity stays state-only. Only `Enabled` (transient) is a
+candidate; keep the new fields out of the hash (exclude / hash-ignore).
+
+**Open decisions for review.**
+
+1. **Counts** — keep client-derived (recommended: no duplicate state), or have the
+   server stamp `Unspent`/`Spent` onto the descriptor for a fully self-describing model?
+2. **`Max` home — RESOLVED: retire, no compat.** `Max` lives per-entitlement on the
+   descriptor; **`ResourceRules.MaxCities/Settlements/Roads` and the
+   `MaxEntitlementCount` switch are removed** ("the only way forward is forward"). No
+   compat projection. Migration: existing templates' `resourceRules.max*` values fold
+   into per-entitlement `Max` on the entitlement descriptors, and the engine's
+   enable/`AllowPurchase` reads `Max` from the descriptor. (`ResourceRules` keeps only
+   `Min/MaxPlayers`.)
+3. **List contents — RESOLVED: model the acquisition mechanism, button only when a
+   manual action is needed.** An entitlement can be obtained several ways — **rolls**,
+   a **dev card**, **direct purchase**, or **playing a held entitlement**. Rule: *if an
+   existing mechanism can grant it, use that (no button); otherwise show a button to
+   grant/activate it.* This is why Soldier/Knight has a button — you manually play a
+   held (dev-card-granted) Soldier. So the catalog descriptor carries an **acquisition
+   kind** (generalizes `PurchaseType`: e.g. `Purchase`, `PlayHeld`, `MechanismGranted`);
+   the cluster renders a button only for entitlements whose acquisition is a manual
+   player action and omits mechanism-granted ones. Pure non-actionable entitlements
+   (`RolledSeven`, `KnightDisplacement`) never get a button.
+4. **Grid layout** — the fixed 3×3 `ActionCluster` vs. a variable buyable count
+   (carried from D13). **Resolved in D13c.**
+
+### D13b. Static catalog vs per-turn state — size/speed (refines D13a)
+
+D13a's first cut fattened every `EntitlementPurchaseModel` with the authored
+metadata. That is wrong for the wire: the metadata (title/description/cost/icon/max)
+is **constant for the whole game**, yet a fattened model re-serializes it inside
+every `GameModel` on every action (hundreds of updates/game). And both sides re-scan
+a list on every access — the client `entitlementPurchaseModel.find` (`page.tsx:170`),
+the server `PurchaseModel(entitlement)` (`GameModel.cs:231`, the recompute touches it
+per player per turn). Split static from dynamic and index it.
+
+**Static — `EntitlementCatalog` (built once, sent once, indexed).**
+
+```csharp
+public sealed class EntitlementDescriptor {
+  public Entitlement Entitlement;
+  public string? Title, Description, Icon, PurchaseType, KeyboardShortcut;
+  public ResourceCost? Cost;
+  public int Max;                       // 0 = unlimited
+}
+// keyed for O(1): Dictionary<Entitlement, EntitlementDescriptor>, projected from the template
+```
+
+Delivered **once** with the initial game load (part of the game's static board
+metadata), **not** inside the per-turn `GameModel`. Held client-side as a
+`Map<Entitlement, EntitlementDescriptor>`.
+
+**Dynamic — `EntitlementPurchaseModel` stays `{ Entitlement, Enabled }`** (per-turn,
+tiny) — no fattening. Counts remain client-derived from the player. Render =
+`enabled` (dynamic) ⋈ catalog (static) ⋈ counts (derived).
+
+**Build timing — the "build step."** Two options for when the catalog is built:
+
++ **Now: project at game-create/load** — cheap (a handful of entitlements) and works
+  for *any* authored template, so extensibility is intact. Recommended.
++ **Optional: precompute at template-save** — build the catalog when a template is
+  saved and store `catalogJson` beside `dataJson` (`CosmosCatanDb` TemplateDoc), so
+  it is built once per template *version* rather than per game. This is the literal
+  build step; adopt only if profiling shows game-create cost matters (entitlement
+  sets are tiny → likely YAGNI). A **compile-time** bake is rejected: templates are
+  data, not code — baking would break the thesis for editor-authored templates.
+
+**Server also indexes.** Replace the linear `PurchaseModel(entitlement)` scan and the
+`ResourceRules.MaxEntitlementCount` switch with `Dictionary` lookups over the catalog
+(`GameModelExtensions.cs` / `GameModel.cs:231`).
+
+**Glyph resolution stays a client build-time constant.** The catalog stores the icon
+**name** (`"Ship"`, compact); `catanGlyphs.ts` maps name→codepoint at build time
+(already exists). Authoring picks the name; the font map is client-static.
+
+**Keyboard shortcuts — shipped as a Shared enum, not template data.** `useGameKeyboard.ts`
+no longer hardcodes the `s/c/k/r/d` switch; it reads the **`KeyboardShortcut` enum**
+(`Catan3.Shared`, `[Description]` = the browser `event.key`, generated to TS —
+invariants 3 + 4). All shortcuts are visible in one enum; adding a buyable's key is one
+enum value (Ship = `PurchaseShip` → `"p"`, at Step 7). The *choice* lives in the enum,
+dispatch is client-side. (This replaces the earlier "author `KeyboardShortcut` per
+`TemplateEntitlement`, build a `Map<key,Entitlement>` from the catalog" idea — shortcuts
+are not per-template.)
+
+This **supersedes** D13a's "EntitlementPurchaseModel carries the authored metadata":
+the metadata lives in the static catalog; the per-turn model keeps only `Enabled`.
+**Delivery of the catalog is decided in D13d** — `GameModel.TemplateId` + resolve the
+template by id (client fetches it, server resolves per game-load). Templates are
+mutable — no snapshot, no versioning — accepted at our scale.
+
+### D13c. Purchase layout — fixed cells, pinned controls, scroll on overflow (resolves D13a #4)
+
+`ActionCluster` lives in a **user-resizable `FloatingPanel`** ("Actions",
+`page.tsx:839`); today it is a fixed 3×3 hex grid that **scales to fit** the panel
+(`fitToParent`). A variable buyable count breaks scale-to-fit — in a small panel the
+cards would shrink below what the flip animation, count badge, and "N of Max"
+backstat need. Resolution:
+
++ **Fixed button size.** Buttons never shrink; the panel size decides how many are
+  visible, not how big they are. Preserves touch targets and the flip/badge/backstat.
++ **Pin the always-present controls.** Next/Undo/Redo and the state message stay in a
+  region that **never scrolls** — Next is pressed every turn and must not scroll away.
+  Only the *purchase palette* is dynamic.
++ **Purchases flow + scroll.** Fixed-size cells wrap to the panel width
+  (`grid: repeat(auto-fill, <cell>)`); when they exceed the available height the
+  palette gets a **vertical scrollbar, only when needed**. Resizing the panel changes
+  columns/rows shown, not cell size.
++ **Stable order.** Buyables render in a deterministic catalog order (D13b); new
+  buyables append, so positions stay put across games/turns (muscle memory).
+
+Rejected: scale-all-to-fit (cards become illegible as the set grows); paginate (adds
+interaction cost for at-a-glance buying). Minor open visual (cosmetic, no effect on
+the data contract): purchase cells stay hex in a simple wrapping grid (gaps, not
+honeycomb-packed) vs. switching to rounded-rect.
+
+### D13d. Delivery — everything authoritative is baked at creation (no live resolution)
+
+> **Rewritten to satisfy invariant 1.** The earlier version of D13d stored
+> `GameModel.TemplateId` and **resolved the template live** (client fetch per game,
+> server re-resolve per load, "mutability accepted"). That made rendering/recompute
+> depend on `GameModel` **plus** the template — the exact coupling invariant 1 forbids.
+> It is replaced by the baking model below.
+
+**Layering:** template = the authored definition (the recipe); `GameModel` = the
+evolving state (the dish). `NewGame` already takes a template
+(`NewGameMessage.TemplateId`), resolved server-side at `GameApiController.cs`
+(`_templateService.GetAsync` → `BoardInfoJsonAdapter`). The template is consumed **once**
+to build the `GameModel` and then **discarded** — nothing reads it again for the life
+of the game.
+
+**Everything the engine or client needs at play time is copied into `GameModel` at
+creation.** The authoritative purchase data — which entitlements are buyable, each
+`enabled` flag, and any authored `Max` — lands in `entitlementPurchaseModel[]` (and
+`Scenario`/`ResourceRules`) inside `GameModel`. The **presentation** (glyph, label,
+tooltip, keyboard) is **not** delivered at all: the client already knows it from
+client-static config keyed by the `Entitlement`/`KeyboardShortcut` enums. So there is
+**no catalog fetch, no `GameModel.TemplateId` live resolution, no per-game template
+GET**. A player holding a `GameModel` can render and play with no template access
+(invariant 1's routing test).
+
+**Snapshot, not reference — so editing a template never mutates a live game.** Because
+the authoritative values are baked at creation, changing a system or user template
+afterwards has **no effect** on games already created (correct: a running game's rules
+must not shift underfoot), and **replay is deterministic** without embedding a catalog.
+This is the opposite of the rejected "mutability accepted" stance, and it is why
+`.catan_test` hashes stay stable.
+
+**Open / Replay.** `OpenGame`/`ReplayGame` reconstruct from the persisted/recorded
+`GameModel`, which is self-sufficient (board, rules, entitlement models all baked in) —
+no template resolution needed. `GameModel` **may** still carry `TemplateId` as
+**provenance only** (which template this game came from), never as a runtime input; it
+is excluded from `ComputeGameHash`. Back-compat (D8): old saves without it open
+unchanged because nothing resolves it.
+
+**Wire + hash discipline.** Presentation config is client-static (never on the wire);
+authoritative purchase data rides the existing `GameModel` (already serialized). Board
+state (tiles/harbors/roads/buildings/robber/`enabled`) stays in `GameModel`; never
+resolve tiles from a template (they would be stale vs. the game). Static per-board
+authored values that are *display-only* stay out of `ComputeGameHash` (D8); authored
+values the engine *acts on* (e.g. `Max` → `enabled`) are baked in and hashed like any
+other scenario-opted state.
+
 ## Message-flow swimlanes (for review)
 
 All client actions travel the **same authoritative backbone**: the React proxy
@@ -943,7 +1328,8 @@ the serialized GameModel shape becomes. Ground rules:
 | `ResourceType` | *(already has `Sea`, `GoldMine`)* — no change | `GameEnums.cs:5` | islands/gold (D1/D2) |
 | `GameState` | **add** `MustMoveShip`; **reuse existing `MustMoveRobber`** for the pirate (no new value, D11) | `GameEnums.cs` | ship-move sub-state (D4); robber-or-pirate (D11) |
 | `GameType` | **add** `Seafarers` (family; append) | `GameEnums.cs` | one value per *family*; scenarios are data (D2) |
-| `GameFeature` | **new enum**: `Ships, ShipMovement, ShipsInLongestRoute, NewIslandVp, Pirate, Fog, Cloth, Wonders, FriendlyTokens, PirateFleet` | new, `GameEnums.cs` | scenario capability vocabulary (D2); new mechanic = one value |
+| `GameFeature` | **new enum** (shipped): `Ships, ShipMovement, ShipsInLongestRoute, NewIslandVp, Pirate, Fog, Cloth, Wonders, FriendlyTokens, PirateFleet`, each with a `[Description]` label | `GameEnums.cs` | scenario capability vocabulary (D2); new mechanic = one value |
+| `KeyboardShortcut` | **new enum** (shipped): `PurchaseSettlement, PurchaseCity, PurchaseRoad, PlaySoldier, PurchaseDevCard`; `[Description]` = the browser `event.key`; `PurchaseShip` added at Step 7 | `GameEnums.cs` | single source of truth for fixed shortcuts (invariant 3); client-only, never in `GameModel` |
 | `BuildableKind` | **new `[Flags]` enum**: `None=0, Road=1, Ship=2` | new, `GameEnums.cs` | road/ship/both affordance (D3) |
 | `EdgeKind` | **new enum**: `Land, Coastal, Sea` | new, `GameEnums.cs` | edge classifier (D10); may be compute-only, see note |
 | `ActionType` | **add** (`ShipPurchase`, `SelectShipToMove`, `MoveShip`, `CancelMoveShip`, `MovePirate`) | `ActionType.cs` | CLI/replay + dispatch (D0) |
@@ -1021,10 +1407,19 @@ authoring fields below.
 
 | Model | New field | Type | Default | Purpose |
 |---|---|---|---|---|
-| `GameTemplateData` | `Scenario` | `Scenario` | `Scenario.Regular` | authored scenario profile (D2) |
+| `GameTemplateData` | `Features` *(shipped, Step 1)* | `List<GameFeature>` | `[]` | flat authored capability set; the Step-1 authoring surface. **Routed into `GameModel.Scenario` at Step 6** — until then it is authored data nothing reads at play time (invariant 1) |
+| `GameTemplateData` | `Scenario` *(Step 6)* | `Scenario` | `Scenario.Regular` | full authored scenario profile (D2); folds in `Features` + VP config |
 | `GameTemplateData` | `PirateStart` | `HexCoordinates?` | `null` | authored pirate start sea hex (D11); `null` = no pirate |
 | `TemplateTile` | `ShuffleGroup` | `int` | `0` | authored shuffle partition (D1) |
 | `TemplateTile` | `Fixed` | `bool` | `false` | authored never-shuffle marker (D5) |
+
+**`TemplateEntitlement` is `{ Entitlement }` only (shipped).** Its render/interaction
+fields (`Title/Description/Icon/PurchaseType/KeyboardShortcut`) and the
+`TemplateResourceCost` type were **removed** — presentation is client config keyed by
+the `Entitlement`/`KeyboardShortcut` enums (invariant 3), and `Cost` stays deferred
+(the engine hardcodes costs). An authored per-entitlement `Max` (D13a) is the one
+purchase datum that, when added, is **authoritative** and gets baked into `GameModel`
+at creation — not carried as template render data.
 
 `Sea` is already expressible as `TemplateTile.Resource = "Sea"` (no change).
 Island-VP identity is **derived** (D7 `ComputeIslands`), so there is **no** island
@@ -1033,8 +1428,9 @@ containing `(0,0,0)`.
 
 ### Type-generation registrations to add (`CatanTypeGenSpec.cs`)
 
-`AddEnum<BuildableKind>()`, `AddEnum<EdgeKind>()` *(if persisted)*,
-`AddEnum<GameFeature>()`; `AddInterface<Scenario>()`, `AddInterface<CommandContext>()`,
+`AddEnum<GameFeature>()` and `AddEnum<KeyboardShortcut>()` are **already registered
+(shipped)**. Still to add: `AddEnum<BuildableKind>()`, `AddEnum<EdgeKind>()` *(if
+persisted)*; `AddInterface<Scenario>()`, `AddInterface<CommandContext>()`,
 `AddInterface<ShipPurchaseMessage>()`, `AddInterface<SelectShipToMoveMessage>()`,
 `AddInterface<MoveShipMessage>()`, `AddInterface<CancelMoveShipMessage>()`,
 `AddInterface<MovePirateMessage>()`. Then `pwsh ./catan.ps1 generate-types`.
@@ -1069,11 +1465,16 @@ bonus VP; pirate steals; (later) cloth/special VP.
 Each step is its own implementation plan, PR, and **full review**, and is
 independently verifiable. **Framework-first:** in each step the reusable
 expansion mechanism is the deliverable and carries the tests; the Seafarers piece
-is only the config/test that exercises it (see the Prime rule). **Arc A** (1–5)
-makes the Seafarers board visible and
+is only the config/test that exercises it (see the Prime rule). **Arc P** (the
+immediate priority) makes **Purchase fully data-driven for *all* games** and proves it
+on Regular/Expansion — a framework capability, verified before any Seafarers-specific
+work (extensibility epic: build the mechanism, prove it on the games we have, then the
+expansion plugs in). **Arc A** (1–5) makes the Seafarers board visible and
 **standard-playable** — create, shuffle, render, complete setup — before any ship
 mechanic. **Arc B** (6–11) adds the Seafarers mechanics (ships, movement, route,
-island VP, pirate). Every game-creating step preserves sea tiles.
+island VP, pirate). Arc P is game-agnostic and shares only the finished template step
+(1) as a prerequisite, so it can run ahead of / alongside Arc A. Every game-creating
+step preserves sea tiles.
 
 **Every step's implementation plan opens with an explicit *Model & template changes*
 review — a STOP-for-review gate before any code.** It enumerates the exact
@@ -1088,12 +1489,47 @@ see "these are all the template + GameModel changes for this step" before buildi
 — plus a note that the matching `TileModel` fields and `ComputeIslands` land in
 steps 2–3, when a template becomes a live board.)*
 
+### Arc P — Purchase goes fully data-driven, all games (framework — do first)
+
+The data-driven purchase system (D13–D13d) is a **framework** capability, not a
+Seafarers feature. Build it and prove it on the games we already have **before** any
+Seafarers mechanic; then Ship (step 7) is mostly authoring — a buyable in the
+template, no new client code.
+
++ **P1. Bake authoritative purchase data at creation; retire the hardcoded maxes.**
+  The authoritative buyable data — which entitlements are buyable, each `enabled`, and
+  an authored per-entitlement `Max` (D13a) — is **baked into `GameModel` at creation**
+  by `BoardInfoJsonAdapter` (and the code boards until they migrate to JSON). **No
+  `GameModel.TemplateId` live resolution; no per-game template fetch** (invariant 1;
+  D13d as rewritten). `Max` moves onto the per-entitlement descriptor baked into the
+  model; **retire `ResourceRules.MaxCities/Settlements/Roads` + `MaxEntitlementCount`**
+  (decision 2); enable/`AllowPurchase` read the baked `Max`. *Verify:* Regular/Expansion
+  hashes stable; Max enforcement (5 settlements, 4 cities, 15 roads) identical through
+  the new per-entitlement path.
++ **P2. Data-driven purchase UI (no per-entitlement code).** Replace the hardcoded
+  `ActionCluster` button set, the `handleAction` switch, and the `enabledButtons` list
+  with iteration over `entitlementPurchaseModel` (the authoritative list). Each entry's
+  **presentation is client-static keyed by the `Entitlement` enum**: glyph from
+  `catanGlyphs.ts`, label/tooltip from a client `Entitlement → copy` map, key from the
+  `KeyboardShortcut` enum (**already shipped** — `useGameKeyboard` reads it), `enabled`
+  from the model, counts client-derived; fixed-cell flow + pinned controls + scroll
+  (D13c); acquisition kind gates whether a button shows (decision 3). Nothing is fetched
+  from the template. *Verify:* **on Regular and Expansion**, every existing buyable
+  (Road/Settlement/City/DevCard/Soldier) looks, enables, counts, keys, and buys exactly
+  as before — **zero regression, no per-entitlement `case`**.
+
+**Gate:** Arc P ships and is verified on all existing games before Arc B. Seafarers's
+Ship then plugs in as authored data — `{ "entitlement": "Ship" }` in `seafarers.json`
+(buyability + its baked `Max`); its glyph/label live in client config and its key
+(`PurchaseShip` → `"p"`) is added to the `KeyboardShortcut` enum at Step 7.
+
 ### Arc A — board visible & standard play
 
-+ **1. Template + view in editor.** Author `seafarers.json` (main island + ≥1
-  small island + sea tiles + harbors); the template editor renders `Sea` and
-  island tiles. *Verify:* open the template in the editor → correct
-  land/sea/island layout.
++ **1. Template + view in editor. ✅ DONE (`d5dfe7e` + reconciliation `6b013cc`).**
+  Authored `seafarers.json` (main island + small islands + sea tiles + harbors),
+  seeded from `Default Data/SystemTemplates/` as data; the template editor renders
+  `Sea` and island tiles and the enum-driven Features/Entitlements selectors.
+  *Verified:* board renders in the editor; `./catan.ps1 test` green, hash-neutral.
 + **2. Appears in New Game + creates a board.** `Seafarers` GameType (enum,
   typegen, `GameTypeSelector` card, API template-ID mapping); create a game from
   the **authored board as-is (no shuffle on create)**. *Verify:* pick Seafarers →
@@ -1127,10 +1563,12 @@ is called "done."
   dispatch, `Scenario`, `MaxShips`, `GameHashVersion`, D10 `BuildableKinds`
   scaffolding. *Verify:* Regular byte-identical; a no-op Seafarers module loads;
   hashes stable.
-+ **7. Ship purchase + placement.** `SeafarersRules` ship build,
-  `MarkBuildableSeaRoutes`, Ship entitlement/button. *Verify:* buy a ship
-  (1 wood + 1 sheep), place it on a sea/coastal edge connected to your coastal
-  building; cannot place on land; 15-ship limit.
++ **7. Ship purchase + placement.** The Ship *button/shortcut/cost/Max* already come
+  from **Arc P** (Ship is an authored catalog buyable — no new purchase UI). This step
+  adds the server placement mechanics: `SeafarersRules` ship build,
+  `MarkBuildableSeaRoutes`, placement legality. *Verify:* buy a ship (1 wood + 1 sheep)
+  via the data-driven button, place it on a sea/coastal edge connected to your coastal
+  building; cannot place on land; 15-ship limit (Ship `Max`).
 + **8. Ship movement.** `MoveShip` optional entitlement + Select/Move/Cancel state
   chart + enforced open-ship legality (D4). *Verify:* move an open ship once/turn
   (entitlement consumed); an unused `MoveShip` never blocks Next; cannot move one
