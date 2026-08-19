@@ -32,6 +32,20 @@ export interface WindowPosition {
   visible: boolean;
   /** Stacking order (higher = on top). Board should be lowest. */
   zIndex: number;
+  /**
+   * Set once a panel's geometry has been seeded from something other than the static
+   * defaults — currently the board-aligned placement applied to `goFirst` and
+   * `supplemental` on first use.
+   *
+   * Its only job is to stop that placement running a second time. Those two panels used to
+   * recompute width/height/position on every entry to their game state, which silently
+   * discarded any resize the user had made and made saved layouts appear not to work
+   * (issue #210). Every other panel gets its geometry solely from user interaction.
+   *
+   * Undefined on layouts persisted before this existed, which correctly reads as
+   * "not yet seeded". Cleared by `resetPanel` so a reset re-seeds.
+   */
+  geometrySeeded?: boolean;
 }
 
 /** @deprecated Use WindowPosition instead */
@@ -735,6 +749,21 @@ interface LayoutActions {
   /** Update panel size */
   setPanelSize: (panelId: PanelId, width: number, height: number) => void;
 
+  /**
+   * Apply an initial geometry to a panel, but only the first time.
+   *
+   * For panels that want a computed opening placement (the board-aligned `goFirst` and
+   * `supplemental` overlays) rather than a static default. Once seeded, the panel's
+   * geometry belongs to the user and repeat calls are ignored — which is what keeps a
+   * resize from being discarded on the next entry (issue #210).
+   *
+   * `resetPanel` clears the flag, so resetting a panel lets it seed again.
+   */
+  seedPanelGeometry: (
+    panelId: PanelId,
+    geometry: { left: number; top: number; width: number; height: number }
+  ) => void;
+
   /** Toggle panel minimized state */
   toggleMinimize: (panelId: PanelId) => void;
 
@@ -876,6 +905,20 @@ export const useLayoutStore = create<LayoutStore>()(
             },
           },
         }));
+      },
+
+      seedPanelGeometry: (panelId, geometry) => {
+        set((state) => {
+          const panel = state.panels[panelId];
+          // Already seeded — the geometry is the user's now. Do not touch it.
+          if (!panel || panel.geometrySeeded) return state;
+          return {
+            panels: {
+              ...state.panels,
+              [panelId]: { ...panel, ...geometry, geometrySeeded: true },
+            },
+          };
+        });
       },
 
       toggleMinimize: (panelId) => {
@@ -1202,8 +1245,7 @@ export const selectResourceFilters = (state: LayoutStore) => state.resourceFilte
  * True iff any modal is currently registered. Read by the keyboard
  * hook to suppress global shortcuts when a modal owns the keyboard.
  */
-export const useAnyModalOpen = (): boolean =>
-  useLayoutStore((s) => s.openModals.size > 0);
+export const useAnyModalOpen = (): boolean => useLayoutStore((s) => s.openModals.size > 0);
 
 /** Info about a minimized panel for the MinimizedBar */
 export interface MinimizedPanelInfo {

@@ -162,6 +162,7 @@
     "override",
     "params",
     "parsererror",
+    "partialize",
     "pgrep",
     "pids",
     "playerid",

@@ -619,12 +619,16 @@ export default function GamePage(): React.ReactElement {
 
   // Board panel for sizing overlays; hexCenterRef for hex (0,0,0) screen position
   const boardPanel = useLayoutStore(selectPanel('board'));
-  const setPanelPosition = useLayoutStore((state) => state.setPanelPosition);
-  const setPanelSize = useLayoutStore((state) => state.setPanelSize);
+  const seedPanelGeometry = useLayoutStore((state) => state.seedPanelGeometry);
   const hexCenterRef = useRef<{ x: number; y: number } | null>(null);
 
   // Show/hide goFirst overlay based on game state.
-  // Board-sized, positioned so the overlay center aligns with hex (0,0,0) on the board.
+  //
+  // The board-aligned geometry is applied ONCE, via seedPanelGeometry. It used to be
+  // recomputed on every entry to this state, which discarded the user's resize and made
+  // saved layouts look broken (issue #210). After the first placement the panel's size and
+  // position belong to the user, exactly like every other panel. Resetting the panel from
+  // the layout menu clears the seed and re-aligns it to the board.
   useEffect(() => {
     if (gameState === 'FinishedRollOrder') {
       const { panels } = useLayoutStore.getState();
@@ -637,31 +641,25 @@ export default function GamePage(): React.ReactElement {
         const w = boardPanel.width;
         const h = boardPanel.height;
         const center = hexCenterRef.current;
-        if (center) {
-          setPanelPosition('goFirst', center.x - w / 2, center.y - h / 2);
-        } else {
-          setPanelPosition('goFirst', boardPanel.left, boardPanel.top);
-        }
-        setPanelSize('goFirst', w, h);
+        seedPanelGeometry('goFirst', {
+          left: center ? center.x - w / 2 : boardPanel.left,
+          top: center ? center.y - h / 2 : boardPanel.top,
+          width: w,
+          height: h,
+        });
       }
     } else {
       setPanelVisible('goFirst', false);
     }
-  }, [
-    gameState,
-    boardPanel,
-    boardPanel?.left,
-    boardPanel?.top,
-    boardPanel?.width,
-    boardPanel?.height,
-    setPanelPosition,
-    setPanelSize,
-    setPanelVisible,
-    toggleMinimize,
-  ]);
+  }, [gameState, boardPanel, seedPanelGeometry, setPanelVisible, toggleMinimize]);
 
   // Show/hide supplemental overlay based on game state.
-  // Board-sized, positioned so the overlay center aligns with hex (0,0,0) on the board.
+  //
+  // The board-aligned geometry is applied ONCE, via seedPanelGeometry. It used to be
+  // recomputed on every entry to this state, which discarded the user's resize and made
+  // saved layouts look broken (issue #210). After the first placement the panel's size and
+  // position belong to the user, exactly like every other panel. Resetting the panel from
+  // the layout menu clears the seed and re-aligns it to the board.
   useEffect(() => {
     if (gameState === 'PickSupplementalPlayers') {
       const { panels } = useLayoutStore.getState();
@@ -674,28 +672,17 @@ export default function GamePage(): React.ReactElement {
         const w = boardPanel.width;
         const h = boardPanel.height;
         const center = hexCenterRef.current;
-        if (center) {
-          setPanelPosition('supplemental', center.x - w / 2, center.y - h / 2);
-        } else {
-          setPanelPosition('supplemental', boardPanel.left, boardPanel.top);
-        }
-        setPanelSize('supplemental', w, h);
+        seedPanelGeometry('supplemental', {
+          left: center ? center.x - w / 2 : boardPanel.left,
+          top: center ? center.y - h / 2 : boardPanel.top,
+          width: w,
+          height: h,
+        });
       }
     } else {
       setPanelVisible('supplemental', false);
     }
-  }, [
-    gameState,
-    boardPanel,
-    boardPanel?.left,
-    boardPanel?.top,
-    boardPanel?.width,
-    boardPanel?.height,
-    setPanelPosition,
-    setPanelSize,
-    setPanelVisible,
-    toggleMinimize,
-  ]);
+  }, [gameState, boardPanel, seedPanelGeometry, setPanelVisible, toggleMinimize]);
 
   // Game-specific menu action handlers
   const handleBalance = useCallback(() => {
