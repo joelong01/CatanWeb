@@ -1170,7 +1170,11 @@ namespace Catan3.GameService.Controllers
                         g.GameState,
                         g.GameType,
                         g.PlayerCount,
+                        // PlayerNames is empty for games saved after issue #208; the client
+                        // resolves current names from PlayerIds. Both are sent so that games
+                        // saved before that change still render.
                         g.PlayerNames,
+                        g.PlayerIds,
                         g.TurnCount,
                         g.Size,
                         g.SavedAt,
