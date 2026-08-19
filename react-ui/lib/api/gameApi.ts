@@ -49,7 +49,13 @@ export interface SavedGameSummary {
   gameName: string;
   gameState: string;
   playerCount: number;
+  /**
+   * Display names as of the last save. Empty for games saved after issue #208 — resolve
+   * names from {@link playerIds} instead. Retained for records written before that.
+   */
   playerNames: string;
+  /** Authoritative player identity; resolve display names from the profiles by these. */
+  playerIds: string[];
   turnCount: number;
   gameType: string;
   savedAt: string;

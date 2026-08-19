@@ -305,6 +305,93 @@ describe('layoutStore actions', () => {
     });
   });
 
+  describe('seedPanelGeometry', () => {
+    const GEOMETRY = { left: 100, top: 50, width: 800, height: 600 };
+
+    it('applies the geometry the first time', () => {
+      useLayoutStore.getState().seedPanelGeometry('supplemental', GEOMETRY);
+
+      const panel = useLayoutStore.getState().panels.supplemental;
+      expect(panel.left).toBe(100);
+      expect(panel.top).toBe(50);
+      expect(panel.width).toBe(800);
+      expect(panel.height).toBe(600);
+      expect(panel.geometrySeeded).toBe(true);
+    });
+
+    /**
+     * Issue #210: the supplemental and goFirst panels recomputed their geometry on every
+     * entry to their game state, silently discarding the user's resize.
+     */
+    it('does not overwrite a size the user chose', () => {
+      const { seedPanelGeometry, setPanelSize } = useLayoutStore.getState();
+
+      seedPanelGeometry('supplemental', GEOMETRY);
+      setPanelSize('supplemental', 320, 240);
+
+      // Re-entering the game state seeds again — this must be ignored.
+      seedPanelGeometry('supplemental', GEOMETRY);
+
+      const panel = useLayoutStore.getState().panels.supplemental;
+      expect(panel.width).toBe(320);
+      expect(panel.height).toBe(240);
+    });
+
+    it('does not overwrite a position the user chose', () => {
+      const { seedPanelGeometry, setPanelPosition } = useLayoutStore.getState();
+
+      seedPanelGeometry('supplemental', GEOMETRY);
+      setPanelPosition('supplemental', 12, 34);
+      seedPanelGeometry('supplemental', GEOMETRY);
+
+      const panel = useLayoutStore.getState().panels.supplemental;
+      expect(panel.left).toBe(12);
+      expect(panel.top).toBe(34);
+    });
+
+    it('survives a save/load round trip', () => {
+      const { seedPanelGeometry, setPanelSize, saveLayout, loadLayout } = useLayoutStore.getState();
+
+      seedPanelGeometry('supplemental', GEOMETRY);
+      setPanelSize('supplemental', 320, 240);
+      saveLayout('my-layout');
+      loadLayout('my-layout');
+
+      // The effect fires again after a layout loads; the restored size must stand.
+      useLayoutStore.getState().seedPanelGeometry('supplemental', GEOMETRY);
+
+      const panel = useLayoutStore.getState().panels.supplemental;
+      expect(panel.width).toBe(320);
+      expect(panel.height).toBe(240);
+    });
+
+    it('re-seeds after the panel is reset', () => {
+      const { seedPanelGeometry, setPanelSize, resetPanel } = useLayoutStore.getState();
+
+      seedPanelGeometry('supplemental', GEOMETRY);
+      setPanelSize('supplemental', 320, 240);
+      resetPanel('supplemental');
+
+      expect(useLayoutStore.getState().panels.supplemental.geometrySeeded).toBeFalsy();
+
+      useLayoutStore.getState().seedPanelGeometry('supplemental', GEOMETRY);
+
+      const panel = useLayoutStore.getState().panels.supplemental;
+      expect(panel.width).toBe(800);
+      expect(panel.height).toBe(600);
+    });
+
+    it('treats a layout persisted before the flag existed as unseeded', () => {
+      const panels = useLayoutStore.getState().panels;
+      const { geometrySeeded: _omitted, ...legacy } = panels.supplemental;
+      useLayoutStore.setState({ panels: { ...panels, supplemental: legacy } });
+
+      useLayoutStore.getState().seedPanelGeometry('supplemental', GEOMETRY);
+
+      expect(useLayoutStore.getState().panels.supplemental.width).toBe(800);
+    });
+  });
+
   describe('resetPanel', () => {
     it('resets a single panel to computed position', () => {
       const { setPanelPosition, setPanelSize, resetPanel } = useLayoutStore.getState();

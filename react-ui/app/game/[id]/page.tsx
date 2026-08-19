@@ -54,6 +54,7 @@ import {
 } from '@/components/hex-grid/hex-geometry';
 import type { HexPosition } from '@/types/generated/models/hex-position';
 import { createPlayerColors, type PlayerColorsWithGradient } from '@/lib/utils/playerColors';
+import { resolvePlayerName } from '@/lib/utils/playerNames';
 import { gameApi } from '@/lib/api/gameApi';
 import { getServiceUrl } from '@/lib/config';
 import { DEFAULT_PLAYER_COLORS } from '@/types/player-profile';
@@ -496,9 +497,9 @@ export default function GamePage(): React.ReactElement {
       const currentId = currentPlayer?.id;
       return players
         .filter((p) => targetPlayerIds.has(p.id) && p.id !== currentId)
-        .map((p) => ({ id: p.id, name: p.name }));
+        .map((p) => ({ id: p.id, name: resolvePlayerName(playerProfiles, p.id) }));
     },
-    [buildings, players, currentPlayer?.id]
+    [buildings, players, currentPlayer?.id, playerProfiles]
   );
 
   // Roughly clamp robber menu position to keep it away from viewport edges.
@@ -618,12 +619,16 @@ export default function GamePage(): React.ReactElement {
 
   // Board panel for sizing overlays; hexCenterRef for hex (0,0,0) screen position
   const boardPanel = useLayoutStore(selectPanel('board'));
-  const setPanelPosition = useLayoutStore((state) => state.setPanelPosition);
-  const setPanelSize = useLayoutStore((state) => state.setPanelSize);
+  const seedPanelGeometry = useLayoutStore((state) => state.seedPanelGeometry);
   const hexCenterRef = useRef<{ x: number; y: number } | null>(null);
 
   // Show/hide goFirst overlay based on game state.
-  // Board-sized, positioned so the overlay center aligns with hex (0,0,0) on the board.
+  //
+  // The board-aligned geometry is applied ONCE, via seedPanelGeometry. It used to be
+  // recomputed on every entry to this state, which discarded the user's resize and made
+  // saved layouts look broken (issue #210). After the first placement the panel's size and
+  // position belong to the user, exactly like every other panel. Resetting the panel from
+  // the layout menu clears the seed and re-aligns it to the board.
   useEffect(() => {
     if (gameState === 'FinishedRollOrder') {
       const { panels } = useLayoutStore.getState();
@@ -636,31 +641,25 @@ export default function GamePage(): React.ReactElement {
         const w = boardPanel.width;
         const h = boardPanel.height;
         const center = hexCenterRef.current;
-        if (center) {
-          setPanelPosition('goFirst', center.x - w / 2, center.y - h / 2);
-        } else {
-          setPanelPosition('goFirst', boardPanel.left, boardPanel.top);
-        }
-        setPanelSize('goFirst', w, h);
+        seedPanelGeometry('goFirst', {
+          left: center ? center.x - w / 2 : boardPanel.left,
+          top: center ? center.y - h / 2 : boardPanel.top,
+          width: w,
+          height: h,
+        });
       }
     } else {
       setPanelVisible('goFirst', false);
     }
-  }, [
-    gameState,
-    boardPanel,
-    boardPanel?.left,
-    boardPanel?.top,
-    boardPanel?.width,
-    boardPanel?.height,
-    setPanelPosition,
-    setPanelSize,
-    setPanelVisible,
-    toggleMinimize,
-  ]);
+  }, [gameState, boardPanel, seedPanelGeometry, setPanelVisible, toggleMinimize]);
 
   // Show/hide supplemental overlay based on game state.
-  // Board-sized, positioned so the overlay center aligns with hex (0,0,0) on the board.
+  //
+  // The board-aligned geometry is applied ONCE, via seedPanelGeometry. It used to be
+  // recomputed on every entry to this state, which discarded the user's resize and made
+  // saved layouts look broken (issue #210). After the first placement the panel's size and
+  // position belong to the user, exactly like every other panel. Resetting the panel from
+  // the layout menu clears the seed and re-aligns it to the board.
   useEffect(() => {
     if (gameState === 'PickSupplementalPlayers') {
       const { panels } = useLayoutStore.getState();
@@ -673,28 +672,17 @@ export default function GamePage(): React.ReactElement {
         const w = boardPanel.width;
         const h = boardPanel.height;
         const center = hexCenterRef.current;
-        if (center) {
-          setPanelPosition('supplemental', center.x - w / 2, center.y - h / 2);
-        } else {
-          setPanelPosition('supplemental', boardPanel.left, boardPanel.top);
-        }
-        setPanelSize('supplemental', w, h);
+        seedPanelGeometry('supplemental', {
+          left: center ? center.x - w / 2 : boardPanel.left,
+          top: center ? center.y - h / 2 : boardPanel.top,
+          width: w,
+          height: h,
+        });
       }
     } else {
       setPanelVisible('supplemental', false);
     }
-  }, [
-    gameState,
-    boardPanel,
-    boardPanel?.left,
-    boardPanel?.top,
-    boardPanel?.width,
-    boardPanel?.height,
-    setPanelPosition,
-    setPanelSize,
-    setPanelVisible,
-    toggleMinimize,
-  ]);
+  }, [gameState, boardPanel, seedPanelGeometry, setPanelVisible, toggleMinimize]);
 
   // Game-specific menu action handlers
   const handleBalance = useCallback(() => {
@@ -732,7 +720,7 @@ export default function GamePage(): React.ReactElement {
       const imageUri = profile?.imageUri;
       return {
         id: p.id,
-        name: profile?.name || p.name,
+        name: resolvePlayerName(playerProfiles, p.id),
         score: p.score,
         colors: profile?.colors || DEFAULT_PLAYER_COLORS,
         avatarUrl: imageUri ? `${baseUrl}${imageUri}` : undefined,

@@ -7,10 +7,9 @@ import { playerFromId } from '../playerExtensions';
 import type { PlayerModel } from '@/types/generated/models/player-model';
 
 // Create a minimal mock PlayerModel for testing
-function createMockPlayer(id: string, name: string): PlayerModel {
+function createMockPlayer(id: string): PlayerModel {
   return {
     id,
-    name,
     goldRolls: 0,
     goodRolls: 0,
     badRolls: 0,
@@ -70,9 +69,9 @@ function createMockPlayer(id: string, name: string): PlayerModel {
 
 describe('playerExtensions', () => {
   describe('playerFromId', () => {
-    const player1 = createMockPlayer('player-1', 'Alice');
-    const player2 = createMockPlayer('player-2', 'Bob');
-    const player3 = createMockPlayer('player-3', 'Charlie');
+    const player1 = createMockPlayer('player-1');
+    const player2 = createMockPlayer('player-2');
+    const player3 = createMockPlayer('player-3');
     const players = [player1, player2, player3];
 
     it('returns undefined for empty players array', () => {
@@ -98,19 +97,19 @@ describe('playerExtensions', () => {
     it('returns player when found by id', () => {
       const result = playerFromId(players, 'player-2');
       expect(result).toBe(player2);
-      expect(result?.name).toBe('Bob');
+      expect(result?.id).toBe('player-2');
     });
 
     it('returns first player when searching for first id', () => {
       const result = playerFromId(players, 'player-1');
       expect(result).toBe(player1);
-      expect(result?.name).toBe('Alice');
+      expect(result?.id).toBe('player-1');
     });
 
     it('returns last player when searching for last id', () => {
       const result = playerFromId(players, 'player-3');
       expect(result).toBe(player3);
-      expect(result?.name).toBe('Charlie');
+      expect(result?.id).toBe('player-3');
     });
   });
 });

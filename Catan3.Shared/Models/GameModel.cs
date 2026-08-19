@@ -267,29 +267,11 @@ namespace Catan3.Shared.Models
             ];
         }
 
-        // Rule 7 Compliance: Helper methods for computed fields that GameInfo needs
-        // These ensure GameModel is the single source of truth for all game information
-
-        /// <summary>
-        /// Extracts display name from player ID following Desktop app pattern.
-        /// "Joe-001" → "Joe"
-        /// </summary>
-        public static string ExtractNameFromId(string id)
-        {
-            if (string.IsNullOrEmpty(id)) return "Unknown";
-
-            // Desktop app pattern: "Joe-001" -> "Joe"
-            if (id.Contains('-'))
-            {
-                var parts = id.Split('-');
-                if (parts.Length >= 2)
-                {
-                    return parts[0];
-                }
-            }
-
-            return id;
-        }
+        // Helper methods for computed fields that GameInfo needs.
+        //
+        // These deliberately expose no player display names. GameModel is the source of truth
+        // for game state; a display name is identity data owned by PlayerProfile and is
+        // resolved by the client from the player ID (issue #208).
 
         /// <summary>
         /// Gets a user-friendly display name for this game.
@@ -305,13 +287,10 @@ namespace Catan3.Shared.Models
                 return GameName;
             }
 
-            // Otherwise use the default format
+            // Otherwise use the default format. Uses a player count rather than a name --
+            // GameModel cannot resolve display names (issue #208).
             var timeStr = CreatedTime.ToString("HH:mm");
-            var playersStr = Players.Count > 0 ? Players[0].Name : "Unknown";
-            if (Players.Count > 1)
-            {
-                playersStr += $" +{Players.Count - 1}";
-            }
+            var playersStr = Players.Count == 1 ? "1 player" : $"{Players.Count} players";
 
             return $"{GameType} - {playersStr} ({timeStr})";
         }
@@ -338,15 +317,6 @@ namespace Catan3.Shared.Models
                 GameState.WaitingForNewGame => "Waiting to start",
                 _ => GameState.ToString()
             };
-        }
-
-        /// <summary>
-        /// Gets the current player's display name.
-        /// </summary>
-        public string GetCurrentPlayerName()
-        {
-            var currentPlayer = Players.FirstOrDefault(p => p.Id == CurrentPlayerId);
-            return currentPlayer?.Name ?? "Unknown";
         }
 
         /// <summary>
@@ -381,11 +351,12 @@ namespace Catan3.Shared.Models
         }
 
         /// <summary>
-        /// Gets a list of player names for API compatibility.
+        /// Gets the player IDs in turn order. Callers resolve display names from the
+        /// player profiles by these IDs (issue #208).
         /// </summary>
-        public List<string> GetPlayerNames()
+        public List<string> GetPlayerIds()
         {
-            return Players.Select(p => p.Name).ToList();
+            return Players.Select(p => p.Id).ToList();
         }
     }
 

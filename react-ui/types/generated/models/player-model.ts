@@ -9,7 +9,6 @@ import { HarborKey } from './harbor-key';
 
 export interface PlayerModel {
     id: string;
-    name: string;
     goldRolls: number;
     goodRolls: number;
     badRolls: number;

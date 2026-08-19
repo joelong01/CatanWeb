@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
 import { gameApi, type SavedGameSummary } from '@/lib/api/gameApi';
+import { usePlayerProfiles, useSetPlayerProfiles } from '@/lib/stores/gameStoreHooks';
+import { resolveHistoricalName } from '@/lib/utils/playerNames';
 
 /**
  * Open Game page - browse and load saved games.
@@ -13,6 +15,8 @@ import { gameApi, type SavedGameSummary } from '@/lib/api/gameApi';
 export default function LoadGame(): React.ReactElement {
   const router = useRouter();
   const [savedGames, setSavedGames] = useState<SavedGameSummary[]>([]);
+  const playerProfiles = usePlayerProfiles();
+  const setPlayerProfiles = useSetPlayerProfiles();
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
@@ -28,12 +32,40 @@ export default function LoadGame(): React.ReactElement {
   const [openMenuGameId, setOpenMenuGameId] = useState<string | null>(null);
 
   // Filter state
-  const [maxMoves, setMaxMoves] = useState<number | null>(null);
+  const [maxRolls, setMaxRolls] = useState<number | null>(null);
   const [filterGameState, setFilterGameState] = useState<string>('');
 
   // Multi-select state
   const [checkedGameIds, setCheckedGameIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Player profiles own display names; the summary rows carry only IDs (issue #208).
+  useEffect(() => {
+    async function loadProfiles() {
+      const result = await gameApi.getPlayers();
+      if (result.success && result.data) setPlayerProfiles(result.data);
+    }
+    loadProfiles();
+  }, [setPlayerProfiles]);
+
+  /**
+   * Names to show for a saved-game row.
+   *
+   * Prefers the stored `playerNames` for rows written before `playerIds` existed, and
+   * resolves from the profiles otherwise. `resolveHistoricalName` bypasses the stored
+   * value only when it is provably an ID-parsing artifact.
+   */
+  const displayPlayerNames = useCallback(
+    (game: SavedGameSummary): string => {
+      if (game.playerIds?.length) {
+        return game.playerIds
+          .map((id) => resolveHistoricalName(playerProfiles, id, undefined))
+          .join(', ');
+      }
+      return game.playerNames;
+    },
+    [playerProfiles]
+  );
 
   // Load saved games on mount
   useEffect(() => {
@@ -67,11 +99,11 @@ export default function LoadGame(): React.ReactElement {
   // Filter games based on criteria
   const filteredGames = useMemo(() => {
     return savedGames.filter((game) => {
-      if (maxMoves !== null && game.turnCount > maxMoves) return false;
+      if (maxRolls !== null && game.turnCount > maxRolls) return false;
       if (filterGameState && game.gameState !== filterGameState) return false;
       return true;
     });
-  }, [savedGames, maxMoves, filterGameState]);
+  }, [savedGames, maxRolls, filterGameState]);
 
   // Get unique game states for dropdown
   const gameStates = useMemo(() => {
@@ -443,7 +475,7 @@ export default function LoadGame(): React.ReactElement {
   };
 
   const clearFilters = () => {
-    setMaxMoves(null);
+    setMaxRolls(null);
     setFilterGameState('');
   };
 
@@ -541,13 +573,13 @@ export default function LoadGame(): React.ReactElement {
         {!isLoading && savedGames.length > 0 && (
           <div className="mb-4 flex flex-wrap items-center gap-4 bg-gray-800 p-4 rounded-lg">
             <div className="flex items-center gap-2">
-              <label className="text-gray-300 text-sm">Max moves:</label>
+              <label className="text-gray-300 text-sm">Max rolls:</label>
               <input
                 type="number"
                 min="0"
                 placeholder="Any"
-                value={maxMoves ?? ''}
-                onChange={(e) => setMaxMoves(e.target.value ? parseInt(e.target.value, 10) : null)}
+                value={maxRolls ?? ''}
+                onChange={(e) => setMaxRolls(e.target.value ? parseInt(e.target.value, 10) : null)}
                 className="w-20 px-2 py-1 bg-gray-700 text-white border border-gray-600 rounded text-sm"
               />
             </div>
@@ -568,7 +600,7 @@ export default function LoadGame(): React.ReactElement {
               </select>
             </div>
 
-            {(maxMoves !== null || filterGameState) && (
+            {(maxRolls !== null || filterGameState) && (
               <button
                 onClick={clearFilters}
                 className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-500"
@@ -629,7 +661,7 @@ export default function LoadGame(): React.ReactElement {
                     Players
                   </th>
                   <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-center font-semibold text-gray-700">
-                    Moves
+                    Rolls
                   </th>
                   <th className="border border-gray-300 border-b-2 border-b-gray-500 px-3 py-2 text-left font-semibold text-gray-700">
                     State
@@ -694,7 +726,9 @@ export default function LoadGame(): React.ReactElement {
                         )}
                       </td>
 
-                      <td className="border border-gray-300 px-3 py-2">{game.playerNames}</td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {displayPlayerNames(game)}
+                      </td>
                       <td className="border border-gray-300 px-3 py-2 text-center">
                         {game.turnCount}
                       </td>
@@ -750,11 +784,13 @@ export default function LoadGame(): React.ReactElement {
                         <div className="text-base font-semibold text-gray-800 truncate">
                           {game.gameName}
                         </div>
-                        <div className="text-sm text-gray-600 truncate">{game.playerNames}</div>
+                        <div className="text-sm text-gray-600 truncate">
+                          {displayPlayerNames(game)}
+                        </div>
                         <div className="text-xs text-gray-500 truncate">
                           {game.gameState}
                           <span className="mx-1 text-gray-400">•</span>
-                          {game.turnCount} moves
+                          {game.turnCount} rolls
                           <span className="mx-1 text-gray-400">•</span>
                           {formatDate(game.savedAt)}
                         </div>

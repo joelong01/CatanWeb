@@ -37,10 +37,9 @@ import type { GameModel } from '@/types/generated/models/game-model';
 import type { PlayerModel } from '@/types/generated/models/player-model';
 
 // Helper to create a minimal player
-function createMockPlayer(id: string, name: string): PlayerModel {
+function createMockPlayer(id: string): PlayerModel {
   return {
     id,
-    name,
     goldRolls: 0,
     goodRolls: 0,
     badRolls: 0,
@@ -106,7 +105,7 @@ function createMockGameModel(overrides: Partial<GameModel> = {}): GameModel {
     gameType: 'Regular',
     gameState: 'WaitingForRoll',
     currentPlayerId: 'player-1',
-    players: [createMockPlayer('player-1', 'Alice'), createMockPlayer('player-2', 'Bob')],
+    players: [createMockPlayer('player-1'), createMockPlayer('player-2')],
     tiles: [],
     buildings: [],
     roads: [],
@@ -315,7 +314,6 @@ describe('gameStoreHooks', () => {
 
         const { result } = renderHook(() => useCurrentPlayer());
         expect(result.current?.id).toBe('player-2');
-        expect(result.current?.name).toBe('Bob');
       });
     });
 
@@ -339,7 +337,6 @@ describe('gameStoreHooks', () => {
 
         const { result } = renderHook(() => useMyPlayer());
         expect(result.current?.id).toBe('player-1');
-        expect(result.current?.name).toBe('Alice');
       });
     });
 

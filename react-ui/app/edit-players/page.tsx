@@ -30,6 +30,20 @@ function getInitials(name: string): string {
   return name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase();
 }
 
+/**
+ * Build a player ID of the form `<SanitizedName>-<uuid>`.
+ *
+ * The leading name segment exists so a person can recognize the player in logs, database
+ * documents, and saved-game JSON — the same reason the seeded `Joe-001` IDs look the way
+ * they do. It is NOT a display name: it is stripped of anything that cannot live in a
+ * Cosmos document id or a URL path, and it does not follow renames. Always read
+ * `PlayerProfile.name` to display a player (see issue #208).
+ */
+function buildPlayerId(name: string): string {
+  const slug = name.replace(/[^A-Za-z0-9]/g, '').slice(0, 20);
+  return `${slug || 'Player'}-${crypto.randomUUID()}`;
+}
+
 /** Build full image URL from relative imageUri. */
 function buildImageUrl(imageUri: string, version: number): string {
   const base = serviceConfig.serviceUrl;
@@ -179,18 +193,21 @@ export default function EditPlayers(): React.ReactElement {
     };
   }, []);
 
-  /** Add a new player. */
+  /** Add a new player. Prompts for the name first so the ID can carry it (see buildPlayerId). */
   const handleAdd = async () => {
+    const name = window.prompt('Player name:')?.trim();
+    if (!name) return;
+
     setSaving(true);
     const newPlayer: PlayerProfile = {
-      id: crypto.randomUUID(),
-      name: 'New Player',
+      id: buildPlayerId(name),
+      name,
       colors: { ...DEFAULT_PLAYER_COLORS },
     };
     const result = await gameApi.createPlayer(newPlayer);
     if (result.success && result.data) {
       const refreshed = await refreshPlayers();
-      const created = refreshed.find((p) => p.name === newPlayer.name) ?? result.data;
+      const created = refreshed.find((p) => p.id === newPlayer.id) ?? result.data;
       setSelectedId(created.id);
       populateEditor(created);
     } else {

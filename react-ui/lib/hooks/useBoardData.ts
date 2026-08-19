@@ -20,6 +20,7 @@ import {
   useCurrentPlayer,
   useLastRoll,
 } from '@/lib/stores/gameStoreHooks';
+import { resolvePlayerName } from '@/lib/utils/playerNames';
 import { DEFAULT_PLAYER_COLORS, type PlayerColors } from '@/types/player-profile';
 import type { TileModel } from '@/types/generated/models/tile-model';
 import type { BuildingModel } from '@/types/generated/models/building-model';
@@ -77,7 +78,8 @@ export function useBoardPlayers(): BoardPlayer[] {
     () =>
       players.map((p) => ({
         id: p.id,
-        name: p.name,
+        // PlayerProfile is the only source of truth for a name (issue #208).
+        name: resolvePlayerName(profiles, p.id),
         colors: profiles.get(p.id)?.colors ?? DEFAULT_PLAYER_COLORS,
       })),
     [players, profiles]

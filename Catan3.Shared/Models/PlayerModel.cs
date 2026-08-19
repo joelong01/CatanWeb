@@ -14,11 +14,10 @@ namespace Catan3.Shared.Models
         [ObservableProperty]
         public partial string Id { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Gets the display name of the player extracted from the ID.
-        /// Follows Desktop app pattern: "Joe-001" ? "Joe"
-        /// </summary>
-        public string Name => ExtractNameFromId(Id);
+        // NOTE: There is deliberately no Name property here. A display name is identity data
+        // owned by PlayerProfile, not game state, and it must never be derived from the ID --
+        // parsing the ID produced a GUID fragment for any player whose ID was not "Name-NNN"
+        // (issue #208). Resolve names from the profile by Id instead.
 
         /// <summary>
         /// Gets or sets the number of gold rolls.
@@ -178,28 +177,6 @@ namespace Catan3.Shared.Models
             return $"{Id}";
         }
 
-        /// <summary>
-        /// Extracts display name from player ID following Desktop app pattern.
-        /// "Joe-001" ? "Joe"
-        /// </summary>
-        /// <param name="id">The player ID to extract the name from</param>
-        /// <returns>The extracted display name</returns>
-        private static string ExtractNameFromId(string id)
-        {
-            if (string.IsNullOrEmpty(id)) return "Unknown";
-
-            // Desktop app pattern: "Joe-001" -> "Joe"
-            if (id.Contains('-'))
-            {
-                var parts = id.Split('-');
-                if (parts.Length >= 2)
-                {
-                    return parts[0];
-                }
-            }
-
-            return id;
-        }
     }
 
 
