@@ -155,7 +155,7 @@ public sealed class CosmosCatanDb : ICatanDb
     {
         // SELECT only summary columns — omit compressedData to keep response small
         const string select = "SELECT c.id, c.gameName, c.gameState, c.gameType, c.startedBy, " +
-                              "c.playerCount, c.playerNames, c.turnCount, c.savedAt, c.createdAt, c.size FROM c";
+                              "c.playerCount, c.playerNames, c.playerIds, c.turnCount, c.savedAt, c.createdAt, c.size FROM c";
 
         QueryDefinition query = string.IsNullOrEmpty(startedBy)
             ? new QueryDefinition(select)
@@ -221,6 +221,7 @@ public sealed class CosmosCatanDb : ICatanDb
             PlayerCount = game.PlayerCount,
             TurnCount = game.TurnCount,
             PlayerNames = game.PlayerNames,
+            PlayerIds = game.PlayerIds,
             CompressedData = game.CompressedData.Length > 0 ? Convert.ToBase64String(game.CompressedData) : null,
             Size = game.Size,
         };
@@ -434,6 +435,7 @@ public sealed class CosmosCatanDb : ICatanDb
         StartedBy = doc.StartedBy,
         PlayerCount = doc.PlayerCount,
         PlayerNames = doc.PlayerNames,
+        PlayerIds = doc.PlayerIds ?? [],
         TurnCount = doc.TurnCount,
         SavedAt = doc.SavedAt,
         CreatedAt = doc.CreatedAt,
@@ -449,6 +451,7 @@ public sealed class CosmosCatanDb : ICatanDb
         StartedBy = doc.StartedBy,
         PlayerCount = doc.PlayerCount,
         PlayerNames = doc.PlayerNames,
+        PlayerIds = doc.PlayerIds ?? [],
         TurnCount = doc.TurnCount,
         SavedAt = doc.SavedAt,
         CreatedAt = doc.CreatedAt,
@@ -465,6 +468,7 @@ public sealed class CosmosCatanDb : ICatanDb
         StartedBy = g.StartedBy,
         PlayerCount = g.PlayerCount,
         PlayerNames = g.PlayerNames,
+        PlayerIds = g.PlayerIds,
         TurnCount = g.TurnCount,
         SavedAt = g.SavedAt,
         CreatedAt = g.CreatedAt,
@@ -483,6 +487,7 @@ public sealed class CosmosCatanDb : ICatanDb
         PlayerCount = doc.PlayerCount,
         TurnCount = doc.TurnCount,
         PlayerNames = doc.PlayerNames,
+        PlayerIds = doc.PlayerIds ?? [],
         CompressedData = doc.CompressedData is null ? [] : Convert.FromBase64String(doc.CompressedData),
         Size = doc.Size,
     };
@@ -575,6 +580,10 @@ public sealed class CosmosCatanDb : ICatanDb
         [JsonPropertyName("playerNames")]
         public string PlayerNames { get; set; } = string.Empty;
 
+        // Null on documents written before issue #208; readers coalesce to empty.
+        [JsonPropertyName("playerIds")]
+        public List<string>? PlayerIds { get; set; }
+
         [JsonPropertyName("turnCount")]
         public int TurnCount { get; set; }
 
@@ -616,6 +625,10 @@ public sealed class CosmosCatanDb : ICatanDb
 
         [JsonPropertyName("playerNames")]
         public string PlayerNames { get; set; } = string.Empty;
+
+        // Null on documents written before issue #208; readers coalesce to empty.
+        [JsonPropertyName("playerIds")]
+        public List<string>? PlayerIds { get; set; }
 
         [JsonPropertyName("turnCount")]
         public int TurnCount { get; set; }

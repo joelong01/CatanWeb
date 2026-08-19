@@ -54,6 +54,7 @@ import {
 } from '@/components/hex-grid/hex-geometry';
 import type { HexPosition } from '@/types/generated/models/hex-position';
 import { createPlayerColors, type PlayerColorsWithGradient } from '@/lib/utils/playerColors';
+import { resolvePlayerName } from '@/lib/utils/playerNames';
 import { gameApi } from '@/lib/api/gameApi';
 import { getServiceUrl } from '@/lib/config';
 import { DEFAULT_PLAYER_COLORS } from '@/types/player-profile';
@@ -496,9 +497,9 @@ export default function GamePage(): React.ReactElement {
       const currentId = currentPlayer?.id;
       return players
         .filter((p) => targetPlayerIds.has(p.id) && p.id !== currentId)
-        .map((p) => ({ id: p.id, name: p.name }));
+        .map((p) => ({ id: p.id, name: resolvePlayerName(playerProfiles, p.id) }));
     },
-    [buildings, players, currentPlayer?.id]
+    [buildings, players, currentPlayer?.id, playerProfiles]
   );
 
   // Roughly clamp robber menu position to keep it away from viewport edges.
@@ -732,7 +733,7 @@ export default function GamePage(): React.ReactElement {
       const imageUri = profile?.imageUri;
       return {
         id: p.id,
-        name: profile?.name || p.name,
+        name: resolvePlayerName(playerProfiles, p.id),
         score: p.score,
         colors: profile?.colors || DEFAULT_PLAYER_COLORS,
         avatarUrl: imageUri ? `${baseUrl}${imageUri}` : undefined,

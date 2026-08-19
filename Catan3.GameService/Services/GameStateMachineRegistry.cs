@@ -54,9 +54,11 @@ namespace Catan3.GameService.Services
                     GameType = gameModel.GameType.ToString(),
                     GameState = gameModel.GameState.ToString(),
                     PlayerCount = gameModel.Players.Count,
-                    PlayerNames = gameModel.Players.Select(p => p.Name).ToList(),
+                    // PlayerNames and CurrentPlayer are left empty: the registry has no access
+                    // to player profiles, and a name must never be derived from an ID. The
+                    // client resolves both from the ID fields below (issue #208).
                     PlayerIds = gameModel.Players.Select(p => p.Id).ToList(),
-                    CurrentPlayer = gameModel.GetCurrentPlayerName() ?? "",
+                    CurrentPlayerId = gameModel.CurrentPlayerId ?? "",
                     CreatedTime = gameModel.CreatedTime,
                     CreatedTimeDisplay = gameModel.CreatedTime.ToString("yyyy-MM-dd HH:mm"),
                     IsActive = gameModel.GameState != GameState.GameOver,

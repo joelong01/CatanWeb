@@ -21,6 +21,7 @@ import {
   usePlayers,
   useCurrentTurnPlayerId,
   usePlayerProfiles,
+  usePlayerName,
   useGameState,
 } from '@/lib/stores/gameStoreHooks';
 import { getServiceUrl } from '@/lib/config';
@@ -250,6 +251,7 @@ const PlayerTile = memo(function PlayerTile({
   isGameOver,
 }: PlayerTileProps) {
   const colors = createColorsFromProfile(profile);
+  const displayName = usePlayerName(player.id) ?? '';
 
   // Count from spentEntitlementsThisGame - these are placed items
   const spentEntitlements = player.spentEntitlementsThisGame ?? [];
@@ -335,7 +337,7 @@ const PlayerTile = memo(function PlayerTile({
             backgroundColor: colors.primary,
           }}
         >
-          {!profile?.imageUri && player.name.charAt(0).toUpperCase()}
+          {!profile?.imageUri && displayName.charAt(0).toUpperCase()}
         </div>
 
         {/* Stats Grid */}

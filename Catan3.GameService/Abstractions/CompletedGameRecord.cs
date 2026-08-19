@@ -11,7 +11,19 @@ public class CompletedGameRecord
     public DateTime StartedAt { get; set; }
     public int PlayerCount { get; set; }
     public int TurnCount { get; set; }
+
+    /// <summary>
+    /// Display names frozen at the moment the game completed. A completed game is a
+    /// point-in-time document, so this is written from the profile and never updated --
+    /// a later rename must not rewrite history (issue #208).
+    /// </summary>
     public string PlayerNames { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Authoritative player identity, used for click-through and to classify whether a
+    /// stored name predates the display-name fix.
+    /// </summary>
+    public List<string> PlayerIds { get; set; } = [];
     public byte[] CompressedData { get; set; } = [];
     public int Size { get; set; }
 }

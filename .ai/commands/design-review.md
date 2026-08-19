@@ -52,40 +52,14 @@ Know which stage you are reviewing. A design doc review focuses on
 
 ## Review Output Location
 
-All design reviews go in `.design/reviews/`:
+**Reviews are GitHub issue comments, not files.** Post one comment per finding on the
+issue that tracks the design, using `gh issue comment <number> --body-file <file>`.
 
-```text
-.design/reviews/
-├── game-creation-page-dr-claude.md    # Design review by Claude
-├── game-creation-page-dr-cp.md        # Design review by GitHub Copilot
-├── game-creation-page-dr-jl.md        # Design review by human (initials)
-├── seafarers-dr-gpt.md                # Design review by ChatGPT
-└── winner-overlay-review-copilot.md   # Legacy naming (pre-convention)
-```
+See the **Reviews** section of `.ai/ai-rules.md` for the finding format, the response
+format, and the resolution rules. That section is authoritative.
 
-### File Naming Convention
-
-```text
-<design-doc-name>-dr-<reviewer>.md
-```
-
-**Components:**
-
-- `<design-doc-name>`: The design doc filename without `.md` extension
-  (e.g., `game-creation-page`, `seafarers`)
-- `-dr-`: Design review marker (always present)
-- `<reviewer>`: Identifier for who performed the review
-
-**Reviewer suffixes:**
-
-| Reviewer | Suffix | Example |
-|----------|--------|---------|
-| Claude (Anthropic) | `-claude` | `game-creation-page-dr-claude.md` |
-| GitHub Copilot | `-cp` | `game-creation-page-dr-cp.md` |
-| Cline | `-cline` | `seafarers-dr-cline.md` |
-| ChatGPT/GPT | `-gpt` | `seafarers-dr-gpt.md` |
-| Gemini | `-gemini` | `database-dr-gemini.md` |
-| Human reviewer | `-<initials>` | `game-creation-page-dr-jl.md` |
+`.design/reviews/` is retained read-only for historical reviews written under the old
+file-based convention. Do not add to it.
 
 ## Review Checklist
 
@@ -151,60 +125,52 @@ All design reviews go in `.design/reviews/`:
   specific curl commands, etc.)
 - [ ] The plan accounts for existing tests that might break
 
-## Review File Template
+## Comment Templates
+
+### One comment per finding
 
 ```markdown
-# Design Review: <Design Doc Name>
+### Finding N: <short title>
 
-**Design:** `.design/<filename>.md`
-**Reviewed:** YYYY-MM-DD
-**Reviewer:** <Name or AI identifier>
+**Severity:** Critical | Important | Suggestion | Question
+**Section:** <section of the design doc, or `path/to/file.cs:123`>
+**Issue:** What is wrong, and why it matters.
+**Recommendation:** The specific change to make.
+**Evidence:** What you read or ran to confirm this.
+```
+
+Severity means:
+
+- **Critical** -- must be resolved before proceeding; blocks approval
+- **Important** -- should be addressed, but does not block
+- **Suggestion** -- nice to have
+- **Question** -- clarification needed from the author
+
+### Final summary comment
+
+```markdown
+### Review Summary
+
+**Reviewer:** <name or AI identifier>
 **Stage:** Design Doc | Implementation Plan
 
-## Summary
+<2-3 sentences: what the design proposes and your overall assessment>
 
-[2-3 sentences: what the design proposes and your overall assessment]
+| # | Severity | Finding |
+|---|----------|---------|
+| 1 | Critical | ... |
 
-## Critical Issues
+**Verified against code:**
 
-[Issues that MUST be resolved before proceeding. These block approval.]
+| Claim | Evidence | Status |
+|-------|----------|--------|
+| "<quoted claim from the design>" | `path/to/file.cs:123` | Verified / Incorrect / Could Not Verify |
 
-### 1. [Issue Title]
-
-**Section:** [Which section of the design doc]
-**Issue:** [What's wrong]
-**Recommendation:** [How to fix it]
-
-## Important Issues
-
-[Issues that SHOULD be addressed but don't block approval.]
-
-## Suggestions
-
-[Nice-to-have improvements.]
-
-## Questions
-
-[Clarifications needed from the author.]
-
-## Verification
-
-[Claims from the design that you verified against actual code.]
-
-### 1. [Claim]
-
-**Design says:** "[quoted claim]"
-**Actual code:** `path/to/file.cs:123`
-**Status:** Verified | Incorrect | Could Not Verify
-
-## Praise
-
-[What the design does well.]
-
-## Follow-Up Actions
-
-- [ ] Specific actionable items
+**What the design does well:** <praise — this is useful signal, not filler>
 ```
+
+Record every claim you verified, including the ones that checked out. A verification that
+passed is evidence the design is trustworthy; omitting it hides the work.
 
 ## Review Process
 
@@ -240,7 +206,7 @@ All design reviews go in `.design/reviews/`:
 
 ### Phase 4: Documentation (15% of time)
 
-1. Write the review to `.design/reviews/<name>-dr-<reviewer>.md`
+1. Post each finding as its own comment on the tracking issue
 2. Organize by severity (Critical, Important, Suggestion, Question, Praise)
 3. Include verification evidence for every claim you checked
 4. Provide concrete recommendations, not vague feedback
@@ -300,8 +266,8 @@ When a user asks you to perform a design review, follow this exact sequence:
    `game-state-machine.md`, read that too)
 5. Follow the Review Process phases below (Context → Verification → Analysis
    → Documentation)
-6. Write one review file per design doc to `.design/reviews/` using the naming
-   convention and template in this document
+6. Post findings as issue comments (one per finding), never as files in the
+   repository
 
 ### Instructions for AI Reviewers
 
@@ -312,4 +278,4 @@ When a user asks you to perform a design review, follow this exact sequence:
 5. **Record verification evidence** in the review (file paths, line numbers)
 6. **Be specific** -- reference exact sections of the design doc
 7. **Distinguish severity** -- don't mark style issues as critical
-8. **Output to `.design/reviews/`** using the naming convention above
+8. **Post findings as issue comments**, one per finding — never write review files

@@ -39,6 +39,15 @@ public class GameMetadata
     public string StartedBy { get; set; } = string.Empty;
     public int PlayerCount { get; set; }
     public string GameType { get; set; } = string.Empty;
+    /// <summary>
+    /// Display names. Written only on the completed-game path, where the record is a
+    /// point-in-time document. Saved (in-progress) games leave this empty and store
+    /// <see cref="PlayerIds"/> instead (issue #208).
+    /// </summary>
     public string PlayerNames { get; set; } = string.Empty;
+
+    /// <summary>Authoritative player identity.</summary>
+    public List<string> PlayerIds { get; set; } = [];
+
     public int TurnCount { get; set; }
 }

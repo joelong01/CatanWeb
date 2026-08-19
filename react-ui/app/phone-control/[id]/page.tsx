@@ -26,6 +26,7 @@ import {
   usePlayers,
   useCurrentPlayer,
   usePlayerProfiles,
+  usePlayerName,
   useSetPlayerProfiles,
 } from '@/lib/stores/gameStoreHooks';
 import { getDevPlayerId } from '@/lib/utils/getDevPlayerId';
@@ -115,6 +116,7 @@ function PlayerHexContent({
   const [imageError, setImageError] = useState(false);
 
   const colors = profile?.colors ?? DEFAULT_PLAYER_COLORS;
+  const displayName = usePlayerName(player.id) ?? '';
   const avatarUrl = getPlayerImageUrl(profile?.imageUri);
   const showImage = avatarUrl && !imageError;
   const gradient = buildCssGradient(colors);
@@ -156,7 +158,7 @@ function PlayerHexContent({
           {showImage ? (
             <img
               src={avatarUrl}
-              alt={player.name}
+              alt={displayName}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}
             />
@@ -165,7 +167,7 @@ function PlayerHexContent({
               className="w-full h-full flex items-center justify-center text-lg font-bold"
               style={{ background: gradient, color: colors.foreground }}
             >
-              {player.name.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
@@ -173,7 +175,7 @@ function PlayerHexContent({
           className="text-xs font-medium mt-1 truncate max-w-[90%]"
           style={{ color: colors.foreground }}
         >
-          {player.name}
+          {displayName}
         </span>
       </div>
     </div>

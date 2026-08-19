@@ -35,6 +35,7 @@ public class GamePersistenceService : IGamePersistence
                 StartedBy = metadata.StartedBy,
                 PlayerCount = metadata.PlayerCount,
                 PlayerNames = metadata.PlayerNames,
+                PlayerIds = metadata.PlayerIds,
                 TurnCount = metadata.TurnCount,
                 SavedAt = DateTime.UtcNow,
                 CompressedData = data,
@@ -142,6 +143,9 @@ public class DatabaseBackedPersistenceService : IPersistenceService
             var gameStateMachine = GameStateMachineRegistry.GetGameStateMachine(gameId);
             var gameModel = gameStateMachine.GetCurrentState();
 
+            // A saved game is a live view: the client resolves current display names from the
+            // player profiles by ID. Only identity is stored here -- no name lookup, and no
+            // name derived from the ID (issue #208).
             var metadata = new GameMetadata
             {
                 GameName = gameModel.GameName,
@@ -149,7 +153,7 @@ public class DatabaseBackedPersistenceService : IPersistenceService
                 StartedBy = "WebUI",
                 PlayerCount = gameModel.Players.Count,
                 GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
-                PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                PlayerIds = gameModel.Players.Select(p => p.Id).ToList(),
                 TurnCount = gameModel.RollModel.GameRollModel.TotalRolls
             };
 

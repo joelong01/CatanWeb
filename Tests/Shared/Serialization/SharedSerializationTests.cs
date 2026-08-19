@@ -138,7 +138,7 @@ namespace Tests.Shared.Serialization
 
                     Assert.NotNull(deserialized);
                     Assert.Equal(player.Id, deserialized.Id);
-                    Assert.Equal(player.Name, deserialized.Name);
+                    Assert.Equal(player.Score, deserialized.Score);
                 });
             }
         }

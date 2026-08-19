@@ -420,6 +420,38 @@ export function usePlayerColors(playerId: string | null | undefined): PlayerColo
   });
 }
 
+/** Shown while player profiles are still being fetched. */
+export const PLAYER_NAME_LOADING = 'Loading...';
+
+/** Shown when a player ID has no corresponding profile. */
+export const PLAYER_NAME_MISSING = 'Profile Error';
+
+/**
+ * Returns a player's display name by ID.
+ *
+ * `PlayerProfile` is the only source of truth for a display name — `PlayerModel` carries
+ * no name at all, by design (issue #208). Never derive a name from the ID: doing so is
+ * what produced GUID fragments like `1ffb33af` for players whose ID was not `Name-NNN`.
+ *
+ * When a name is unavailable this returns a visibly non-name placeholder rather than
+ * anything that could be mistaken for a real name. The two cases are kept distinct
+ * because the loading window is normal and brief, while a missing profile is a fault:
+ *
+ * - profiles not yet fetched (empty map) → `"Loading..."`
+ * - profiles fetched but no entry for this ID → `"Profile Error"`
+ *
+ * @param playerId The player ID to resolve (null/undefined returns undefined)
+ * @returns The display name, a placeholder, or undefined when no ID was supplied
+ */
+export function usePlayerName(playerId: string | null | undefined): string | undefined {
+  return useGameStore((state) => {
+    if (!playerId) return undefined;
+    const profileName = state.playerProfiles.get(playerId)?.name;
+    if (profileName) return profileName;
+    return state.playerProfiles.size === 0 ? PLAYER_NAME_LOADING : PLAYER_NAME_MISSING;
+  });
+}
+
 /**
  * Returns the current turn player's colors.
  */

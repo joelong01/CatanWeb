@@ -1,6 +1,6 @@
 # AI Assistant Rules for Catan Project
 
-**Last Updated:** 2025-11-24
+**Last Updated:** 2026-08-19
 
 This document defines the rules, conventions, and best practices for AI assistants working on the Catan project.
 
@@ -75,28 +75,33 @@ When creating or updating content in `.ai/`:
 
 ## General Principles
 
-### React Port: Check Existing Implementations First
+### Check Existing Implementations First
 
-**CRITICAL RULE:** Before inventing something new when doing the React port, follow this hierarchy:
+**CRITICAL RULE:** Before inventing something new, follow this hierarchy:
 
-1. **Check the Blazor/Razor app first** - How did we implement this feature in `WebUI/`?
-2. **Check the Desktop app second** - How did we implement it in `DesktopApp/`?
-3. **Check the design documents** - Is it documented in `.design/ui/react/` or `.design/`?
+1. **Check `react-ui/` first** - Does this pattern already exist in the React app?
+2. **Check the design documents** - Is it documented in `.design/`?
+3. **Check the Desktop app** - `DesktopApp/` is a *behavioral* reference for game rules and
+   UI intent. Do not copy its architecture, and never modify it.
 4. **Ask the developer** - If not found in the above, ask how to proceed
 
-This is the **most important rule for the port** because:
+This is the **most important rule** because:
 
 - It prevents inventing new patterns that conflict with existing mechanisms
-- It ensures consistency across platforms (Blazor, Desktop, React)
 - Data structures, API patterns, and state management already exist - use them
 - Player colors, profiles, and other data come from existing database collections
 
 **Example:** If you need player colors in React:
 
-1. Check `WebUI/Pages/Game.razor` - How does Blazor get `PlayerColorMap`?
-2. Check `WebUI/Components/Players/PlayersPanel.razor` - How are colors passed and used?
-3. Trace the data flow back to its source (database, API, SignalR)
-4. Implement the same pattern in React
+1. Check `react-ui/lib/stores/gameStoreHooks.ts` - `usePlayerColors(id)` already resolves
+   them from the profile map
+2. Trace the data flow back to its source (database, API, SignalR)
+3. Reuse that path rather than adding a parallel one
+
+> **Historical note:** this rule once directed readers to the Blazor app in `WebUI/` first.
+> That app is superseded by `react-ui` and unmaintained since March 2026 (see issue #209),
+> so it is no longer a valid reference for anything. `.design/blazor-legacy.md` and
+> `.design/old/` record what it did, if you need the history.
 
 ### Minimize Changes
 
@@ -203,12 +208,12 @@ public class ResourceCard : ComponentBase
 - Should explain the component's role in the larger system
 - Can include usage examples or important behavioral notes
 
-**Blazor-Specific Documentation:**
+**React-Specific Documentation:**
 
-- Document `[Parameter]` properties with XML comments
-- Document `EventCallback` parameters explaining when/why they fire
-- Add comments explaining component lifecycle usage (OnInitialized, OnParametersSet, etc.)
-- Document any JavaScript interop with clear explanations
+- Document component props with TSDoc on the props interface
+- Document callback props explaining when/why they fire
+- Add comments explaining non-obvious effect dependencies and cleanup
+- Document any direct DOM or canvas/SVG manipulation
 
 **When to Add Comments:**
 
@@ -223,14 +228,14 @@ public class ResourceCard : ComponentBase
 ### CSS and Styling
 
 - **Use CSS custom properties (variables)** defined in `:root` for all theming
-- Define reusable variables in `wwwroot/css/app.css`:
+- Define reusable variables in `react-ui/app/globals.css`:
   - Background colors: `--game-bg-primary`, `--game-bg-secondary`, `--game-bg-panel`
   - Text colors: `--text-primary`, `--text-secondary`, `--text-muted`
   - Accent colors: `--accent-primary`, `--accent-hover`, `--accent-success`, `--accent-error`
   - Overlays: `--overlay-dark`, `--overlay-darker`, `--overlay-light`, `--overlay-lighter`
   - Icons: `--icon-font-family`, `--icon-font-size`
 - Never hardcode colors except in variable definitions
-- Use Blazor scoped CSS (`.razor.css` files) for component-specific styles
+- Use Tailwind utility classes for layout; reach for CSS variables for all theming
 
 ### Icon Standards
 
@@ -242,7 +247,7 @@ public class ResourceCard : ComponentBase
 
 ### Naming Conventions
 
-- **Components**: PascalCase (e.g., `ResourceCard.razor`, `StarCounter.razor`)
+- **Components**: PascalCase (e.g., `PlayersPanel.tsx`, `RollRing.tsx`)
 - **CSS classes**: kebab-case (e.g., `.nav-menu-item`, `.star-counter`)
 - **JavaScript/TypeScript**: camelCase for variables, PascalCase for types
 - **Files**: Match component/class names exactly
@@ -308,29 +313,29 @@ Catan/
 ├── .design/               # Verified design documentation (30 docs)
 │   ├── plans/            # Implementation plans awaiting approval
 │   └── old/              # Legacy/superseded docs for reference
-├── WebUI/
-│   ├── Components/        # Reusable Blazor components
-│   │   ├── Board/        # Board-related components
-│   │   ├── Resources/    # Resource display components
-│   │   └── Shared/       # Shared/utility components
-│   ├── Layout/           # Layout components (MainLayout, NavMenu)
-│   ├── Pages/            # Routable pages
-│   └── wwwroot/
-│       └── css/          # Global styles (app.css with CSS variables)
+├── react-ui/
+│   ├── app/              # Next.js routes (one directory per route)
+│   │   └── globals.css   # Global styles and CSS variables
+│   ├── components/
+│   │   ├── game/         # Board, panels, overlays, controls, tiles
+│   │   ├── layout/       # MainLayout, NavMenu
+│   │   └── templates/    # Board template editor
+│   ├── lib/              # Stores, hooks, services, utils
+│   └── types/generated/  # TypeScript generated from Catan3.Shared
 ```
 
 ### File Naming
 
 - **Design docs**: `kebab-case-design.md` (e.g., `board-measurement-design.md`)
 - **Session summaries**: `SESSION_SUMMARY-YYYY-MM-DD-HHMM.md`
-- **Blazor components**: `PascalCase.razor` with optional `PascalCase.razor.css`
+- **React components**: `PascalCase.tsx`
 - **Test images**: Store in `.test_images/` with descriptive names
 
 ### Ignored Files
 
 Check `.gitignore` for excluded files:
 
-- `.webui-pids.json` - WebUI process tracking
+- `.webui-pids.json` - service process tracking
 - `code-reviews/` - AI-generated code reviews
 - `*.db`, `*.db-shm`, `*.db-wal` - Database files
 - `.test-images/` - Test images for AI analysis (see Image Analysis section)
@@ -347,7 +352,7 @@ The `.test-images/` directory (excluded from git) contains images for AI assista
 
 **Common use cases:**
 
-- UI comparison screenshots (Desktop vs WebUI)
+- UI comparison screenshots (Desktop vs React)
 - Design mockups for new features
 - Bug reproduction images
 - Visual regression testing references
@@ -379,7 +384,7 @@ Use `./catan.ps1` as the unified entry point for all development tasks:
 - **Browser caching**: Hard refresh (Ctrl+Shift+R) after code changes
 - **SVG caching**: Create new game to bypass cache or restart GameService
 - **GameService restart required**: For SVG generation code changes
-- **Blazor hot reload**: Some changes require full rebuild (`pwsh ./catan.ps1 update`)
+- **React hot reload**: Next.js Turbopack handles most changes; some require `pwsh ./catan.ps1 update`
 
 ### Testing Commands
 
@@ -407,32 +412,34 @@ In brief:
 5. Templates author only what varies per-template; each field routes at creation
    to `GameModel` (if authoritative) or nowhere (if the client knows it by enum).
 
-### Blazor Component Model
+### React Component Model
 
-- **Parameters**: Use `[Parameter]` attribute for component props
-- **Events**: Use `EventCallback` for parent-child communication
-- **Two-way binding**: Use `@bind` directive with `@bind:event`
-- **Dependency injection**: Use `@inject` directive at top of `.razor` file
-- **Scoped CSS**: Create `.razor.css` file with same name as component
+- **Props**: Define a typed props interface; document it with TSDoc
+- **Events**: Pass callback props for child-to-parent communication
+- **Shared state**: Read from the Zustand store via hooks in `lib/stores/gameStoreHooks.ts`
+- **Styling**: Tailwind utilities for layout, CSS variables for theming
 
-### WebUI to Desktop Mapping
+### Desktop to React Mapping
 
-| Desktop (XAML) | WebUI (Blazor) | Notes |
-|----------------|----------------|-------|
-| UserControl | Component (.razor) | Reusable UI pieces |
-| Binding `{x:Bind}` | `@bind` or `@` expressions | Data binding |
-| Command | EventCallback | User interactions |
+`DesktopApp/` is a behavioral reference only — consult it for game rules and UI intent,
+never for architecture.
+
+| Desktop (XAML) | React | Notes |
+|----------------|-------|-------|
+| UserControl | Component (`.tsx`) | Reusable UI pieces |
+| Binding `{x:Bind}` | Props / store hooks | Data binding |
+| Command | Callback prop | User interactions |
 | Style/Resource | CSS variables | Theming |
 | Grid/StackPanel | CSS Grid/Flexbox | Layout |
 
 ### State Management
 
-> **Note:** The bullets below are legacy Blazor/desktop-era guidance. For the
+> **Note:** The bullets below are legacy desktop-era guidance. For the
 > authoritative rules on where state lives, defer to
 > [`architecture-invariants.md`](./architecture-invariants.md) (invariants 1–3).
 
 - **SignalR for game state**: Real-time updates from GameService
-- **Component state**: Local state in `@code` blocks
+- **Component state**: Local state via `useState` / `useReducer`
 - **Query parameters**: For navigation context (e.g., `returnUrl`)
 - **CSS variables**: For visual theming
 
@@ -477,7 +484,7 @@ Tests/
 ### Branch Strategy
 
 - **Main branch**: `main` - Production-ready code
-- **Feature branches**: Named descriptively (e.g., `WebUI`, `board-measurement`)
+- **Feature branches**: Named descriptively (e.g., `player-display-name`, `board-measurement`)
 - Check current branch: `git status`
 
 ### Commit Guidelines
@@ -546,16 +553,22 @@ After creating a PR, **always** provide:
 Review PR #{number}: {title}
 Repository: {owner}/{repo}
 URL: {pr_url}
+Tracking issue: #{issue}
 
 Instructions:
-1. Read `.ai/commands/code-review.md` for the review process
+1. Read `.ai/ai-rules.md` (project standards) and `.ai/commands/code-review.md`
+   (review process)
 2. Run `gh pr diff {number}` to get the diff
 3. For each changed file, read the FULL file (not just the diff)
-4. Post each finding as a separate comment on PR #{number} using:
-   `gh api repos/{owner}/{repo}/issues/{number}/comments -f body="..."`
-5. Number findings sequentially (Finding 1/N, 2/N, etc.)
-6. End with a summary table of all findings with severity
-7. Follow the iterative cycle: review → comment → fix → verify
+4. Post each finding as its OWN comment on the tracking issue:
+   `gh issue comment {issue} --body-file <file>`
+   Do NOT write review files into the repository — see the Reviews section
+   of `.ai/ai-rules.md`
+5. Number findings sequentially (Finding 1, Finding 2, ...) and give each a
+   severity: Critical | Important | Suggestion | Question
+6. End with one summary comment listing all findings and their severity
+7. Verify every claim against the code before posting it; "no findings" is a
+   valid result
 ````
 
 ### Post-Merge Cleanup
@@ -574,7 +587,7 @@ This creates a traceable chain: **Issue → PR → Commit → Code**.
 ### Technology Stack
 
 - **.NET 9.0**: Core framework (pinned via `global.json`)
-- **Blazor WebAssembly**: WebUI frontend
+- **Next.js / React**: `react-ui` frontend
 - **ASP.NET Core**: GameService backend with SignalR
 - **CosmosDB**: Database (local emulator + Azure)
 - **SVG**: Dynamic board rendering
@@ -679,20 +692,64 @@ After plan approval, implement the plan precisely.
 
 ### Reviews
 
-Code reviews and design reviews go in `.design/reviews/`:
+**CRITICAL RULE: reviews are GitHub issue comments, not files in the repository.**
 
-```text
-.design/reviews/
-├── winner-overlay-review-claude.md
-├── winner-overlay-review-copilot.md
-├── doc-audit-review-gemini.md
-└── ...
+Do **not** write a review to `.design/reviews/`. A review is a conversation about work in
+progress, and GitHub already has the tool for it. Committing reviews means findings get
+merged into `main` as permanent files, they cannot be replied to or closed, and the record
+of what was accepted or rejected is lost.
+
+`.design/reviews/` is retained **read-only** for historical reviews written under the old
+convention. Do not add to it.
+
+#### Posting a review
+
+Post **one comment per finding** on the issue that tracks the work, using the GitHub CLI:
+
+```bash
+gh issue comment <number> --body-file <file>
 ```
 
-- **Naming**: `<feature-name>-review-<ai>.md` where `<ai>` identifies the
-  reviewer (e.g., `claude`, `copilot`, `gemini`)
-- **Format**: Markdown that passes lint rules
-- **Content**: Findings, recommendations, file-specific feedback
+Each finding is a separate comment so it can be answered and resolved independently.
+Format each one as:
+
+```markdown
+### Finding N: <short title>
+
+**Severity:** Critical | Important | Suggestion | Question
+**File:** `path/to/file.ts:123`
+**Issue:** What is wrong, and why it matters.
+**Recommendation:** The specific change to make.
+**Evidence:** What was read or run to confirm this.
+```
+
+Rules for reviewers:
+
+- **Verify before claiming.** See [Evidence Integrity](#7-evidence-integrity-anti-hallucination-protocol).
+  Never assert a file's contents without reading it.
+- **Severity must be honest.** Do not label a style preference Critical, and do not soften
+  a real defect.
+- **"No findings" is a valid review.** Do not invent issues to appear thorough.
+- Finish with one summary comment listing every finding and its severity.
+
+#### Responding to a review
+
+The author replies with **one comment per finding**, so each thread resolves on its own:
+
+```markdown
+### Re: Finding N — Fixed | Won't fix | Needs discussion
+
+<rationale; commit SHA if fixed>
+```
+
+- **Fixed** -- include the commit SHA that addresses it
+- **Won't fix** -- state why. Disagreeing with a finding is legitimate; say so plainly
+  rather than silently ignoring it
+- **Needs discussion** -- leave open until the developer decides
+- Findings that are real but out of scope become **their own issue**, linked from the reply
+
+Close the issue only when every finding has been answered. The issue thread is then the
+permanent record of what was found, what was done, and what was consciously declined.
 
 ## Session Workflow
 
@@ -727,11 +784,11 @@ Code reviews and design reviews go in `.design/reviews/`:
 
 ### Adding a New Reusable Component
 
-1. Create `WebUI/Components/{Category}/{ComponentName}.razor`
-2. Create optional `{ComponentName}.razor.css` for scoped styles
-3. Define `[Parameter]` properties for configuration
-4. Use CSS variables for theming
-5. Add XML comments for documentation
+1. Create `react-ui/components/{category}/{ComponentName}.tsx`
+2. Define a typed props interface for configuration
+3. Use Tailwind for layout and CSS variables for theming
+4. Add TSDoc for the component and its props
+5. Export it from the category `index.ts`
 6. Create example usage in design doc
 
 ### Matching Desktop UI Element

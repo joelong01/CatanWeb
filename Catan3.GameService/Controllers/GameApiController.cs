@@ -505,8 +505,11 @@ namespace Catan3.GameService.Controllers
                     });
                 }
 
-                // Get winner name for response
-                var winnerName = winner.Name;
+                // Get winner name for response. The profile is the source of truth for a
+                // display name -- PlayerModel.Name is derived from the player ID and is only
+                // correct for "Name-NNN" style IDs (issue #208).
+                var winnerProfile = await _db.LoadPlayerAsync(request.WinnerId);
+                var winnerName = winnerProfile?.Name ?? winner.Id;
 
                 // Execute declare winner action (includes VP card counts if any)
                 var declareWinnerMessage = new DeclareWinnerMessage(request.WinnerId, request.VictoryPoints ?? new Dictionary<string, int>());
@@ -589,7 +592,7 @@ namespace Catan3.GameService.Controllers
                 var soldiersPlayed = player.SpentEntitlementsThisGame?.Count(e => e == Shared.Models.Entitlement.Soldier) ?? 0;
 
                 // Log captured stats for debugging
-                _logger.LogEvent("Stats Capture", $"Player {player.Name}: Stars={player.Stars}, GoodRolls={player.GoodRolls}, BadRolls={player.BadRolls}, " +
+                _logger.LogEvent("Stats Capture", $"Player {profile.Name}: Stars={player.Stars}, GoodRolls={player.GoodRolls}, BadRolls={player.BadRolls}, " +
                     $"TimesTargeted={player.TimesTargeted}, Robber={player.ResourcesThisGame?.Robber ?? 0}, Soldiers={soldiersPlayed}, " +
                     $"Resources={player.ResourcesThisGame?.Count ?? 0}, LongestRoad={player.LongestRoad}, Score={score}");
 
@@ -618,7 +621,7 @@ namespace Catan3.GameService.Controllers
 
                 // Save back to database
                 await _db.SavePlayerAsync(updatedProfile);
-                _logger.LogEvent("Stats Update", $"Updated stats for {player.Name}: Games={updatedStats.GamesPlayed}, Wins={updatedStats.Wins}, " +
+                _logger.LogEvent("Stats Update", $"Updated stats for {profile.Name}: Games={updatedStats.GamesPlayed}, Wins={updatedStats.Wins}, " +
                     $"MostStars={updatedStats.MostStarsRecord}, AveStars={updatedStats.AverageStars:F1}, " +
                     $"Targeted={updatedStats.Totals.TimesTargeted}, Robber={updatedStats.Totals.ResourcesLostToRobber}");
             }
@@ -662,6 +665,28 @@ namespace Catan3.GameService.Controllers
         /// <summary>
         /// Archives the completed game to the CompletedGames table.
         /// </summary>
+        /// <summary>
+        /// Resolves display names for the given players from their profiles.
+        /// </summary>
+        /// <remarks>
+        /// Used only on the completed-game path. A completed game is a point-in-time document,
+        /// so the name is resolved once and frozen -- a later rename must not rewrite history.
+        /// Saved (in-progress) games store only <c>PlayerIds</c> and let the client resolve
+        /// current names (issue #208). Falls back to the player ID, never to a parsed name.
+        /// </remarks>
+        /// <param name="players">The players whose display names should be resolved.</param>
+        /// <returns>A comma-separated list of display names, in player order.</returns>
+        private async Task<string> ResolvePlayerNamesAsync(IEnumerable<PlayerModel> players)
+        {
+            var names = new List<string>();
+            foreach (var player in players)
+            {
+                var profile = await _db.LoadPlayerAsync(player.Id);
+                names.Add(profile?.Name ?? player.Id);
+            }
+            return string.Join(", ", names);
+        }
+
         private async Task ArchiveCompletedGame(string gameId, GameStateMachine gameStateMachine, GameModel gameModel, string winnerId, string winnerName)
         {
             try
@@ -679,7 +704,8 @@ namespace Catan3.GameService.Controllers
                     CompletedAt = DateTime.UtcNow,
                     StartedAt = gameModel.CreatedTime,
                     PlayerCount = gameModel.Players.Count,
-                    PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                    PlayerNames = await ResolvePlayerNamesAsync(gameModel.Players),
+                    PlayerIds = gameModel.Players.Select(p => p.Id).ToList(),
                     TurnCount = gameModel.RollModel.GameRollModel.TotalRolls,
                     CompressedData = compressed,
                     Size = compressed.Length
@@ -862,13 +888,13 @@ namespace Catan3.GameService.Controllers
                     StartedBy = "Replay",
                     PlayerCount = newGameModel.Players.Count,
                     GameType = newGameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
-                    PlayerNames = string.Join(", ", newGameModel.Players.Select(p => p.Name)),
+                    PlayerIds = newGameModel.Players.Select(p => p.Id).ToList(),
                     TurnCount = newGameModel.RollModel.GameRollModel.TotalRolls
                 };
 
                 await _gamePersistence.SaveAsync(newGameId, compressed, metadata);
 
-                _logger.LogEvent("Game Replayed", $"Replayed {gameId} → {newGameId} at WaitingForRollForOrder - {metadata.PlayerNames}");
+                _logger.LogEvent("Game Replayed", $"Replayed {gameId} → {newGameId} at WaitingForRollForOrder - {string.Join(", ", metadata.PlayerIds)}");
 
                 return Ok(new
                 {
@@ -876,7 +902,7 @@ namespace Catan3.GameService.Controllers
                     sourceGameId = gameId,
                     newGameId,
                     gameName = metadata.GameName,
-                    playerNames = metadata.PlayerNames,
+                    playerIds = metadata.PlayerIds,
                     message = "Replay created successfully"
                 });
             }
@@ -1022,6 +1048,8 @@ namespace Catan3.GameService.Controllers
 
             try
             {
+                // Returns PlayerIds and CurrentPlayerId; the client resolves display names
+                // from the player profiles it already holds (issue #208).
                 var availableGames = GameStateMachineRegistry.GetAvailableGames().OrderByDescending(g => g.CreatedTime).ToList();
 
                 _logger.LogEvent("Available Games", $"Found {availableGames.Count} available games");
@@ -1165,6 +1193,95 @@ namespace Catan3.GameService.Controllers
                 _logger.LogEvent("Get Saved Games Error", $"Error getting saved games: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, $"Error getting saved games: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Backfills <c>PlayerIds</c> onto game records written before issue #208.
+        /// </summary>
+        /// <remarks>
+        /// Strictly additive and idempotent: recovers player IDs from the compressed
+        /// <c>GameModel</c> already stored in each document, writes only <c>PlayerIds</c>, and
+        /// never modifies <c>PlayerNames</c> or <c>WinnerName</c>. Documents that already have
+        /// <c>PlayerIds</c> are skipped. A document whose blob cannot be decoded is counted as
+        /// failed and left untouched, so the routine is safe to re-run after fixing causes.
+        /// </remarks>
+        /// <returns>Counts of documents scanned, updated, skipped, and failed.</returns>
+        [HttpPost("admin/backfill-player-ids")]
+        public async Task<IActionResult> BackfillPlayerIds()
+        {
+            _logger.LogEvent("API Request", "POST /api/admin/backfill-player-ids");
+
+            int scanned = 0, updated = 0, skipped = 0, failed = 0;
+            var failures = new List<string>();
+
+            try
+            {
+                foreach (var summary in await _db.ListGamesAsync())
+                {
+                    scanned++;
+                    var game = await _db.LoadGameAsync(summary.GameId);
+                    if (game == null) { failed++; failures.Add(summary.GameId); continue; }
+                    if (game.PlayerIds.Count > 0) { skipped++; continue; }
+
+                    var ids = ExtractPlayerIdsFromBlob(game.CompressedData);
+                    if (ids.Count == 0) { failed++; failures.Add(summary.GameId); continue; }
+
+                    game.PlayerIds = ids;
+                    await _db.SaveGameAsync(game);
+                    updated++;
+                }
+
+                foreach (var completed in await _db.ListCompletedGamesAsync())
+                {
+                    scanned++;
+                    if (completed.PlayerIds.Count > 0) { skipped++; continue; }
+
+                    var ids = ExtractPlayerIdsFromBlob(completed.CompressedData);
+                    if (ids.Count == 0) { failed++; failures.Add(completed.GameId); continue; }
+
+                    completed.PlayerIds = ids;
+                    await _db.SaveCompletedGameAsync(completed);
+                    updated++;
+                }
+
+                _logger.LogEvent("Backfill PlayerIds",
+                    $"scanned={scanned} updated={updated} skipped={skipped} failed={failed}");
+
+                return Ok(new { success = true, scanned, updated, skipped, failed, failures });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogEvent("Backfill Error", $"Backfill failed: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { success = false, error = ex.Message, scanned, updated, skipped, failed });
+            }
+        }
+
+        /// <summary>
+        /// Recovers player IDs from a compressed <c>SerializableLog</c> blob.
+        /// </summary>
+        /// <param name="compressedData">The compressed game blob.</param>
+        /// <returns>Player IDs in turn order, or an empty list if the blob cannot be decoded.</returns>
+        private static List<string> ExtractPlayerIdsFromBlob(byte[] compressedData)
+        {
+            if (compressedData is null || compressedData.Length == 0) return [];
+
+            try
+            {
+                var log = JsonHelper.Deserialize<SerializableLog>(JsonHelper.Decompress(compressedData));
+                // Any snapshot carries the full roster; the newest is the most reliable.
+                for (var i = (log?.DoneStack.Count ?? 0) - 1; i >= 0; i--)
+                {
+                    var model = JsonHelper.Deserialize<GameModel>(log!.DoneStack[i]);
+                    if (model?.Players is { Count: > 0 })
+                        return model.Players.Select(p => p.Id).ToList();
+                }
+            }
+            catch (Exception)
+            {
+                // Undecodable blob -- reported as failed, never partially written.
+            }
+
+            return [];
         }
 
         /// <summary>
@@ -1690,7 +1807,7 @@ namespace Catan3.GameService.Controllers
                         StartedBy = "Rename",
                         PlayerCount = updatedGameModel.Players.Count,
                         GameType = updatedGameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
-                        PlayerNames = string.Join(", ", updatedGameModel.Players.Select(p => p.Name)),
+                        PlayerIds = updatedGameModel.Players.Select(p => p.Id).ToList(),
                         TurnCount = updatedGameModel.RollModel.GameRollModel.TotalRolls
                     };
 
@@ -1922,13 +2039,13 @@ namespace Catan3.GameService.Controllers
                     StartedBy = "Copy",
                     PlayerCount = newGameModel.Players.Count,
                     GameType = newGameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
-                    PlayerNames = string.Join(", ", newGameModel.Players.Select(p => p.Name)),
+                    PlayerIds = newGameModel.Players.Select(p => p.Id).ToList(),
                     TurnCount = newGameModel.RollModel.GameRollModel.TotalRolls
                 };
 
                 await _gamePersistence.SaveAsync(newGameId, compressed, metadata);
 
-                _logger.LogEvent("Game Copied", $"Copied game {gameId} to {newGameId} - {metadata.PlayerNames}, {metadata.TurnCount} turns");
+                _logger.LogEvent("Game Copied", $"Copied game {gameId} to {newGameId} - {string.Join(", ", metadata.PlayerIds)}, {metadata.TurnCount} turns");
 
                 return Ok(new
                 {
@@ -2008,7 +2125,7 @@ namespace Catan3.GameService.Controllers
                         success = true,
                         gameId = gameId,
                         gameName = gameModel.GameName,
-                        playerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                        playerIds = gameModel.Players.Select(p => p.Id).ToList(),
                         turnCount = gameModel.RollModel.GameRollModel.TotalRolls,
                         message = "Game already exists"
                     });
@@ -2022,14 +2139,14 @@ namespace Catan3.GameService.Controllers
                     StartedBy = "Import",
                     PlayerCount = gameModel.Players.Count,
                     GameType = gameModel.Tiles.Count > 19 ? "Expansion" : "Regular",
-                    PlayerNames = string.Join(", ", gameModel.Players.Select(p => p.Name)),
+                    PlayerIds = gameModel.Players.Select(p => p.Id).ToList(),
                     TurnCount = gameModel.RollModel.GameRollModel.TotalRolls
                 };
 
                 // Save to database
                 await _gamePersistence.SaveAsync(gameId, compressedData, metadata);
 
-                _logger.LogEvent("Game Imported", $"Imported game: {gameId} ({metadata.PlayerNames}) - {metadata.TurnCount} turns");
+                _logger.LogEvent("Game Imported", $"Imported game: {gameId} ({string.Join(", ", metadata.PlayerIds)}) - {metadata.TurnCount} turns");
 
                 return Ok(new
                 {

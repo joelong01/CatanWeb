@@ -15,6 +15,12 @@ namespace Catan3.Shared.Models
         public List<string> PlayerNames { get; set; } = [];
         public List<string> PlayerIds { get; set; } = [];
         public string CurrentPlayer { get; set; } = "";
+
+        /// <summary>
+        /// ID of the player whose turn it is. Callers should resolve the display name from
+        /// the player profile by this ID rather than parsing it (issue #208).
+        /// </summary>
+        public string CurrentPlayerId { get; set; } = "";
         public DateTime CreatedTime { get; set; }
         public string CreatedTimeDisplay { get; set; } = "";
         public bool IsActive { get; set; }
@@ -64,40 +70,5 @@ namespace Catan3.Shared.Models
             return PlayerIds?.Where(id => !string.IsNullOrEmpty(id)).ToList() ?? [];
         }
 
-        /// <summary>
-        /// Gets the effective player names from either PlayerIds or Players
-        /// For PlayerIds, extracts display names using Desktop app pattern
-        /// </summary>
-        public List<string> GetPlayerNames()
-        {
-            if (Players != null && Players.Count > 0)
-            {
-                return Players.Select(p => !string.IsNullOrEmpty(p.Name) ? p.Name : ExtractNameFromId(p.Id)).ToList();
-            }
-
-            if (PlayerIds != null && PlayerIds.Count > 0)
-            {
-                return PlayerIds.Select(ExtractNameFromId).ToList();
-            }
-
-            return [];
-        }
-
-        private static string ExtractNameFromId(string id)
-        {
-            if (string.IsNullOrEmpty(id)) return "Unknown";
-
-            // Desktop app pattern: "Joe-001" -> "Joe"
-            if (id.Contains('-'))
-            {
-                var parts = id.Split('-');
-                if (parts.Length >= 2)
-                {
-                    return parts[0];
-                }
-            }
-
-            return id;
-        }
     }
 }

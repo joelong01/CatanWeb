@@ -82,9 +82,10 @@ describe('Serialization Contract — Expansion.catan_test', () => {
       expect(tile.number).toBe(EXPANSION_BOARD_TRUTH.firstTile.number);
     });
 
-    it('player names match', () => {
-      const names = game.players.map((p) => p.name);
-      expect(names).toEqual(EXPANSION_BOARD_TRUTH.playerNames);
+    it('player ids match', () => {
+      // PlayerModel carries identity only; display names live on PlayerProfile (issue #208).
+      const ids = game.players.map((p) => p.id);
+      expect(ids).toEqual(EXPANSION_BOARD_TRUTH.playerNames.map((n) => `${n}-001`));
     });
 
     it('tiles do NOT have a stars property (JsonIgnore verification)', () => {

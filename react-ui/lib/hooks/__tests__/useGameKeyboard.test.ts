@@ -310,7 +310,7 @@ describe('useGameKeyboard — unit', () => {
     }
 
     function player(id: string, unspent: string[] = []): PlayerModel {
-      return { id, name: id, unspentEntitlements: unspent } as PlayerModel;
+      return { id, unspentEntitlements: unspent } as unknown as PlayerModel;
     }
 
     it('digit places a buildable road by buildIndex', () => {
@@ -748,9 +748,8 @@ describe('useGameKeyboard — integration with layoutStore', () => {
           actionFlags: makeFlags({ nextEnabled: false }),
           currentPlayer: {
             id: 'me',
-            name: 'me',
             unspentEntitlements: ['Settlement'],
-          } as PlayerModel,
+          } as unknown as PlayerModel,
         })
       )
     );

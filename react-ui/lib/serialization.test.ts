@@ -119,7 +119,6 @@ describe('TypeGen Generated Model Serialization', () => {
       const player = gameModel.players[0];
 
       expect(player.id).toBe('Joe-001');
-      expect(player.name).toBe('Joe');
       expect(player.score).toBe(0);
       expect(player.goldRolls).toBe(0);
       expect(player.hasLongestRoad).toBe(false);

@@ -14,6 +14,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { HexGrid, type HexGridItem } from '@/components/hex-grid/HexGrid';
 import { HEX_LAYOUTS, cubicCoord } from '@/components/hex-grid/hex-geometry';
 import { serviceConfig } from '@/lib/config';
+import { usePlayerName } from '@/lib/stores/gameStoreHooks';
 import { buildCssGradient } from '@/lib/utils/playerColors';
 import type { PlayerModel } from '@/types/generated/models/player-model';
 import type { PlayerProfile } from '@/types/player-profile';
@@ -118,6 +119,7 @@ function PlayerHexContent({
   const [imageError, setImageError] = useState(false);
 
   const colors = profile?.colors ?? DEFAULT_PLAYER_COLORS;
+  const displayName = usePlayerName(player.id) ?? '';
   const avatarUrl = getPlayerImageUrl(profile?.imageUri);
   const showImage = avatarUrl && !imageError;
 
@@ -170,7 +172,7 @@ function PlayerHexContent({
           {showImage ? (
             <img
               src={avatarUrl}
-              alt={player.name}
+              alt={displayName}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}
             />
@@ -182,7 +184,7 @@ function PlayerHexContent({
                 color: colors.foreground,
               }}
             >
-              {player.name.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
@@ -191,7 +193,7 @@ function PlayerHexContent({
           className="text-xs font-medium mt-1 truncate max-w-[90%]"
           style={{ color: colors.foreground }}
         >
-          {player.name}
+          {displayName}
         </span>
       </div>
     </div>

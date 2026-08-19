@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/layout';
 import { gameApi, type SavedGameSummary } from '@/lib/api/gameApi';
+import { usePlayerProfiles, useSetPlayerProfiles } from '@/lib/stores/gameStoreHooks';
+import { resolveHistoricalName } from '@/lib/utils/playerNames';
 
 /**
  * Open Game page - browse and load saved games.
@@ -13,6 +15,8 @@ import { gameApi, type SavedGameSummary } from '@/lib/api/gameApi';
 export default function LoadGame(): React.ReactElement {
   const router = useRouter();
   const [savedGames, setSavedGames] = useState<SavedGameSummary[]>([]);
+  const playerProfiles = usePlayerProfiles();
+  const setPlayerProfiles = useSetPlayerProfiles();
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
@@ -34,6 +38,34 @@ export default function LoadGame(): React.ReactElement {
   // Multi-select state
   const [checkedGameIds, setCheckedGameIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Player profiles own display names; the summary rows carry only IDs (issue #208).
+  useEffect(() => {
+    async function loadProfiles() {
+      const result = await gameApi.getPlayers();
+      if (result.success && result.data) setPlayerProfiles(result.data);
+    }
+    loadProfiles();
+  }, [setPlayerProfiles]);
+
+  /**
+   * Names to show for a saved-game row.
+   *
+   * Prefers the stored `playerNames` for rows written before `playerIds` existed, and
+   * resolves from the profiles otherwise. `resolveHistoricalName` bypasses the stored
+   * value only when it is provably an ID-parsing artifact.
+   */
+  const displayPlayerNames = useCallback(
+    (game: SavedGameSummary): string => {
+      if (game.playerIds?.length) {
+        return game.playerIds
+          .map((id) => resolveHistoricalName(playerProfiles, id, undefined))
+          .join(', ');
+      }
+      return game.playerNames;
+    },
+    [playerProfiles]
+  );
 
   // Load saved games on mount
   useEffect(() => {
@@ -694,7 +726,9 @@ export default function LoadGame(): React.ReactElement {
                         )}
                       </td>
 
-                      <td className="border border-gray-300 px-3 py-2">{game.playerNames}</td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {displayPlayerNames(game)}
+                      </td>
                       <td className="border border-gray-300 px-3 py-2 text-center">
                         {game.turnCount}
                       </td>
@@ -750,7 +784,9 @@ export default function LoadGame(): React.ReactElement {
                         <div className="text-base font-semibold text-gray-800 truncate">
                           {game.gameName}
                         </div>
-                        <div className="text-sm text-gray-600 truncate">{game.playerNames}</div>
+                        <div className="text-sm text-gray-600 truncate">
+                          {displayPlayerNames(game)}
+                        </div>
                         <div className="text-xs text-gray-500 truncate">
                           {game.gameState}
                           <span className="mx-1 text-gray-400">•</span>

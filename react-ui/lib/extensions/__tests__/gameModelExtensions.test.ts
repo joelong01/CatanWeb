@@ -32,10 +32,9 @@ import type { RoadKey } from '@/types/generated/models/road-key';
 import type { GameState } from '@/types/generated/models/game-state';
 
 // Helper to create a minimal player
-function createMockPlayer(id: string, name: string): PlayerModel {
+function createMockPlayer(id: string): PlayerModel {
   return {
     id,
-    name,
     goldRolls: 0,
     goodRolls: 0,
     badRolls: 0,
@@ -169,9 +168,9 @@ function createMockGameModel(overrides: Partial<GameModel> = {}): GameModel {
     gameState: 'WaitingForRoll',
     currentPlayerId: 'player-1',
     players: [
-      createMockPlayer('player-1', 'Alice'),
-      createMockPlayer('player-2', 'Bob'),
-      createMockPlayer('player-3', 'Charlie'),
+      createMockPlayer('player-1'),
+      createMockPlayer('player-2'),
+      createMockPlayer('player-3'),
     ],
     tiles: [
       createMockTile(0, 0),
@@ -196,7 +195,6 @@ describe('gameModelExtensions', () => {
       const player = currentPlayer(game);
       expect(player).toBeDefined();
       expect(player?.id).toBe('player-1');
-      expect(player?.name).toBe('Alice');
     });
 
     it('returns undefined if currentPlayerId is not set', () => {
